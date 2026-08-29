@@ -87,10 +87,10 @@
         const SUPABASE_URL = 'sb_publishable_kzMgSC5JniUeJZGBGW1RIA_7aKyk0vh';
         const SUPABASE_ANON_KEY = 'sb_secret_K6YNCZJMVIP1zgOG4eg2aQ_I5r6Rnm_';
         
-        let supabase;
+        let supabase = null;
         try {
-            // Hanya buat koneksi jika URL sudah tidak mengandung kata placeholder
-            if (!SUPABASE_URL.includes('MASUKKAN_URL')) {
+            // Hanya buat koneksi jika URL sudah diisi dan library tersedia
+            if (window.supabase && !SUPABASE_URL.includes('MASUKKAN_URL')) {
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             }
         } catch (e) {
@@ -144,11 +144,11 @@
             else if (q.type === 'MCMA') {
               if (Array.isArray(userAnswer)) {
                 const sortedUser = [...userAnswer].sort();
-                const sortedCorrect = [...q.correctAnswers].sort();
+                const sortedCorrect = [...(q.correctAnswers || [])].sort();
                 isCorrect = sortedUser.length === sortedCorrect.length && sortedUser.every((val, index) => val === sortedCorrect[index]);
               }
             } else if (q.type === 'CATEGORY') {
-              const statementKeys = q.statements.map(s => s.id);
+              const statementKeys = (q.statements || []).map(s => s.id);
               const allAnswered = statementKeys.every(id => userAnswer[id]);
               if (allAnswered) isCorrect = q.statements.every(s => userAnswer[s.id] === s.correctCategory);
             }
@@ -156,7 +156,7 @@
             return { qId: q.id, type: q.type, isCorrect, isEmpty: false };
           });
 
-          const finalScore = Math.round((totalPoints / maxPoints) * 100);
+          const finalScore = maxPoints > 0 ? Math.round((totalPoints / maxPoints) * 100) : 0;
           return { finalScore, totalPoints, maxPoints, detailedResults };
         };
 
@@ -183,19 +183,23 @@
              }
              setIsLoadingData(true);
              try {
-                const { data: qData, error: qErr } = await supabase.from('questions').select('*').order('number', { ascending: true });
-                if(qErr) throw qErr;
-                if(qData) setQuestions(qData);
+                // Gunakan promise all untuk mempercepat pengambilan
+                const [qRes, tRes] = await Promise.all([
+                    supabase.from('questions').select('*').order('number', { ascending: true }),
+                    supabase.from('tokens').select('*').order('generatedAt', { ascending: false })
+                ]);
                 
-                const { data: tData, error: tErr } = await supabase.from('tokens').select('*').order('generatedAt', { ascending: false });
-                if(tErr) throw tErr;
-                if(tData) setTokens(tData);
+                if(qRes.error) throw qRes.error;
+                if(tRes.error) throw tRes.error;
+                
+                if(qRes.data) setQuestions(qRes.data);
+                if(tRes.data) setTokens(tRes.data);
 
                 if (isAdminLoggedIn) {
-                   const { data: rData, error: rErr } = await supabase.from('results').select('*').order('created_at', { ascending: false });
-                   if(rErr) throw rErr;
-                   if(rData) {
-                      const formattedResults = rData.map(r => ({
+                   const rRes = await supabase.from('results').select('*').order('created_at', { ascending: false });
+                   if(rRes.error) throw rRes.error;
+                   if(rRes.data) {
+                      const formattedResults = rRes.data.map(r => ({
                          id: r.id,
                          participant: { name: r.participant_name, school: r.participant_school, nis: r.participant_nis, grade: r.participant_grade },
                          token: r.token, score: r.score, startTime: parseInt(r.start_time), endTime: parseInt(r.end_time),
@@ -232,7 +236,7 @@
             const handleLogin = async (e) => {
               e.preventDefault();
               if(!supabase) {
-                 setError('Sistem belum dikonfigurasi oleh Admin. Hubungi pengawas.'); return;
+                 setError('Sistem belum dikonfigurasi. Pastikan URL Supabase sudah diisi dengan benar.'); return;
               }
               setIsChecking(true); setError('');
               
@@ -247,7 +251,7 @@
                 setActiveSession({ token: tokenObj.code, participant: null, answers: {}, flagged: [], status: 'SETUP' });
                 navigate('/identity');
               } catch (err) {
-                 setError('Gagal menghubungi server. Periksa internet.');
+                 setError('Gagal menghubungi server. Periksa koneksi internet.');
               }
               setIsChecking(false);
             };
@@ -351,7 +355,7 @@
                 const now = new Date().getTime();
                 setActiveSession(prev => ({ ...prev, status: 'ACTIVE', startTime: now, durationLimit: 60 * 60 * 1000 }));
                 navigate('/exam');
-              } catch (err) { alert("Gagal, periksa koneksi internet."); setIsStarting(false); }
+              } catch (err) { alert("Gagal memulai ujian, periksa koneksi internet."); setIsStarting(false); }
             };
 
             return (
@@ -363,7 +367,7 @@
                   </div>
                   <div className="mb-8">
                     <ul className="space-y-3 text-slate-700 text-base">
-                      <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-2 mt-0.5" size={18}/> Waktu pengerjaan adalah <strong>60 menit</strong> untuk <strong>{questions.length} soal</strong>.</li>
+                      <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-2 mt-0.5" size={18}/> Waktu pengerjaan adalah <strong>60 menit</strong> untuk <strong>{questions.length || 0} soal</strong>.</li>
                       <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-2 mt-0.5" size={18}/> Tipe soal: Pilihan Ganda, Pilihan Kompleks (MCMA), dan Kategori.</li>
                       <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-2 mt-0.5" size={18}/> Jawaban tersimpan <strong>otomatis</strong>.</li>
                       <li className="flex items-start text-red-600 font-bold"><AlertCircle className="text-red-500 mr-2 mt-0.5" size={18}/> Setelah dikirim, jawaban TIDAK dapat diubah kembali.</li>
@@ -371,8 +375,8 @@
                   </div>
                   <div className="bg-blue-50 p-4 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 border border-blue-100">
                     <div className="text-sm text-blue-900 text-center sm:text-left">Ujian untuk: <br/><strong className="text-lg">{activeSession.participant.name}</strong> ({activeSession.participant.school})</div>
-                    <button onClick={startExam} disabled={isStarting} className="py-3 px-8 rounded-lg text-white font-bold bg-emerald-600 hover:bg-emerald-700 shadow-md flex justify-center items-center">
-                      {isStarting ? 'Memproses...' : 'Mulai Ujian'}
+                    <button onClick={startExam} disabled={isStarting || questions.length === 0} className="py-3 px-8 rounded-lg text-white font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 shadow-md flex justify-center items-center">
+                      {isStarting ? 'Memproses...' : (questions.length === 0 ? 'Soal Kosong' : 'Mulai Ujian')}
                     </button>
                   </div>
                 </div>
@@ -396,7 +400,9 @@
             }, [activeSession]);
 
             const formatTime = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
-            if (!activeSession || activeSession.status !== 'ACTIVE' || questions.length === 0) return null;
+            
+            // Safety check
+            if (!activeSession || activeSession.status !== 'ACTIVE' || questions.length === 0 || !questions[currentIndex]) return <div className="p-8 text-center">Memuat soal...</div>;
 
             const currentQuestion = questions[currentIndex];
             const currentAnswer = activeSession.answers[currentQuestion.id];
@@ -417,7 +423,10 @@
                   token: activeSession.token, score: result.finalScore, start_time: activeSession.startTime,
                   end_time: new Date().getTime(), detailed_results: result.detailedResults
                };
-               if(supabase) await supabase.from('results').insert([dbPayload]);
+               if(supabase) {
+                   try { await supabase.from('results').insert([dbPayload]); } 
+                   catch (e) { console.error("Auto submit failed:", e); }
+               }
                setActiveSession({ ...activeSession, status: 'SUBMITTED', endTime: dbPayload.end_time, score: result.finalScore, detail: result });
                navigate('/submitted');
             }, [activeSession, questions]);
@@ -451,7 +460,7 @@
                         <div className="text-lg text-slate-800 font-semibold rich-text-content mb-6" dangerouslySetInnerHTML={{ __html: currentQuestion.question || '' }} />
                         
                         {/* MCQ */}
-                        {currentQuestion.type === 'MCQ' && (
+                        {currentQuestion.type === 'MCQ' && currentQuestion.options && (
                           <div className="space-y-3">
                             {currentQuestion.options.map(opt => (
                               <label key={opt.id} className={`flex items-center p-4 border rounded-xl cursor-pointer ${currentAnswer === opt.id ? 'border-emerald-500 bg-emerald-50' : 'hover:bg-slate-50'}`}>
@@ -462,7 +471,7 @@
                           </div>
                         )}
                         {/* MCMA */}
-                        {currentQuestion.type === 'MCMA' && (
+                        {currentQuestion.type === 'MCMA' && currentQuestion.statements && (
                           <div className="space-y-3">
                              <div className="bg-blue-50 text-blue-800 p-3 rounded-lg text-sm font-medium mb-4 flex items-center border border-blue-100"><AlertCircle size={16} className="mr-2"/> Anda dapat memilih lebih dari satu pernyataan.</div>
                             {currentQuestion.statements.map((stmt, idx) => (
@@ -478,7 +487,7 @@
                           </div>
                         )}
                         {/* CATEGORY */}
-                        {currentQuestion.type === 'CATEGORY' && (
+                        {currentQuestion.type === 'CATEGORY' && currentQuestion.statements && currentQuestion.statements.length > 0 && (
                           <div className="mt-6 overflow-x-auto">
                             <div className="bg-blue-50 text-blue-800 p-3 rounded-lg text-sm font-medium mb-4 flex items-center border border-blue-100"><AlertCircle size={16} className="mr-2"/> Tentukan kategori untuk SETIAP pernyataan.</div>
                             <table className="w-full text-left border-collapse min-w-[500px]">
@@ -486,8 +495,8 @@
                                 <tr className="bg-slate-100 border-b-2 border-slate-200">
                                   <th className="py-3 px-4 font-bold w-12 text-center">No</th>
                                   <th className="py-3 px-4 font-bold">Pernyataan</th>
-                                  <th className="py-3 px-4 font-bold text-center w-28 bg-emerald-50">{currentQuestion.statements[0].category1}</th>
-                                  <th className="py-3 px-4 font-bold text-center w-28 bg-amber-50">{currentQuestion.statements[0].category2}</th>
+                                  <th className="py-3 px-4 font-bold text-center w-28 bg-emerald-50">{currentQuestion.statements[0]?.category1 || 'Kategori 1'}</th>
+                                  <th className="py-3 px-4 font-bold text-center w-28 bg-amber-50">{currentQuestion.statements[0]?.category2 || 'Kategori 2'}</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -495,8 +504,8 @@
                                   <tr key={stmt.id} className="border-b border-slate-200 hover:bg-slate-50">
                                     <td className="py-4 px-4 text-center font-bold text-slate-500">{idx + 1}</td>
                                     <td className="py-4 px-4 font-medium">{stmt.text}</td>
-                                    <td className="py-4 px-4 text-center bg-emerald-50/30"><input type="radio" checked={(currentAnswer || {})[stmt.id] === currentQuestion.statements[0].category1} onChange={() => handleAnswerChange({...currentAnswer, [stmt.id]: currentQuestion.statements[0].category1})} className="w-5 h-5 text-emerald-600" /></td>
-                                    <td className="py-4 px-4 text-center bg-amber-50/30"><input type="radio" checked={(currentAnswer || {})[stmt.id] === currentQuestion.statements[0].category2} onChange={() => handleAnswerChange({...currentAnswer, [stmt.id]: currentQuestion.statements[0].category2})} className="w-5 h-5 text-amber-600" /></td>
+                                    <td className="py-4 px-4 text-center bg-emerald-50/30"><input type="radio" checked={(currentAnswer || {})[stmt.id] === stmt.category1} onChange={() => handleAnswerChange({...currentAnswer, [stmt.id]: stmt.category1})} className="w-5 h-5 text-emerald-600" /></td>
+                                    <td className="py-4 px-4 text-center bg-amber-50/30"><input type="radio" checked={(currentAnswer || {})[stmt.id] === stmt.category2} onChange={() => handleAnswerChange({...currentAnswer, [stmt.id]: stmt.category2})} className="w-5 h-5 text-amber-600" /></td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -522,7 +531,7 @@
                       <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center"><LayoutDashboard size={20} className="mr-2 text-slate-400"/> Navigasi</h3>
                       <div className="grid grid-cols-5 gap-2">
                         {questions.map((q, idx) => {
-                          const isAnswered = !!activeSession.answers[q.id] && (q.type === 'CATEGORY' ? Object.keys(activeSession.answers[q.id] || {}).length === 3 : true);
+                          const isAnswered = !!activeSession.answers[q.id] && (q.type === 'CATEGORY' ? Object.keys(activeSession.answers[q.id] || {}).length === (q.statements?.length || 3) : true);
                           const isCurrent = idx === currentIndex;
                           const isFlag = activeSession.flagged?.includes(q.id);
                           
@@ -550,7 +559,7 @@
             const answeredQ = questions.filter(q => {
                const ans = activeSession.answers[q.id];
                if(!ans) return false;
-               if(q.type === 'CATEGORY') return Object.keys(ans).length === 3;
+               if(q.type === 'CATEGORY') return Object.keys(ans).length === (q.statements?.length || 3);
                return true;
             }).length;
             const unansweredQ = totalQ - answeredQ;
@@ -568,7 +577,7 @@
                  if(supabase) await supabase.from('results').insert([dbPayload]);
                  setActiveSession({ ...activeSession, status: 'SUBMITTED', endTime: dbPayload.end_time, score: result.finalScore, detail: result });
                  navigate('/submitted');
-               } catch (err) { alert("Gagal mengirim jawaban."); setIsSubmitting(false); }
+               } catch (err) { alert("Gagal mengirim jawaban. Coba lagi."); setIsSubmitting(false); }
             };
 
             return (
@@ -775,13 +784,13 @@
                   <AdminLayout title="Detail Hasil">
                     <button onClick={() => setSel(null)} className="mb-4 flex items-center font-bold text-slate-600"><ChevronLeft size={20}/> Kembali</button>
                     <div className="bg-white p-5 rounded-xl border border-slate-200 mb-6 flex justify-between items-center">
-                       <div><h3 className="font-bold text-slate-800">{sel.participant.name} ({sel.participant.school})</h3><p className="text-sm text-slate-500">Token: {sel.token}</p></div>
+                       <div><h3 className="font-bold text-slate-800">{sel.participant?.name} ({sel.participant?.school})</h3><p className="text-sm text-slate-500">Token: {sel.token}</p></div>
                        <div className="text-3xl font-black text-emerald-600">{sel.score}</div>
                     </div>
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
                        <table className="w-full text-sm text-left"><thead className="bg-slate-50 font-bold border-b"><tr><th className="py-3 px-4 w-12 text-center">No</th><th className="py-3 px-4">Pertanyaan</th><th className="py-3 px-4 text-center">Status</th></tr></thead>
                        <tbody>{questions.map((q, idx) => {
-                          const res = sel.detail?.detailedResults.find(r => r.qId === q.id) || { isCorrect: false, isEmpty: true };
+                          const res = sel.detail?.detailedResults?.find(r => r.qId === q.id) || { isCorrect: false, isEmpty: true };
                           return <tr key={q.id} className="border-b hover:bg-slate-50"><td className="py-3 px-4 text-center font-bold">{idx + 1}</td><td className="py-3 px-4"><div dangerouslySetInnerHTML={{__html: q.question || ''}} className="line-clamp-2"/></td><td className="py-3 px-4 text-center">{res.isEmpty ? <span className="text-amber-600 font-bold">KOSONG</span> : res.isCorrect ? <span className="text-emerald-600 font-bold">BENAR</span> : <span className="text-red-600 font-bold">SALAH</span>}</td></tr>
                        })}</tbody></table>
                     </div>
@@ -877,19 +886,19 @@
                            </div>
                            
                            {/* Form dinamis berdasar tipe */}
-                           {form.type === 'MCQ' && (
+                           {form.type === 'MCQ' && form.options && (
                               <div className="space-y-4">
                                 {form.options.map((o, i) => (<div key={o.id} className="flex gap-3"><span className="font-black w-6">{o.id}.</span><input type="text" value={o.text} required onChange={e => {const no=[...form.options]; no[i].text=e.target.value; setForm({...form, options:no})}} className="flex-1 p-2 border rounded font-medium"/></div>))}
                                 <div><label className="block text-sm font-bold mb-1">Kunci</label><select value={form.correctAnswer} onChange={e=>setForm({...form, correctAnswer: e.target.value})} className="p-2 border rounded font-black text-emerald-700 bg-emerald-50">{['A','B','C','D'].map(v=><option key={v} value={v}>{v}</option>)}</select></div>
                               </div>
                            )}
-                           {form.type === 'MCMA' && (
+                           {form.type === 'MCMA' && form.statements && (
                               <div className="space-y-4">
                                 <div className="font-bold border-b pb-2 mb-4">Pernyataan (MCMA)</div>
-                                {form.statements.map((s, i) => (<div key={s.id} className="flex items-center gap-3"><input type="checkbox" checked={form.correctAnswers.includes(s.id)} onChange={() => { let ans=[...form.correctAnswers]; if(ans.includes(s.id)) ans=ans.filter(x=>x!==s.id); else ans.push(s.id); setForm({...form, correctAnswers: ans})}} className="w-5 h-5 text-emerald-600 rounded"/><span className="font-black w-4 text-slate-400">{s.id}.</span><input type="text" value={s.text} required onChange={e=>{const ns=[...form.statements]; ns[i].text=e.target.value; setForm({...form, statements:ns})}} className="flex-1 p-2 border rounded font-medium"/></div>))}
+                                {form.statements.map((s, i) => (<div key={s.id} className="flex items-center gap-3"><input type="checkbox" checked={(form.correctAnswers || []).includes(s.id)} onChange={() => { let ans=[...(form.correctAnswers || [])]; if(ans.includes(s.id)) ans=ans.filter(x=>x!==s.id); else ans.push(s.id); setForm({...form, correctAnswers: ans})}} className="w-5 h-5 text-emerald-600 rounded"/><span className="font-black w-4 text-slate-400">{s.id}.</span><input type="text" value={s.text} required onChange={e=>{const ns=[...form.statements]; ns[i].text=e.target.value; setForm({...form, statements:ns})}} className="flex-1 p-2 border rounded font-medium"/></div>))}
                               </div>
                            )}
-                           {form.type === 'CATEGORY' && (
+                           {form.type === 'CATEGORY' && form.statements && form.statements.length > 0 && (
                               <div className="space-y-4">
                                 <div className="flex gap-4 bg-slate-50 p-4 rounded-lg border">
                                    <div className="flex-1"><label className="block text-xs font-bold mb-1">Kategori 1</label><input type="text" value={form.statements[0].category1} required onChange={e=>{const val=e.target.value; const ns=form.statements.map(s=>({...s, category1:val, correctCategory: s.correctCategory===s.category1?val:s.correctCategory})); setForm({...form, statements:ns})}} className="w-full p-2 border rounded font-black"/></div>
