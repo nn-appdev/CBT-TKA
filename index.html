@@ -5,41 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CBT TKA Terpadu - Sekolah Dasar</title>
     
-    <!-- Memuat Tailwind CSS untuk Desain -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Memuat FontAwesome untuk Ikon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Memuat React dan Babel agar dapat berjalan langsung di Browser tanpa instalasi -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- MEMUAT KLIEN SUPABASE DATABASE -->
+    <!-- Memuat Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; }
-        
         .rich-text-content { white-space: pre-wrap; word-wrap: break-word; }
-        .rich-text-content b { font-weight: 800 !important; }
-        .rich-text-content i { font-style: italic !important; }
-        .rich-text-content u { text-decoration: underline !important; }
         .rich-text-content p { min-height: 1.5rem; margin-bottom: 0.5rem; }
-
-        /* Pengaturan Cetak PDF Optimal */
         @media print {
-            body, html { background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; height: auto !important; }
-            @page { size: 21.5cm 33cm; margin: 1.5cm; } 
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            nav, header, button, .print\:hidden, .md\:hidden { display: none !important; }
-            main { padding: 0 !important; overflow: visible !important; height: auto !important; display: block !important; }
+            body, html { background: white !important; height: auto !important; }
+            nav, header, button, .print\:hidden { display: none !important; }
+            main { padding: 0 !important; overflow: visible !important; display: block !important; }
             .print-container { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
-            .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
-            table { page-break-inside: auto; width: 100% !important; }
-            tr { page-break-inside: avoid; page-break-after: auto; }
-            thead { display: table-header-group; }
         }
     </style>
 </head>
@@ -49,7 +33,6 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        // Ikon-Ikon SVG menggunakan FontAwesome
         const Monitor = ({size=24, className=""}) => <i className={`fas fa-desktop ${className}`} style={{fontSize: size}}></i>;
         const Key = ({size=24, className=""}) => <i className={`fas fa-key ${className}`} style={{fontSize: size}}></i>;
         const User = ({size=24, className=""}) => <i className={`fas fa-user ${className}`} style={{fontSize: size}}></i>;
@@ -57,46 +40,35 @@
         const FileText = ({size=24, className=""}) => <i className={`fas fa-file-alt ${className}`} style={{fontSize: size}}></i>;
         const CheckCircle = ({size=24, className=""}) => <i className={`fas fa-check-circle ${className}`} style={{fontSize: size}}></i>;
         const AlertCircle = ({size=24, className=""}) => <i className={`fas fa-exclamation-circle ${className}`} style={{fontSize: size}}></i>;
-        const ChevronLeft = ({size=24, className=""}) => <i className={`fas fa-chevron-left ${className}`} style={{fontSize: size}}></i>;
-        const ChevronRight = ({size=24, className=""}) => <i className={`fas fa-chevron-right ${className}`} style={{fontSize: size}}></i>;
-        const Flag = ({size=24, className=""}) => <i className={`fas fa-flag ${className}`} style={{fontSize: size}}></i>;
-        const LogOut = ({size=24, className=""}) => <i className={`fas fa-sign-out-alt ${className}`} style={{fontSize: size}}></i>;
-        const LayoutDashboard = ({size=24, className=""}) => <i className={`fas fa-tachometer-alt ${className}`} style={{fontSize: size}}></i>;
-        const Database = ({size=24, className=""}) => <i className={`fas fa-database ${className}`} style={{fontSize: size}}></i>;
-        const Users = ({size=24, className=""}) => <i className={`fas fa-users ${className}`} style={{fontSize: size}}></i>;
-        const Settings = ({size=24, className=""}) => <i className={`fas fa-cog ${className}`} style={{fontSize: size}}></i>;
-        const Plus = ({size=24, className=""}) => <i className={`fas fa-plus ${className}`} style={{fontSize: size}}></i>;
-        const Edit = ({size=24, className=""}) => <i className={`fas fa-edit ${className}`} style={{fontSize: size}}></i>;
-        const Trash2 = ({size=24, className=""}) => <i className={`fas fa-trash-alt ${className}`} style={{fontSize: size}}></i>;
-        const Printer = ({size=24, className=""}) => <i className={`fas fa-print ${className}`} style={{fontSize: size}}></i>;
-        const CheckSquare = ({size=24, className=""}) => <i className={`fas fa-check-square ${className}`} style={{fontSize: size}}></i>;
-        const BarChart2 = ({size=24, className=""}) => <i className={`fas fa-chart-bar ${className}`} style={{fontSize: size}}></i>;
-        const ImageIcon = ({size=24, className=""}) => <i className={`fas fa-image ${className}`} style={{fontSize: size}}></i>;
-        const XIcon = ({size=24, className=""}) => <i className={`fas fa-times ${className}`} style={{fontSize: size}}></i>;
-        const Save = ({size=24, className=""}) => <i className={`fas fa-save ${className}`} style={{fontSize: size}}></i>;
-        const MenuIcon = ({size=24, className=""}) => <i className={`fas fa-bars ${className}`} style={{fontSize: size}}></i>;
-        const CopyIcon = ({size=24, className=""}) => <i className={`fas fa-copy ${className}`} style={{fontSize: size}}></i>;
-        const EyeIcon = ({size=24, className=""}) => <i className={`fas fa-eye ${className}`} style={{fontSize: size}}></i>;
         const Cloud = ({size=24, className=""}) => <i className={`fas fa-cloud ${className}`} style={{fontSize: size}}></i>;
-        const CloudUploadAlt = ({size=24, className=""}) => <i className={`fas fa-cloud-upload-alt ${className}`} style={{fontSize: size}}></i>;
-
 
         // ==========================================
-        // 🔑 KONEKSI SUPABASE (UBAH DI SINI SEBELUM DI-PUSH KE GITHUB)
+        // KONEKSI SUPABASE (URL DAN KEY ASLI ANDA)
         // ==========================================
         const SUPABASE_URL = 'https://xltrmoeabasrconlhijv.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_kzMgSC5JniUeJZGBGW1RIA_7aKyk0vh';
-        
+
         let supabase = null;
-        try {
-            // Hanya buat koneksi jika URL sudah diisi dan library tersedia
-            if (window.supabase && !SUPABASE_URL.includes('MASUKKAN_URL')) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.INIT_ERROR = null;
+
+        // Fungsi koneksi asinkron (Anti-Gagal)
+        const getSupabase = async () => {
+            if (supabase) return supabase;
+            
+            if (!window.supabase) {
+                try {
+                    // Fallback: Jika script diblokir, paksa unduh ulang menggunakan modul native
+                    const module = await new Function("return import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm')")();
+                    window.supabase = module;
+                } catch (e) {
+                    throw new Error("Library Supabase diblokir oleh sistem Anda. Tolong matikan ekstensi AdBlock atau ganti browser Anda.");
+                }
             }
-        } catch (e) {
-            console.error("Gagal inisialisasi Supabase:", e.message);
-        }
-        // ==========================================
+            
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            window.INIT_ERROR = null;
+            return supabase;
+        };
 
         const RichTextEditor = ({ value, onChange, placeholder }) => {
             const editorRef = useRef(null);
@@ -110,13 +82,13 @@
                 editorRef.current.focus(); handleInput();
             };
             return (
-                <div className="border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500">
+                <div className="border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:border-emerald-500 focus-within:ring-1">
                     <div className="bg-slate-50 border-b border-slate-300 p-2 flex gap-2">
-                        <button onMouseDown={(e)=>execCmd('bold', e)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-300 rounded hover:bg-slate-200 font-black text-slate-800 shadow-sm" type="button" title="Cetak Tebal">B</button>
-                        <button onMouseDown={(e)=>execCmd('italic', e)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-300 rounded hover:bg-slate-200 italic font-serif text-slate-800 shadow-sm" type="button" title="Cetak Miring">I</button>
-                        <button onMouseDown={(e)=>execCmd('underline', e)} className="w-8 h-8 flex items-center justify-center bg-white border border-slate-300 rounded hover:bg-slate-200 underline text-slate-800 shadow-sm" type="button" title="Garis Bawah">U</button>
+                        <button onMouseDown={(e)=>execCmd('bold', e)} className="w-8 h-8 font-black shadow-sm bg-white border rounded">B</button>
+                        <button onMouseDown={(e)=>execCmd('italic', e)} className="w-8 h-8 italic shadow-sm bg-white border rounded">I</button>
+                        <button onMouseDown={(e)=>execCmd('underline', e)} className="w-8 h-8 underline shadow-sm bg-white border rounded">U</button>
                     </div>
-                    <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onKeyUp={handleInput} onMouseUp={handleInput} className="p-4 min-h-[140px] focus:outline-none rich-text-content font-medium text-slate-800" placeholder={placeholder} />
+                    <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} onKeyUp={handleInput} onMouseUp={handleInput} className="p-4 min-h-[140px] outline-none rich-text-content" placeholder={placeholder} />
                 </div>
             );
         };
@@ -166,27 +138,22 @@
           const [results, setResults] = useState([]);
           const [questions, setQuestions] = useState([]);
           const [isLoadingData, setIsLoadingData] = useState(false);
-          const [dbStatus, setDbStatus] = useState(''); // 'connected', 'error_url', 'error_fetch'
+          const [dbStatus, setDbStatus] = useState('');
           
           const [activeSession, setActiveSession] = useStickySession(null, 'cbt_active_session');
           const [isAdminLoggedIn, setIsAdminLoggedIn] = useStickySession(false, 'cbt_admin_auth');
 
-          const navigate = (path) => {
-             window.scrollTo(0,0);
-             setCurrentRoute(path);
-          };
+          const navigate = (path) => { window.scrollTo(0,0); setCurrentRoute(path); };
 
-          // Sinkronisasi Data dari Supabase
           const fetchSupabaseData = async () => {
-             if(SUPABASE_URL.includes('MASUKKAN_URL') || !supabase) {
-                setDbStatus('error_url'); return;
-             }
              setIsLoadingData(true);
              try {
-                // Gunakan promise all untuk mempercepat pengambilan
+                // Diperbarui: Menggunakan await agar tidak error saat memuat
+                const db = await getSupabase();
+                
                 const [qRes, tRes] = await Promise.all([
-                    supabase.from('questions').select('*').order('number', { ascending: true }),
-                    supabase.from('tokens').select('*').order('generatedAt', { ascending: false })
+                    db.from('questions').select('*').order('number', { ascending: true }),
+                    db.from('tokens').select('*').order('generatedAt', { ascending: false })
                 ]);
                 
                 if(qRes.error) throw qRes.error;
@@ -196,7 +163,7 @@
                 if(tRes.data) setTokens(tRes.data);
 
                 if (isAdminLoggedIn) {
-                   const rRes = await supabase.from('results').select('*').order('created_at', { ascending: false });
+                   const rRes = await db.from('results').select('*').order('created_at', { ascending: false });
                    if(rRes.error) throw rRes.error;
                    if(rRes.data) {
                       const formattedResults = rRes.data.map(r => ({
@@ -211,7 +178,8 @@
                 setDbStatus('connected');
              } catch (error) {
                 console.error("Fetch error:", error);
-                setDbStatus('error_fetch');
+                window.INIT_ERROR = error.message;
+                setDbStatus('error_url');
              } finally {
                 setIsLoadingData(false);
              }
@@ -226,33 +194,25 @@
             }
           }, [currentRoute, activeSession]);
 
-
-          // === UI PESERTA ===
-          const ParticipantLogin = () => {
+            const ParticipantLogin = () => {
             const [inputToken, setInputToken] = useState('');
             const [error, setError] = useState('');
             const [isChecking, setIsChecking] = useState(false);
 
             const handleLogin = async (e) => {
               e.preventDefault();
-              if(!supabase) {
-                 setError('Sistem belum dikonfigurasi. Pastikan URL Supabase sudah diisi dengan benar.'); return;
-              }
               setIsChecking(true); setError('');
-              
               try {
-                const { data: tokenObj, error: fetchErr } = await supabase.from('tokens').select('*').eq('code', inputToken.trim().toUpperCase()).single();
+                const db = await getSupabase();
+                const { data: tokenObj, error: fetchErr } = await db.from('tokens').select('*').eq('code', inputToken.trim().toUpperCase()).single();
                 
-                if (fetchErr || !tokenObj) { setError('Token tidak valid atau tidak ditemukan.'); setIsChecking(false); return; }
+                if (fetchErr || !tokenObj) { setError('Token tidak valid.'); setIsChecking(false); return; }
                 if (tokenObj.status === 'USED') { setError('Token sudah digunakan.'); setIsChecking(false); return; }
                 if (tokenObj.status === 'EXPIRED') { setError('Token kedaluwarsa.'); setIsChecking(false); return; }
-                if (tokenObj.status === 'BLOCKED') { setError('Token diblokir admin.'); setIsChecking(false); return; }
 
                 setActiveSession({ token: tokenObj.code, participant: null, answers: {}, flagged: [], status: 'SETUP' });
                 navigate('/identity');
-              } catch (err) {
-                 setError('Gagal menghubungi server. Periksa koneksi internet.');
-              }
+              } catch (err) { setError(err.message || 'Gagal terhubung ke server.'); }
               setIsChecking(false);
             };
 
@@ -263,22 +223,28 @@
                     <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4"><Monitor size={32} /></div>
                     <h1 className="text-2xl font-bold text-slate-800 tracking-tight">CBT TKA</h1>
                     <p className="text-slate-500 text-sm">Computer Based Test - Sekolah Dasar</p>
+                    
                     {dbStatus === 'error_url' && (
-                       <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600 font-bold">⚠️ Sistem belum dikonfigurasi. Admin harus memasukkan URL Supabase di dalam file.</div>
+                       <div className="mt-4 text-left p-4 bg-red-50 border-2 border-red-300 rounded-lg text-sm text-red-800">
+                          <h3 className="font-bold text-red-600 mb-2 border-b border-red-200 pb-1 flex items-center">
+                              <AlertCircle size={16} className="mr-1"/> Diagnosa Error Koneksi
+                          </h3>
+                          <p className="mb-1"><span className="font-semibold text-slate-600">Penyebab:</span> <br/> {window.INIT_ERROR}</p>
+                          <p className="mt-3 text-xs text-red-600 font-bold">Coba muat ulang halaman atau periksa koneksi Anda.</p>
+                       </div>
                     )}
                   </div>
+                  
                   <form onSubmit={handleLogin} className="space-y-6">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">Masukkan Token Ujian</label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Key className="text-slate-400" size={20} /></div>
-                        <input type="text" disabled={isChecking} className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 uppercase tracking-widest text-center font-bold text-slate-800 placeholder-slate-300" placeholder="X-X-X-X" value={inputToken} onChange={(e) => setInputToken(e.target.value.toUpperCase())} required />
+                        <input type="text" disabled={isChecking} className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-lg focus:ring-emerald-500 uppercase tracking-widest text-center font-bold text-slate-800" placeholder="X-X-X-X" value={inputToken} onChange={(e) => setInputToken(e.target.value.toUpperCase())} required />
                       </div>
                       {error && <p className="mt-2 text-sm text-red-600 flex items-center"><AlertCircle size={14} className="mr-1"/> {error}</p>}
                     </div>
-                    <button type="submit" disabled={isChecking || dbStatus==='error_url'} className="w-full py-3 px-4 rounded-lg font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 shadow-sm transition-colors flex justify-center items-center">
-                      {isChecking ? <><i className="fas fa-spinner fa-spin mr-2"></i> Memeriksa...</> : 'Masuk Ujian'}
-                    </button>
+                    <button type="submit" disabled={isChecking || dbStatus==='error_url'} className="w-full py-3 px-4 rounded-lg font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">{isChecking ? 'Menghubungkan...' : 'Masuk Ujian'}</button>
                   </form>
                   <div className="mt-8 pt-6 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400">
                      <span className="flex items-center"><Cloud className={`mr-1 ${dbStatus === 'connected' ? 'text-emerald-500' : 'text-slate-400'}`}/> Cloud Sync</span>
@@ -291,723 +257,157 @@
 
           const ParticipantIdentity = () => {
             const [formData, setFormData] = useState({ name: '', nis: '', school: '', grade: '6', gender: 'L' });
-            const [error, setError] = useState('');
-
             if (!activeSession || activeSession.status !== 'SETUP') { navigate('/login'); return null; }
-
             const handleSubmit = (e) => {
               e.preventDefault();
-              if(!formData.name || !formData.school) { setError('Nama dan Asal Sekolah wajib diisi.'); return; }
               setActiveSession(prev => ({ ...prev, participant: formData }));
               navigate('/instruction');
             };
-
             return (
-              <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 flex justify-center">
-                <div className="max-w-xl w-full bg-white rounded-2xl shadow-lg p-8">
-                  <div className="flex items-center mb-6 pb-6 border-b border-slate-200">
-                    <User className="text-emerald-600 mr-3" size={28} />
-                    <h2 className="text-2xl font-bold text-slate-800">Identitas Peserta</h2>
-                  </div>
-                  <form onSubmit={handleSubmit} className="space-y-5">
-                    {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4">{error}</div>}
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                      <div className="sm:col-span-2">
-                        <label className="block text-sm font-semibold text-slate-700">Nama Lengkap *</label>
-                        <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="mt-1 block w-full rounded-md border-slate-300 focus:border-emerald-500 focus:ring-emerald-500 p-2.5 border bg-slate-50" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700">NIS/NISN</label>
-                        <input type="text" value={formData.nis} onChange={e => setFormData({...formData, nis: e.target.value})} className="mt-1 block w-full rounded-md border-slate-300 p-2.5 border bg-slate-50" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700">Asal Sekolah *</label>
-                        <input type="text" required value={formData.school} onChange={e => setFormData({...formData, school: e.target.value})} className="mt-1 block w-full rounded-md border-slate-300 p-2.5 border bg-slate-50" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700">Kelas</label>
-                        <select value={formData.grade} onChange={e => setFormData({...formData, grade: e.target.value})} className="mt-1 block w-full rounded-md border-slate-300 p-2.5 border bg-slate-50">
-                          {[1,2,3,4,5,6].map(g => <option key={g} value={g}>Kelas {g}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700">Jenis Kelamin</label>
-                        <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} className="mt-1 block w-full rounded-md border-slate-300 p-2.5 border bg-slate-50">
-                          <option value="L">Laki-laki</option><option value="P">Perempuan</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="pt-6"><button type="submit" className="w-full py-3 px-4 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm">Lanjutkan</button></div>
-                  </form>
-                </div>
-              </div>
+              <div className="min-h-screen bg-slate-50 py-12 flex justify-center"><div className="max-w-xl w-full bg-white rounded-2xl shadow-lg p-8"><h2 className="text-2xl font-bold mb-6">Identitas Peserta</h2><form onSubmit={handleSubmit} className="space-y-5"><div><label className="block text-sm font-semibold">Nama Lengkap *</label><input type="text" required value={formData.name} onChange={e=>setFormData({...formData, name:e.target.value})} className="w-full p-2.5 border rounded-md"/></div><div><label className="block text-sm font-semibold">Asal Sekolah *</label><input type="text" required value={formData.school} onChange={e=>setFormData({...formData, school:e.target.value})} className="w-full p-2.5 border rounded-md"/></div><button type="submit" className="w-full py-3 bg-emerald-600 text-white font-bold rounded-lg">Lanjutkan</button></form></div></div>
             );
           };
 
           const ParticipantInstruction = () => {
             const [isStarting, setIsStarting] = useState(false);
             if (!activeSession || !activeSession.participant) { navigate('/login'); return null; }
-
             const startExam = async () => {
               setIsStarting(true);
               try {
-                if(supabase) await supabase.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
-                const now = new Date().getTime();
-                setActiveSession(prev => ({ ...prev, status: 'ACTIVE', startTime: now, durationLimit: 60 * 60 * 1000 }));
+                const db = await getSupabase();
+                await db.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
+                setActiveSession(prev => ({ ...prev, status: 'ACTIVE', startTime: new Date().getTime(), durationLimit: 60 * 60 * 1000 }));
                 navigate('/exam');
-              } catch (err) { alert("Gagal memulai ujian, periksa koneksi internet."); setIsStarting(false); }
+              } catch (err) { alert("Gagal memulai ujian: " + err.message); setIsStarting(false); }
             };
-
             return (
-              <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 flex justify-center">
-                <div className="max-w-3xl w-full bg-white rounded-2xl shadow-lg p-8 border-t-4 border-amber-500">
-                   <div className="flex items-center mb-6 pb-4 border-b border-slate-200">
-                    <FileText className="text-amber-500 mr-3" size={28} />
-                    <h2 className="text-2xl font-bold text-slate-800">Petunjuk Pengerjaan</h2>
-                  </div>
-                  <div className="mb-8">
-                    <ul className="space-y-3 text-slate-700 text-base">
-                      <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-2 mt-0.5" size={18}/> Waktu pengerjaan adalah <strong>60 menit</strong> untuk <strong>{questions.length || 0} soal</strong>.</li>
-                      <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-2 mt-0.5" size={18}/> Tipe soal: Pilihan Ganda, Pilihan Kompleks (MCMA), dan Kategori.</li>
-                      <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-2 mt-0.5" size={18}/> Jawaban tersimpan <strong>otomatis</strong>.</li>
-                      <li className="flex items-start text-red-600 font-bold"><AlertCircle className="text-red-500 mr-2 mt-0.5" size={18}/> Setelah dikirim, jawaban TIDAK dapat diubah kembali.</li>
-                    </ul>
-                  </div>
-                  <div className="bg-blue-50 p-4 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 border border-blue-100">
-                    <div className="text-sm text-blue-900 text-center sm:text-left">Ujian untuk: <br/><strong className="text-lg">{activeSession.participant.name}</strong> ({activeSession.participant.school})</div>
-                    <button onClick={startExam} disabled={isStarting || questions.length === 0} className="py-3 px-8 rounded-lg text-white font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 shadow-md flex justify-center items-center">
-                      {isStarting ? 'Memproses...' : (questions.length === 0 ? 'Soal Kosong' : 'Mulai Ujian')}
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <div className="min-h-screen bg-slate-50 py-12 flex justify-center"><div className="max-w-3xl w-full bg-white rounded-2xl shadow-lg p-8"><h2 className="text-2xl font-bold mb-4">Petunjuk Pengerjaan</h2><p className="mb-6">Waktu pengerjaan 60 menit untuk {questions.length} soal.</p><button onClick={startExam} disabled={isStarting} className="py-3 px-8 bg-emerald-600 text-white font-bold rounded-lg">{isStarting ? 'Memulai...' : 'Mulai Ujian'}</button></div></div>
             );
           };
 
           const ExamEngine = () => {
             const [currentIndex, setCurrentIndex] = useState(0);
-            const [timeLeft, setTimeLeft] = useState(0);
-            const [saveIndicator, setSaveIndicator] = useState(false);
-
             useEffect(() => { if (!activeSession || activeSession.status !== 'ACTIVE') navigate('/'); }, [activeSession]);
-
-            useEffect(() => {
-              if (!activeSession || activeSession.status !== 'ACTIVE') return;
-              const calcTime = () => Math.max(0, Math.floor(((activeSession.startTime + activeSession.durationLimit) - new Date().getTime()) / 1000));
-              setTimeLeft(calcTime());
-              const timer = setInterval(() => { const rem = calcTime(); setTimeLeft(rem); if (rem <= 0) { clearInterval(timer); handleAutoSubmit(); } }, 1000);
-              return () => clearInterval(timer);
-            }, [activeSession]);
-
-            const formatTime = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
-            
-            // Safety check
-            if (!activeSession || activeSession.status !== 'ACTIVE' || questions.length === 0 || !questions[currentIndex]) return <div className="p-8 text-center">Memuat soal...</div>;
-
+            if (!activeSession || questions.length === 0 || !questions[currentIndex]) return <div className="p-8 text-center">Memuat soal...</div>;
             const currentQuestion = questions[currentIndex];
             const currentAnswer = activeSession.answers[currentQuestion.id];
-            const isFlagged = activeSession.flagged?.includes(currentQuestion.id);
-
+            
             const handleAnswerChange = (val) => {
               setActiveSession(prev => ({ ...prev, answers: { ...prev.answers, [currentQuestion.id]: val } }));
-              setSaveIndicator(true); setTimeout(() => setSaveIndicator(false), 2000);
             };
-
-            const toggleFlag = () => setActiveSession(p => ({ ...p, flagged: p.flagged?.includes(currentQuestion.id) ? p.flagged.filter(id => id !== currentQuestion.id) : [...(p.flagged || []), currentQuestion.id] }));
-
-            const handleAutoSubmit = useCallback(async () => {
-               const result = calculateScore(activeSession.answers, questions);
-               const dbPayload = {
-                  participant_name: activeSession.participant.name, participant_school: activeSession.participant.school,
-                  participant_nis: activeSession.participant.nis, participant_grade: activeSession.participant.grade,
-                  token: activeSession.token, score: result.finalScore, start_time: activeSession.startTime,
-                  end_time: new Date().getTime(), detailed_results: result.detailedResults
-               };
-               if(supabase) {
-                   try { await supabase.from('results').insert([dbPayload]); } 
-                   catch (e) { console.error("Auto submit failed:", e); }
-               }
-               setActiveSession({ ...activeSession, status: 'SUBMITTED', endTime: dbPayload.end_time, score: result.finalScore, detail: result });
-               navigate('/submitted');
-            }, [activeSession, questions]);
 
             return (
               <div className="min-h-screen bg-slate-100 flex flex-col">
-                <header className="bg-white shadow-sm px-4 sm:px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-                  <div>
-                    <h1 className="text-xl font-black text-slate-800 hidden sm:block">CBT TKA</h1>
-                    <p className="text-sm font-bold text-slate-500">{activeSession.participant?.name}</p>
-                  </div>
-                  <div className="flex items-center space-x-2 sm:space-x-6">
-                     <div className="hidden sm:flex items-center text-sm font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full transition-opacity duration-300" style={{opacity: saveIndicator ? 1 : 0}}>
-                        <CheckCircle size={14} className="mr-1" /> Tersimpan
+                <header className="bg-white px-6 py-4 flex justify-between shadow-sm"><h1 className="font-bold">{activeSession.participant?.name}</h1><span className="font-bold text-emerald-600">Soal {currentIndex + 1} dari {questions.length}</span></header>
+                <div className="flex-1 max-w-4xl w-full mx-auto p-4"><div className="bg-white p-6 rounded-xl shadow-sm">
+                     <div className="text-lg font-medium mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: currentQuestion.question }} />
+                     {currentQuestion.type === 'MCQ' && (currentQuestion.options||[]).map(opt => (
+                       <label key={opt.id} className={`flex items-center p-3 border rounded-lg mb-2 cursor-pointer ${currentAnswer === opt.id ? 'bg-emerald-50 border-emerald-500' : ''}`}><input type="radio" checked={currentAnswer === opt.id} onChange={() => handleAnswerChange(opt.id)} className="mr-3" /> {opt.id}. {opt.text}</label>
+                     ))}
+                     <div className="mt-6 flex justify-between">
+                       <button onClick={() => setCurrentIndex(p => Math.max(0, p-1))} className="px-4 py-2 bg-slate-200 rounded">Sebelumnya</button>
+                       {currentIndex < questions.length - 1 ? (
+                         <button onClick={() => setCurrentIndex(p => p+1)} className="px-4 py-2 bg-emerald-600 text-white rounded">Berikutnya</button>
+                       ) : (
+                         <button onClick={() => navigate('/review')} className="px-4 py-2 bg-blue-600 text-white rounded">Selesai</button>
+                       )}
                      </div>
-                    <div className={`flex items-center font-black text-lg sm:text-xl px-4 py-2 rounded-lg border ${timeLeft < 300 ? 'bg-red-50 text-red-600 border-red-200 animate-pulse' : 'bg-slate-50 text-slate-700'}`}>
-                      <Clock size={20} className="mr-2" /> {formatTime(timeLeft)}
-                    </div>
-                  </div>
-                </header>
-
-                <div className="flex-1 flex flex-col lg:flex-row max-w-7xl w-full mx-auto p-4 gap-6">
-                  <div className="flex-1 flex flex-col">
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-8 flex-1 flex flex-col">
-                      <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
-                        <h2 className="text-xl font-black text-slate-800">Soal {currentIndex + 1}</h2>
-                        <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">{currentQuestion.type}</span>
-                      </div>
-                      <div className="flex-1">
-                        {currentQuestion.image && <img src={currentQuestion.image} alt="Soal" className="max-h-64 object-contain mb-6 rounded-xl border p-2 bg-slate-50" />}
-                        <div className="text-lg text-slate-800 font-semibold rich-text-content mb-6" dangerouslySetInnerHTML={{ __html: currentQuestion.question || '' }} />
-                        
-                        {/* MCQ */}
-                        {currentQuestion.type === 'MCQ' && currentQuestion.options && (
-                          <div className="space-y-3">
-                            {currentQuestion.options.map(opt => (
-                              <label key={opt.id} className={`flex items-center p-4 border rounded-xl cursor-pointer ${currentAnswer === opt.id ? 'border-emerald-500 bg-emerald-50' : 'hover:bg-slate-50'}`}>
-                                <input type="radio" name={`mcq`} value={opt.id} checked={currentAnswer === opt.id} onChange={() => handleAnswerChange(opt.id)} className="w-5 h-5 text-emerald-600" />
-                                <span className="ml-4 font-medium"><span className="w-8 inline-block font-bold text-slate-500">{opt.id}.</span> {opt.text}</span>
-                              </label>
-                            ))}
-                          </div>
-                        )}
-                        {/* MCMA */}
-                        {currentQuestion.type === 'MCMA' && currentQuestion.statements && (
-                          <div className="space-y-3">
-                             <div className="bg-blue-50 text-blue-800 p-3 rounded-lg text-sm font-medium mb-4 flex items-center border border-blue-100"><AlertCircle size={16} className="mr-2"/> Anda dapat memilih lebih dari satu pernyataan.</div>
-                            {currentQuestion.statements.map((stmt, idx) => (
-                              <label key={stmt.id} className={`flex items-start p-4 border rounded-xl cursor-pointer ${Array.isArray(currentAnswer) && currentAnswer.includes(stmt.id) ? 'border-emerald-500 bg-emerald-50' : 'hover:bg-slate-50'}`}>
-                                <input type="checkbox" checked={Array.isArray(currentAnswer) && currentAnswer.includes(stmt.id)} onChange={() => {
-                                   let arr = Array.isArray(currentAnswer) ? [...currentAnswer] : [];
-                                   if(arr.includes(stmt.id)) arr = arr.filter(x => x !== stmt.id); else arr.push(stmt.id);
-                                   handleAnswerChange(arr.length > 0 ? arr : null);
-                                }} className="w-5 h-5 text-emerald-600 mt-1 rounded" />
-                                <span className="ml-4"><span className="font-bold text-slate-400 mr-2">{idx + 1}.</span> {stmt.text}</span>
-                              </label>
-                            ))}
-                          </div>
-                        )}
-                        {/* CATEGORY */}
-                        {currentQuestion.type === 'CATEGORY' && currentQuestion.statements && currentQuestion.statements.length > 0 && (
-                          <div className="mt-6 overflow-x-auto">
-                            <div className="bg-blue-50 text-blue-800 p-3 rounded-lg text-sm font-medium mb-4 flex items-center border border-blue-100"><AlertCircle size={16} className="mr-2"/> Tentukan kategori untuk SETIAP pernyataan.</div>
-                            <table className="w-full text-left border-collapse min-w-[500px]">
-                              <thead>
-                                <tr className="bg-slate-100 border-b-2 border-slate-200">
-                                  <th className="py-3 px-4 font-bold w-12 text-center">No</th>
-                                  <th className="py-3 px-4 font-bold">Pernyataan</th>
-                                  <th className="py-3 px-4 font-bold text-center w-28 bg-emerald-50">{currentQuestion.statements[0]?.category1 || 'Kategori 1'}</th>
-                                  <th className="py-3 px-4 font-bold text-center w-28 bg-amber-50">{currentQuestion.statements[0]?.category2 || 'Kategori 2'}</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {currentQuestion.statements.map((stmt, idx) => (
-                                  <tr key={stmt.id} className="border-b border-slate-200 hover:bg-slate-50">
-                                    <td className="py-4 px-4 text-center font-bold text-slate-500">{idx + 1}</td>
-                                    <td className="py-4 px-4 font-medium">{stmt.text}</td>
-                                    <td className="py-4 px-4 text-center bg-emerald-50/30"><input type="radio" checked={(currentAnswer || {})[stmt.id] === stmt.category1} onChange={() => handleAnswerChange({...currentAnswer, [stmt.id]: stmt.category1})} className="w-5 h-5 text-emerald-600" /></td>
-                                    <td className="py-4 px-4 text-center bg-amber-50/30"><input type="radio" checked={(currentAnswer || {})[stmt.id] === stmt.category2} onChange={() => handleAnswerChange({...currentAnswer, [stmt.id]: stmt.category2})} className="w-5 h-5 text-amber-600" /></td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="mt-8 pt-6 border-t border-slate-100 flex flex-wrap justify-between gap-3">
-                        <button onClick={() => setCurrentIndex(p => Math.max(0, p - 1))} disabled={currentIndex === 0} className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg font-bold disabled:opacity-50"><ChevronLeft size={18} className="inline mr-1"/> Sebelumnya</button>
-                        <button onClick={toggleFlag} className={`px-4 py-2.5 rounded-lg font-bold border ${isFlagged ? 'bg-amber-100 text-amber-700 border-amber-300' : 'bg-white text-slate-600'}`}><Flag size={18} className="inline mr-2"/> Ragu</button>
-                        {currentIndex < questions.length - 1 ? (
-                          <button onClick={() => setCurrentIndex(p => Math.min(questions.length - 1, p + 1))} className="px-4 py-2.5 bg-emerald-600 text-white rounded-lg font-bold">Berikutnya <ChevronRight size={18} className="inline ml-1"/></button>
-                        ) : (
-                          <button onClick={() => navigate('/review')} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-black shadow-md">Selesai</button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="lg:w-80 w-full flex-shrink-0">
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 lg:sticky top-24">
-                      <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center"><LayoutDashboard size={20} className="mr-2 text-slate-400"/> Navigasi</h3>
-                      <div className="grid grid-cols-5 gap-2">
-                        {questions.map((q, idx) => {
-                          const isAnswered = !!activeSession.answers[q.id] && (q.type === 'CATEGORY' ? Object.keys(activeSession.answers[q.id] || {}).length === (q.statements?.length || 3) : true);
-                          const isCurrent = idx === currentIndex;
-                          const isFlag = activeSession.flagged?.includes(q.id);
-                          
-                          let btnClass = "h-10 w-full rounded font-bold text-sm border transition-all ";
-                          if (isCurrent) btnClass += "ring-2 ring-blue-500 bg-white text-slate-800";
-                          else if (isFlag) btnClass += "bg-amber-400 text-amber-900 border-amber-500";
-                          else if (isAnswered) btnClass += "bg-emerald-500 text-white border-emerald-600";
-                          else btnClass += "bg-slate-100 text-slate-500";
-                          return <button key={q.id} onClick={() => setCurrentIndex(idx)} className={btnClass}>{idx + 1}</button>;
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                </div></div>
               </div>
             );
           };
 
           const ExamReview = () => {
-            const [showConfirm, setShowConfirm] = useState(false);
-            const [isSubmitting, setIsSubmitting] = useState(false);
-            if (!activeSession || activeSession.status !== 'ACTIVE') { navigate('/'); return null; }
-
-            const totalQ = questions.length;
-            const answeredQ = questions.filter(q => {
-               const ans = activeSession.answers[q.id];
-               if(!ans) return false;
-               if(q.type === 'CATEGORY') return Object.keys(ans).length === (q.statements?.length || 3);
-               return true;
-            }).length;
-            const unansweredQ = totalQ - answeredQ;
-
-            const handleFinalSubmit = async () => {
+             const [isSubmitting, setIsSubmitting] = useState(false);
+             const handleFinalSubmit = async () => {
                setIsSubmitting(true);
+               const result = calculateScore(activeSession.answers, questions);
+               const payload = {
+                  participant_name: activeSession.participant.name, participant_school: activeSession.participant.school,
+                  token: activeSession.token, score: result.finalScore, start_time: activeSession.startTime,
+                  end_time: new Date().getTime(), detailed_results: result.detailedResults
+               };
                try {
-                 const result = calculateScore(activeSession.answers, questions);
-                 const dbPayload = {
-                    participant_name: activeSession.participant.name, participant_school: activeSession.participant.school,
-                    participant_nis: activeSession.participant.nis, participant_grade: activeSession.participant.grade,
-                    token: activeSession.token, score: result.finalScore, start_time: activeSession.startTime,
-                    end_time: new Date().getTime(), detailed_results: result.detailedResults
-                 };
-                 if(supabase) await supabase.from('results').insert([dbPayload]);
-                 setActiveSession({ ...activeSession, status: 'SUBMITTED', endTime: dbPayload.end_time, score: result.finalScore, detail: result });
+                 const db = await getSupabase();
+                 await db.from('results').insert([payload]);
+                 setActiveSession({ ...activeSession, status: 'SUBMITTED', score: result.finalScore });
                  navigate('/submitted');
-               } catch (err) { alert("Gagal mengirim jawaban. Coba lagi."); setIsSubmitting(false); }
-            };
-
-            return (
-              <div className="min-h-screen bg-slate-50 py-12 px-4 flex justify-center">
-                <div className="max-w-2xl w-full bg-white rounded-2xl shadow-lg p-8 border-t-4 border-blue-500">
-                  <h2 className="text-2xl font-black text-slate-800 mb-6 text-center">Rekap Jawaban</h2>
-                  <div className="grid grid-cols-2 gap-4 mb-8">
-                    <div className="bg-slate-50 p-4 rounded-xl text-center"><p className="text-slate-500 text-sm font-bold">Total Soal</p><p className="text-3xl font-black">{totalQ}</p></div>
-                    <div className="bg-emerald-50 p-4 rounded-xl text-center"><p className="text-emerald-700 text-sm font-bold">Dijawab</p><p className="text-3xl font-black text-emerald-700">{answeredQ}</p></div>
-                  </div>
-                  {unansweredQ > 0 && <div className="bg-red-50 text-red-700 p-4 rounded-lg mb-6"><p className="font-bold">Masih ada {unansweredQ} soal yang belum Anda jawab.</p></div>}
-                  {!showConfirm ? (
-                    <div className="flex gap-4"><button onClick={() => navigate('/exam')} className="flex-1 py-3 bg-slate-100 font-bold rounded-lg">Kembali</button><button onClick={() => setShowConfirm(true)} className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md">Kirim Ujian</button></div>
-                  ) : (
-                    <div className="p-6 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                      <p className="font-bold mb-4">Yakin mengirim jawaban?</p>
-                      <div className="flex justify-center gap-4"><button onClick={() => setShowConfirm(false)} className="px-6 py-2.5 bg-white border font-bold rounded-lg">Batal</button><button onClick={handleFinalSubmit} disabled={isSubmitting} className="px-6 py-2.5 bg-emerald-600 text-white font-bold rounded-lg shadow-md">{isSubmitting ? 'Mengunggah...' : 'Ya, Kirim'}</button></div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
+               } catch (err) {
+                 alert("Gagal mengirim ujian: " + err.message);
+                 setIsSubmitting(false);
+               }
+             };
+             return (
+               <div className="min-h-screen bg-slate-50 flex items-center justify-center"><div className="bg-white p-8 rounded-xl shadow-md max-w-md w-full text-center"><h2 className="text-xl font-bold mb-4">Kirim Ujian?</h2><button onClick={handleFinalSubmit} disabled={isSubmitting} className="w-full py-3 bg-emerald-600 text-white font-bold rounded-lg">{isSubmitting ? 'Mengirim...' : 'Ya, Kirim Sekarang'}</button></div></div>
+             );
           };
 
-          const ExamSubmitted = () => {
-            if (!activeSession || activeSession.status !== 'SUBMITTED') { navigate('/'); return null; }
-            return (
-              <div className="min-h-screen bg-slate-50 flex justify-center items-center p-4">
-                <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl p-8 text-center border-t-8 border-emerald-500">
-                  <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle size={40} /></div>
-                  <h1 className="text-2xl font-black text-slate-800 mb-2">Ujian Selesai!</h1>
-                  <p className="text-slate-500 mb-8 font-medium">Jawaban Anda berhasil disimpan ke server.</p>
-                  <button onClick={() => { setActiveSession(null); navigate('/'); }} className="w-full py-3 bg-slate-800 text-white font-bold rounded-lg shadow-md">Kembali ke Beranda</button>
-                </div>
-              </div>
-            );
-          };
+          const ExamSubmitted = () => (
+            <div className="min-h-screen flex items-center justify-center"><div className="bg-white p-8 rounded-xl shadow-md text-center"><h2 className="text-2xl font-bold mb-2">Ujian Selesai</h2><button onClick={() => { setActiveSession(null); navigate('/'); }} className="mt-4 px-6 py-2 bg-slate-800 text-white rounded">Keluar</button></div></div>
+          );
 
-          // === UI ADMIN ===
           const AdminLogin = () => {
             const [u, setU] = useState(''); const [p, setP] = useState('');
-            const handleLogin = (e) => { e.preventDefault(); if (u === 'admin' && p === 'bismillah') { setIsAdminLoggedIn(true); navigate('/admin/dashboard'); } else alert('Salah'); };
             return (
-              <div className="min-h-screen bg-slate-900 flex justify-center items-center p-4">
-                <form onSubmit={handleLogin} className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-8 space-y-4">
-                  <div className="text-center mb-6"><div className="w-14 h-14 bg-emerald-500 text-white rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg"><Settings size={28} /></div><h1 className="text-2xl font-black text-slate-800">Admin Panel</h1></div>
-                  <div><label className="block text-sm font-bold text-slate-700 mb-1">Username</label><input type="text" value={u} onChange={e=>setU(e.target.value)} className="w-full p-2.5 border rounded-lg bg-slate-50" required/></div>
-                  <div><label className="block text-sm font-bold text-slate-700 mb-1">Password</label><input type="password" value={p} onChange={e=>setP(e.target.value)} className="w-full p-2.5 border rounded-lg bg-slate-50" required/></div>
-                  <button type="submit" className="w-full py-3 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 shadow-md">Login</button>
-                  <button type="button" onClick={()=>navigate('/')} className="w-full mt-4 text-sm font-semibold text-slate-400">Ke Web Peserta</button>
-                </form>
-              </div>
+              <div className="min-h-screen bg-slate-900 flex justify-center items-center"><form onSubmit={(e)=>{e.preventDefault(); if(u==='admin'&&p==='bismillah'){setIsAdminLoggedIn(true); navigate('/admin/dashboard');}else alert('Salah');}} className="bg-white p-8 rounded-2xl max-w-sm w-full"><h1 className="text-xl font-bold mb-4">Admin Login</h1><input type="text" placeholder="Username" value={u} onChange={e=>setU(e.target.value)} className="w-full p-2 border rounded mb-2" required/><input type="password" placeholder="Password" value={p} onChange={e=>setP(e.target.value)} className="w-full p-2 border rounded mb-4" required/><button type="submit" className="w-full py-2 bg-emerald-600 text-white font-bold rounded">Login</button></form></div>
             );
           };
 
           const AdminLayout = ({ children, title }) => {
-            const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
             if (!isAdminLoggedIn) { navigate('/admin/login'); return null; }
-            const menu = [
-              { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
-              { id: 'questions', label: 'Bank Soal', icon: Database, path: '/admin/questions' },
-              { id: 'tokens', label: 'Token Ujian', icon: Key, path: '/admin/tokens' },
-              { id: 'results', label: 'Hasil Ujian', icon: CheckSquare, path: '/admin/results' },
-              { id: 'analysis', label: 'Analisis Soal', icon: BarChart2, path: '/admin/analysis' },
-              { id: 'reports', label: 'Cetak Laporan', icon: Printer, path: '/admin/reports' },
-              { id: 'publish', label: 'Deploy ke GitHub', icon: CloudUploadAlt, path: '/admin/publish' }
-            ];
             return (
-              <div className="min-h-screen bg-slate-50 flex print:block">
-                {isMobileMenuOpen && <div className="fixed inset-0 bg-slate-900/60 z-40 md:hidden print:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>}
-                <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 print:hidden`}>
-                  <div className="p-6 flex items-center border-b border-slate-800"><Settings className="text-emerald-500 mr-3" size={24}/><span className="text-white font-black text-lg">CBT ADMIN</span></div>
-                  <nav className="flex-1 py-4 overflow-y-auto">{menu.map(m => (<button key={m.id} onClick={() => { setIsMobileMenuOpen(false); navigate(m.path); }} className={`w-full flex items-center px-6 py-3 text-sm font-bold transition-colors ${currentRoute.startsWith(m.path) ? 'bg-emerald-600/20 text-emerald-400 border-r-4 border-emerald-500' : 'hover:bg-slate-800'}`}><m.icon size={18} className="mr-3" /> {m.label}</button>))}</nav>
-                  <div className="p-4 border-t border-slate-800"><button onClick={() => { setIsAdminLoggedIn(false); navigate('/admin/login'); }} className="w-full flex items-center px-4 py-2 text-sm font-bold text-slate-400 hover:text-white"><LogOut size={18} className="mr-3" /> Keluar</button></div>
-                </div>
-                <div className="flex-1 flex flex-col h-screen overflow-hidden print:h-auto print:block">
-                  <header className="bg-white shadow-sm px-4 sm:px-8 py-4 flex justify-between items-center z-10 sticky top-0 print:hidden">
-                    <div className="flex items-center gap-3"><button className="md:hidden text-slate-600" onClick={() => setIsMobileMenuOpen(true)}><MenuIcon size={24} /></button><h2 className="text-lg sm:text-2xl font-black text-slate-800 truncate">{title}</h2></div>
-                    <div className={`text-xs sm:text-sm font-bold px-3 py-1 rounded-full border ${dbStatus === 'connected' ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-red-700 bg-red-50 border-red-200'}`}>{dbStatus === 'connected' ? 'Cloud Sync' : 'Offline'}</div>
-                  </header>
-                  <main className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50 print:p-0 print:block print:bg-white relative">
-                    {isLoadingData && <div className="absolute inset-0 bg-white/70 z-50 flex items-center justify-center backdrop-blur-sm"><div className="text-emerald-600 font-bold text-xl animate-pulse">Loading Data...</div></div>}
-                    {children}
-                  </main>
-                </div>
-              </div>
+              <div className="min-h-screen bg-slate-50 flex"><div className="w-64 bg-slate-900 text-slate-300 hidden md:flex flex-col"><div className="p-6 font-bold text-white border-b border-slate-800">CBT ADMIN</div><nav className="flex-1 py-4 space-y-1"><button onClick={()=>navigate('/admin/dashboard')} className="w-full text-left px-6 py-2 hover:bg-slate-800">Dashboard</button><button onClick={()=>navigate('/admin/questions')} className="w-full text-left px-6 py-2 hover:bg-slate-800">Bank Soal</button><button onClick={()=>navigate('/admin/tokens')} className="w-full text-left px-6 py-2 hover:bg-slate-800">Token Ujian</button><button onClick={()=>navigate('/admin/results')} className="w-full text-left px-6 py-2 hover:bg-slate-800">Hasil Ujian</button></nav></div><div className="flex-1 flex flex-col"><header className="bg-white shadow-sm px-8 py-4 flex justify-between"><h2 className="font-bold text-lg">{title}</h2><span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded">Cloud Sync Aktif</span></header><main className="p-6 overflow-y-auto">{children}</main></div></div>
             );
           };
 
-          const AdminDashboard = () => {
-            const handleInject = async () => {
-               if(!supabase || dbStatus !== 'connected') return alert("Gagal. Server belum terkoneksi.");
-               if(window.confirm("Yakin ingin injeksi 30 Soal Demo? Ini akan menimpa soal sebelumnya.")) {
-                  setIsLoadingData(true);
-                  try {
-                      await supabase.from('questions').delete().neq('id', '0');
-                      const DEMO = [
-                        { id: 'q1', number: 1, type: 'MCQ', category: 'Matematika', question: 'Hasil dari 25 × 4 adalah ....', options: [{ id: 'A', text: '50' }, { id: 'B', text: '75' }, { id: 'C', text: '100' }, { id: 'D', text: '125' }], correctAnswer: 'C', points: 1 },
-                        { id: 'q16', number: 16, type: 'MCMA', category: 'IPA', question: 'Pilih pernyataan yang benar tentang energi:', statements: [{ id: 1, text: 'Matahari adalah sumber utama.' }, { id: 2, text: 'Energi tidak dapat berubah bentuk.' }, { id: 3, text: 'Makanan mengandung energi.' }], correctAnswers: [1, 3], points: 1 },
-                        { id: 'q24', number: 24, type: 'CATEGORY', category: 'IPA', question: 'Benar atau salah?', statements: [{ id: 1, text: 'Air menguap jika dipanaskan.', category1: 'Benar', category2: 'Salah', correctCategory: 'Benar' }, { id: 2, text: 'Es mencair jika didinginkan.', category1: 'Benar', category2: 'Salah', correctCategory: 'Salah' }, { id: 3, text: 'Kapur barus menyublim.', category1: 'Benar', category2: 'Salah', correctCategory: 'Benar' }], points: 1 }
-                      ];
-                      await supabase.from('questions').insert(DEMO);
-                      await fetchSupabaseData(); alert("Berhasil Injeksi!");
-                  } catch (e) { alert("Error: " + e.message); } finally { setIsLoadingData(false); }
-               }
-            };
-            return (
-              <AdminLayout title="Dashboard Server">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200"><h3 className="text-slate-500 font-bold">Ujian Selesai</h3><p className="text-3xl font-black text-slate-800">{results.length}</p></div>
-                  <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200"><h3 className="text-slate-500 font-bold">Total Bank Soal</h3><p className="text-3xl font-black text-slate-800">{questions.length}</p></div>
-                </div>
-                {dbStatus === 'error_url' && <div className="bg-red-50 border border-red-200 p-6 rounded-xl mb-8"><h4 className="font-bold text-red-800 text-lg">⚠️ Kritis: URL Supabase Belum Dikonfigurasi</h4><p className="text-sm text-red-700 mt-1">Ganti 'MASUKKAN_URL...' di baris 85 file HTML Anda dengan kunci dari Dashboard Supabase Anda, lalu simpan.</p></div>}
-                {dbStatus === 'error_fetch' && <div className="bg-red-50 border border-red-200 p-6 rounded-xl mb-8"><h4 className="font-bold text-red-800 text-lg">⚠️ Gagal Mengambil Data</h4><p className="text-sm text-red-700 mt-1">Pastikan tabel (questions, tokens, results) sudah dibuat dan RLS dinonaktifkan di Supabase Anda.</p></div>}
-                {questions.length === 0 && dbStatus === 'connected' && <div className="bg-amber-50 border border-amber-200 p-6 rounded-xl mb-8 flex justify-between items-center"><div><h4 className="font-bold text-amber-800">Bank Soal Kosong</h4></div><button onClick={handleInject} className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-4 py-2 rounded-lg">Injeksi Soal Demo</button></div>}
-              </AdminLayout>
-            );
-          };
+          const AdminDashboard = () => (
+            <AdminLayout title="Dashboard Server"><div className="grid grid-cols-2 gap-4"><div className="bg-white p-6 rounded-xl border"><h3>Total Soal</h3><p className="text-3xl font-bold">{questions.length}</p></div><div className="bg-white p-6 rounded-xl border"><h3>Ujian Selesai</h3><p className="text-3xl font-bold">{results.length}</p></div></div></AdminLayout>
+          );
 
           const AdminTokens = () => {
-             const [customToken, setCustomToken] = useState('');
-             const [editingToken, setEditingToken] = useState(null);
-             const [showDel, setShowDel] = useState(false);
-             
-             const genTokens = async (n) => {
-                 if(!supabase || dbStatus !== 'connected') return alert("Gagal. Server belum terkoneksi.");
-                 setIsLoadingData(true);
-                 try {
-                     const newTokens = Array.from({length:n}).map(()=>({ code: `TKA-${Math.random().toString(36).substring(2,6).toUpperCase()}`, status: 'AVAILABLE', generatedAt: new Date().toISOString() }));
-                     await supabase.from('tokens').insert(newTokens); await fetchSupabaseData();
-                 } finally { setIsLoadingData(false); }
+             const [custom, setCustom] = useState('');
+             const add = async (e) => {
+               e.preventDefault();
+               try {
+                 const db = await getSupabase();
+                 await db.from('tokens').insert([{ code: custom.toUpperCase(), status: 'AVAILABLE', generatedAt: new Date().toISOString() }]);
+                 setCustom(''); fetchSupabaseData();
+               } catch (err) { alert(err.message); }
              };
-
-             const addCustom = async (e) => {
-                 e.preventDefault(); if(!supabase || !customToken) return;
-                 setIsLoadingData(true);
-                 try {
-                     await supabase.from('tokens').insert([{ code: customToken.toUpperCase(), status: 'AVAILABLE', generatedAt: new Date().toISOString() }]);
-                     setCustomToken(''); await fetchSupabaseData();
-                 } catch(err) { alert("Token sudah ada/Gagal"); } finally { setIsLoadingData(false); }
-             };
-
-             const saveEdit = async (e) => {
-                 e.preventDefault(); if(!supabase) return;
-                 setIsLoadingData(true);
-                 try { await supabase.from('tokens').update({ status: editingToken.status, code: editingToken.code }).eq('code', editingToken.originalCode); setEditingToken(null); await fetchSupabaseData(); } finally { setIsLoadingData(false); }
-             };
-             
-             const delAll = async () => {
-                 if(!supabase) return;
-                 setIsLoadingData(true);
-                 try { await supabase.from('tokens').delete().neq('code', '0'); setShowDel(false); await fetchSupabaseData(); } finally { setIsLoadingData(false); }
-             };
-
-             const delToken = async (code) => {
-                 if(!supabase) return;
-                 setIsLoadingData(true);
-                 try { await supabase.from('tokens').delete().eq('code', code); await fetchSupabaseData(); } finally { setIsLoadingData(false); }
-             };
-
              return (
-               <AdminLayout title="Manajemen Token Ujian">
-                 <div className="mb-6 flex flex-wrap gap-4 items-center justify-between bg-white p-4 rounded-xl border border-slate-200">
-                    <div className="flex gap-4">
-                       <form onSubmit={addCustom} className="flex gap-2">
-                          <input type="text" placeholder="Token Kustom..." value={customToken} onChange={e=>setCustomToken(e.target.value.toUpperCase())} className="border rounded-lg px-3 py-2 text-sm font-bold uppercase"/>
-                          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm">Buat</button>
-                       </form>
-                       <div className="flex gap-2"><button onClick={()=>genTokens(5)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold">Auto 5</button></div>
-                    </div>
-                    {!showDel ? <button onClick={()=>setShowDel(true)} className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-bold"><Trash2 size={16} className="inline mr-1"/> Hapus Semua</button>
-                    : <div className="bg-red-100 p-2 rounded-lg flex gap-2"><span className="text-sm font-bold text-red-700 px-2">Yakin?</span><button onClick={delAll} className="bg-red-600 text-white px-3 py-1 rounded font-bold">Ya</button><button onClick={()=>setShowDel(false)} className="bg-white text-slate-700 px-3 py-1 rounded font-bold border">Batal</button></div>}
-                 </div>
-
-                 {editingToken && (
-                    <div className="mb-6 bg-white p-5 rounded-xl border border-blue-200">
-                      <h3 className="font-bold mb-4 flex items-center"><Edit size={18} className="mr-2 text-blue-600"/> Edit Token</h3>
-                      <form onSubmit={saveEdit} className="flex gap-4 items-end">
-                        <div className="flex-1"><label className="block text-xs font-bold text-slate-500 mb-1">Kode</label><input type="text" value={editingToken.code} onChange={e => setEditingToken({...editingToken, code: e.target.value.toUpperCase()})} className="w-full border rounded-lg p-2 font-mono font-bold" required /></div>
-                        <div className="flex-1"><label className="block text-xs font-bold text-slate-500 mb-1">Status</label><select value={editingToken.status} onChange={e => setEditingToken({...editingToken, status: e.target.value})} className="w-full border rounded-lg p-2 font-bold"><option value="AVAILABLE">AVAILABLE</option><option value="USED">USED</option><option value="EXPIRED">EXPIRED</option><option value="BLOCKED">BLOCKED</option></select></div>
-                        <div className="flex gap-2"><button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold">Simpan</button><button type="button" onClick={() => setEditingToken(null)} className="bg-slate-100 px-4 py-2 rounded-lg font-bold">Batal</button></div>
-                      </form>
-                    </div>
-                  )}
-
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
-                   <table className="w-full text-sm text-left"><thead className="bg-slate-50 font-bold border-b"><tr><th className="py-3 px-6">Kode Token</th><th className="py-3 px-6">Status DB</th><th className="py-3 px-6 text-right">Aksi</th></tr></thead>
-                   <tbody>{tokens.map((t, i) => (<tr key={i} className="border-b hover:bg-slate-50"><td className="py-3 px-6 font-mono font-bold text-slate-800">{t.code}</td><td className="py-3 px-6"><span className={`px-2 py-1 rounded text-xs font-bold border ${t.status==='AVAILABLE'?'bg-emerald-50 text-emerald-700 border-emerald-200':'bg-slate-50 text-slate-500 border-slate-200'}`}>{t.status}</span></td><td className="py-3 px-6 text-right space-x-2"><button onClick={()=>setEditingToken({...t, originalCode: t.code})} className="text-blue-600 p-1"><Edit size={16}/></button><button onClick={()=>delToken(t.code)} className="text-red-600 p-1"><Trash2 size={16}/></button></td></tr>))}</tbody></table>
-                 </div>
+               <AdminLayout title="Token Ujian">
+                 <form onSubmit={add} className="mb-6 flex gap-2"><input type="text" placeholder="Ketik Token..." value={custom} onChange={e=>setCustom(e.target.value)} className="border p-2 rounded"/><button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded font-bold">Buat</button></form>
+                 <div className="bg-white rounded border overflow-hidden"><table className="w-full text-sm"><thead className="bg-slate-50 border-b"><tr><th className="p-3 text-left">Kode</th><th className="p-3 text-left">Status</th></tr></thead><tbody>{tokens.map((t,i)=><tr key={i} className="border-b"><td className="p-3 font-mono font-bold">{t.code}</td><td className="p-3">{t.status}</td></tr>)}</tbody></table></div>
                </AdminLayout>
              );
           };
 
-          const AdminResults = () => {
-             const [sel, setSel] = useState(null);
-             const [showDel, setShowDel] = useState(false);
-             const delAll = async () => {
-                 if(!supabase) return;
-                 setIsLoadingData(true);
-                 try { await supabase.from('results').delete().neq('id', '0'); setShowDel(false); await fetchSupabaseData(); } finally { setIsLoadingData(false); }
-             };
-             if (sel) {
-                return (
-                  <AdminLayout title="Detail Hasil">
-                    <button onClick={() => setSel(null)} className="mb-4 flex items-center font-bold text-slate-600"><ChevronLeft size={20}/> Kembali</button>
-                    <div className="bg-white p-5 rounded-xl border border-slate-200 mb-6 flex justify-between items-center">
-                       <div><h3 className="font-bold text-slate-800">{sel.participant?.name} ({sel.participant?.school})</h3><p className="text-sm text-slate-500">Token: {sel.token}</p></div>
-                       <div className="text-3xl font-black text-emerald-600">{sel.score}</div>
-                    </div>
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
-                       <table className="w-full text-sm text-left"><thead className="bg-slate-50 font-bold border-b"><tr><th className="py-3 px-4 w-12 text-center">No</th><th className="py-3 px-4">Pertanyaan</th><th className="py-3 px-4 text-center">Status</th></tr></thead>
-                       <tbody>{questions.map((q, idx) => {
-                          const res = sel.detail?.detailedResults?.find(r => r.qId === q.id) || { isCorrect: false, isEmpty: true };
-                          return <tr key={q.id} className="border-b hover:bg-slate-50"><td className="py-3 px-4 text-center font-bold">{idx + 1}</td><td className="py-3 px-4"><div dangerouslySetInnerHTML={{__html: q.question || ''}} className="line-clamp-2"/></td><td className="py-3 px-4 text-center">{res.isEmpty ? <span className="text-amber-600 font-bold">KOSONG</span> : res.isCorrect ? <span className="text-emerald-600 font-bold">BENAR</span> : <span className="text-red-600 font-bold">SALAH</span>}</td></tr>
-                       })}</tbody></table>
-                    </div>
-                  </AdminLayout>
-                );
-             }
-             return (
-               <AdminLayout title="Hasil Ujian Server">
-                 <div className="mb-4 flex justify-end">
-                    {!showDel ? <button onClick={()=>setShowDel(true)} className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-bold"><Trash2 size={16} className="inline mr-1"/> Hapus Semua Data</button>
-                    : <div className="bg-red-100 p-2 rounded-lg flex gap-2"><span className="text-sm font-bold text-red-700 px-2">Yakin?</span><button onClick={delAll} className="bg-red-600 text-white px-3 py-1 rounded font-bold">Ya</button><button onClick={()=>setShowDel(false)} className="bg-white text-slate-700 px-3 py-1 rounded font-bold border">Batal</button></div>}
-                 </div>
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
-                   <table className="w-full text-sm text-left"><thead className="bg-slate-50 font-bold border-b"><tr><th className="py-3 px-6">Peserta</th><th className="py-3 px-6">Sekolah</th><th className="py-3 px-6 text-center">Nilai</th><th className="py-3 px-6 text-center">Aksi</th></tr></thead>
-                   <tbody>{results.map((r, i) => (<tr key={i} className="border-b hover:bg-slate-50 cursor-pointer" onClick={()=>setSel(r)}><td className="py-3 px-6 font-bold">{r.participant?.name}</td><td className="py-3 px-6 text-slate-600">{r.participant?.school}</td><td className="py-3 px-6 text-center font-black text-emerald-600 text-lg">{r.score}</td><td className="py-3 px-6 text-center"><button onClick={(e)=>{e.stopPropagation(); setSel(r)}} className="text-blue-700 bg-blue-50 px-3 py-1.5 rounded font-bold text-xs">Detail</button></td></tr>))}</tbody></table>
-                 </div>
-               </AdminLayout>
-             );
-          };
+          const AdminResults = () => (
+            <AdminLayout title="Hasil Ujian"><div className="bg-white rounded border overflow-hidden"><table className="w-full text-sm"><thead className="bg-slate-50 border-b"><tr><th className="p-3 text-left">Nama</th><th className="p-3 text-left">Sekolah</th><th className="p-3 text-center">Nilai</th></tr></thead><tbody>{results.map((r,i)=><tr key={i} className="border-b"><td className="p-3">{r.participant?.name}</td><td className="p-3">{r.participant?.school}</td><td className="p-3 text-center font-bold text-emerald-600">{r.score}</td></tr>)}</tbody></table></div></AdminLayout>
+          );
 
           const AdminQuestions = () => {
-             const [view, setView] = useState('list');
-             const [editingId, setEditingId] = useState(null);
-             const [prev, setPrev] = useState(null);
-             const [showDel, setShowDel] = useState(false);
-             const [delId, setDelId] = useState(null);
-
-             const getDefaultForm = (type = 'MCQ') => {
-               const base = { id: `q${Date.now()}`, type, category: 'Bahasa Indonesia', question: '', points: 1, image: null, number: questions.length + 1 };
-               if (type === 'MCQ') return { ...base, options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
-               else if (type === 'MCMA') return { ...base, statements: [{id:1, text:''}, {id:2, text:''}, {id:3, text:''}], correctAnswers: [] };
-               else return { ...base, statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}, {id:2, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}, {id:3, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}]};
-             };
-             const [form, setForm] = useState(getDefaultForm());
-
-             const handleImg = (e) => {
-               const file = e.target.files[0];
-               if (file) {
-                  const reader = new FileReader();
-                  reader.onloadend = (ev) => {
-                     const img = new Image();
-                     img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        let w = img.width, h = img.height;
-                        if (w > 800) { h = Math.round((h * 800) / w); w = 800; }
-                        canvas.width = w; canvas.height = h;
-                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                        setForm(p => ({ ...p, image: canvas.toDataURL('image/jpeg', 0.7) }));
-                     };
-                     img.src = ev.target.result;
-                  };
-                  reader.readAsDataURL(file);
-               }
-             };
-
-             const handleSave = async (e) => {
-                 e.preventDefault(); if(!supabase) return;
-                 setIsLoadingData(true);
-                 try { await supabase.from('questions').upsert(form); await fetchSupabaseData(); setView('list'); } catch(err) { alert("Gagal Simpan."); } finally { setIsLoadingData(false); }
-             };
-
-             const handleDel = async (id) => {
-                 if(!supabase) return; setIsLoadingData(true);
-                 try { await supabase.from('questions').delete().eq('id', id); await fetchSupabaseData(); } finally { setIsLoadingData(false); }
-             };
-             
-             const handleDelAll = async () => {
-                 if(!supabase) return; setIsLoadingData(true);
-                 try { await supabase.from('questions').delete().neq('id', '0'); setShowDel(false); await fetchSupabaseData(); } finally { setIsLoadingData(false); }
-             };
-
-             const handleDup = async (q) => {
-                 if(!supabase) return; setIsLoadingData(true);
-                 try { await supabase.from('questions').insert([{ ...q, id: `q${Date.now()}`, number: questions.length + 1 }]); await fetchSupabaseData(); } finally { setIsLoadingData(false); }
-             };
-
-             if (view === 'create' || view === 'edit') {
-                 return (
-                   <AdminLayout title={view === 'create' ? "Tambah Soal" : "Edit Soal"}>
-                      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-md border border-slate-200">
-                         <div className="bg-slate-50 border-b px-6 py-4 flex justify-between"><h2 className="font-black text-lg text-slate-800">Editor Soal</h2><button onClick={() => setView('list')} className="text-slate-500"><XIcon size={24}/></button></div>
-                         <form onSubmit={handleSave} className="p-6 space-y-6">
-                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 p-4 rounded-xl border">
-                              <div><label className="block text-sm font-bold text-slate-700 mb-1">Tipe</label><select value={form.type} onChange={e => setForm(getDefaultForm(e.target.value))} disabled={view==='edit'} className="w-full p-2.5 border rounded-lg bg-white disabled:opacity-60 font-medium"><option value="MCQ">MCQ</option><option value="MCMA">MCMA</option><option value="CATEGORY">CATEGORY</option></select></div>
-                              <div><label className="block text-sm font-bold text-slate-700 mb-1">Mata Pelajaran</label><select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full p-2.5 border rounded-lg bg-white font-medium"><option value="Bahasa Indonesia">Bahasa Indonesia</option><option value="Matematika">Matematika</option><option value="IPA">IPA</option></select></div>
-                              <div><label className="block text-sm font-bold text-slate-700 mb-1">Bobot Nilai</label><input type="number" min="1" value={form.points} onChange={e => setForm({...form, points: parseInt(e.target.value)})} className="w-full p-2.5 border rounded-lg font-bold"/></div>
-                           </div>
-                           <div><label className="block text-sm font-bold text-slate-700 mb-2">Teks Pertanyaan</label><RichTextEditor value={form.question} onChange={val => setForm({...form, question: val})} /></div>
-                           <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 bg-slate-50">
-                              <label className="block text-sm font-bold text-slate-700 mb-2"><ImageIcon size={18} className="inline mr-2"/> Gambar (Opsional)</label>
-                              {form.image ? <div className="relative inline-block mt-2"><img src={form.image} alt="Prev" className="max-h-48 rounded border shadow-sm"/><button type="button" onClick={()=>setForm({...form, image:null})} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full"><XIcon size={14}/></button></div>
-                              : <input type="file" accept="image/*" onChange={handleImg} className="w-full text-sm"/>}
-                           </div>
-                           
-                           {/* Form dinamis berdasar tipe */}
-                           {form.type === 'MCQ' && form.options && (
-                              <div className="space-y-4">
-                                {form.options.map((o, i) => (<div key={o.id} className="flex gap-3"><span className="font-black w-6">{o.id}.</span><input type="text" value={o.text} required onChange={e => {const no=[...form.options]; no[i].text=e.target.value; setForm({...form, options:no})}} className="flex-1 p-2 border rounded font-medium"/></div>))}
-                                <div><label className="block text-sm font-bold mb-1">Kunci</label><select value={form.correctAnswer} onChange={e=>setForm({...form, correctAnswer: e.target.value})} className="p-2 border rounded font-black text-emerald-700 bg-emerald-50">{['A','B','C','D'].map(v=><option key={v} value={v}>{v}</option>)}</select></div>
-                              </div>
-                           )}
-                           {form.type === 'MCMA' && form.statements && (
-                              <div className="space-y-4">
-                                <div className="font-bold border-b pb-2 mb-4">Pernyataan (MCMA)</div>
-                                {form.statements.map((s, i) => (<div key={s.id} className="flex items-center gap-3"><input type="checkbox" checked={(form.correctAnswers || []).includes(s.id)} onChange={() => { let ans=[...(form.correctAnswers || [])]; if(ans.includes(s.id)) ans=ans.filter(x=>x!==s.id); else ans.push(s.id); setForm({...form, correctAnswers: ans})}} className="w-5 h-5 text-emerald-600 rounded"/><span className="font-black w-4 text-slate-400">{s.id}.</span><input type="text" value={s.text} required onChange={e=>{const ns=[...form.statements]; ns[i].text=e.target.value; setForm({...form, statements:ns})}} className="flex-1 p-2 border rounded font-medium"/></div>))}
-                              </div>
-                           )}
-                           {form.type === 'CATEGORY' && form.statements && form.statements.length > 0 && (
-                              <div className="space-y-4">
-                                <div className="flex gap-4 bg-slate-50 p-4 rounded-lg border">
-                                   <div className="flex-1"><label className="block text-xs font-bold mb-1">Kategori 1</label><input type="text" value={form.statements[0].category1} required onChange={e=>{const val=e.target.value; const ns=form.statements.map(s=>({...s, category1:val, correctCategory: s.correctCategory===s.category1?val:s.correctCategory})); setForm({...form, statements:ns})}} className="w-full p-2 border rounded font-black"/></div>
-                                   <div className="flex-1"><label className="block text-xs font-bold mb-1">Kategori 2</label><input type="text" value={form.statements[0].category2} required onChange={e=>{const val=e.target.value; const ns=form.statements.map(s=>({...s, category2:val, correctCategory: s.correctCategory===s.category2?val:s.correctCategory})); setForm({...form, statements:ns})}} className="w-full p-2 border rounded font-black"/></div>
-                                </div>
-                                {form.statements.map((s, i) => (
-                                   <div key={s.id} className="flex flex-col gap-2 p-3 border rounded-lg bg-white">
-                                     <div className="flex gap-3"><span className="font-black w-4 mt-2 text-slate-400">{s.id}.</span><textarea value={s.text} required onChange={e=>{const ns=[...form.statements]; ns[i].text=e.target.value; setForm({...form, statements:ns})}} className="flex-1 p-2 border rounded font-medium" rows="2"/></div>
-                                     <div className="flex justify-end gap-4 text-sm font-bold"><label><input type="radio" checked={s.correctCategory===s.category1} onChange={()=>{const ns=[...form.statements]; ns[i].correctCategory=s.category1; setForm({...form, statements:ns})}} className="text-emerald-600"/> {s.category1}</label><label><input type="radio" checked={s.correctCategory===s.category2} onChange={()=>{const ns=[...form.statements]; ns[i].correctCategory=s.category2; setForm({...form, statements:ns})}} className="text-emerald-600"/> {s.category2}</label></div>
-                                   </div>
-                                ))}
-                              </div>
-                           )}
-                           
-                           <div className="pt-6 flex justify-end gap-3 border-t"><button type="button" onClick={()=>setView('list')} className="px-6 py-2.5 border rounded-lg font-bold">Batal</button><button type="submit" className="px-6 py-2.5 bg-emerald-600 text-white rounded-lg font-black shadow-md flex items-center"><CloudUploadAlt size={18} className="mr-2"/> Push Server</button></div>
-                         </form>
-                      </div>
-                   </AdminLayout>
-                 );
-             }
-
-             return (
-               <AdminLayout title="Database Bank Soal">
-                 <div className="mb-6 flex justify-between">
-                    <button onClick={()=>{setForm(getDefaultForm('MCQ')); setView('create');}} className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg text-sm font-black flex items-center shadow-md"><Plus size={18} className="mr-2"/> Tambah Soal</button>
-                    {!showDel ? <button onClick={()=>setShowDel(true)} className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-bold"><Trash2 size={16} className="inline mr-1"/> Hapus Semua</button> : <div className="flex items-center gap-2 bg-red-100 p-2 rounded-lg border border-red-200 shadow-sm"><span className="text-sm font-black text-red-700 px-1">Yakin Hapus Semua DB?</span><button onClick={handleDelAll} className="bg-red-600 text-white px-4 py-1.5 rounded-md text-sm font-black shadow-sm">Ya</button><button onClick={()=>setShowDel(false)} className="bg-white text-slate-700 px-4 py-1.5 rounded-md text-sm font-bold border">Batal</button></div>}
-                 </div>
-                 <div className="space-y-4">
-                   {questions.map((q, idx) => (
-                      <div key={q.id} className="bg-white p-5 rounded-2xl border shadow-sm flex flex-col sm:flex-row gap-4">
-                        <div className="w-12 h-12 flex-shrink-0 bg-slate-50 rounded-xl flex items-center justify-center font-black text-lg border">{idx + 1}</div>
-                        <div className="flex-1 overflow-hidden">
-                           <div className="flex gap-2 mb-3"><span className="text-xs font-black px-2.5 py-1 bg-emerald-50 text-emerald-700 border rounded-md">{q.type}</span><span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md border">{q.category}</span></div>
-                           <div className="font-semibold text-slate-800 mb-4 rich-text-content" dangerouslySetInnerHTML={{__html: q.question || ''}}></div>
-                        </div>
-                        <div className="flex sm:flex-col gap-2 justify-end pt-4 sm:pt-0 sm:border-l border-t sm:border-t-0 border-slate-100 sm:pl-4 shrink-0">
-                          {delId === q.id ? (
-                             <div className="flex flex-col gap-2 bg-red-50 p-2.5 rounded-xl border border-red-200 shadow-sm"><span className="text-xs text-red-700 font-black text-center">Yakin Hapus?</span><div className="flex gap-1.5"><button onClick={() => { handleDel(q.id); setDelId(null); }} className="bg-red-600 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold">Ya</button><button onClick={() => setDelId(null)} className="bg-white border text-slate-700 text-xs px-2.5 py-1.5 rounded-lg font-bold">Batal</button></div></div>
-                          ) : (
-                             <>
-                               <button onClick={()=>setPrev(q)} className="text-indigo-600 bg-indigo-50 p-2.5 rounded-xl border" title="Preview"><EyeIcon size={18} /></button>
-                               <button onClick={()=>handleDup(q)} className="text-emerald-600 bg-emerald-50 p-2.5 rounded-xl border" title="Duplikat"><CopyIcon size={18} /></button>
-                               <button onClick={()=>{setForm(q); setEditingId(q.id); setView('edit');}} className="text-blue-600 bg-blue-50 p-2.5 rounded-xl border" title="Edit"><Edit size={18} /></button>
-                               <button onClick={()=>setDelId(q.id)} className="text-red-600 bg-red-50 p-2.5 rounded-xl border" title="Hapus"><Trash2 size={18} /></button>
-                             </>
-                          )}
-                        </div>
-                      </div>
-                   ))}
-                 </div>
-                 {/* Modal Preview */}
-                 {prev && (
-                   <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-slate-200">
-                       <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between z-10"><h3 className="font-black text-lg flex items-center"><Monitor size={20} className="mr-2 text-emerald-600"/> Preview Siswa</h3><button onClick={()=>setPrev(null)} className="p-1 bg-slate-100 rounded-lg"><XIcon size={20}/></button></div>
-                       <div className="p-8 bg-slate-50"><div className="bg-white rounded-2xl shadow-sm border p-8"><div dangerouslySetInnerHTML={{ __html: prev.question || '' }} className="text-lg font-semibold rich-text-content"></div></div></div>
-                     </div>
-                   </div>
-                 )}
-               </AdminLayout>
-             );
-          };
-
-          const AdminAnalysis = () => {
-            const data = questions.map(q => {
-              let b=0, s=0, k=0;
-              results.forEach(r => { const d = r.detail?.detailedResults?.find(x => x.qId === q.id); if(!d || d.isEmpty) k++; else if(d.isCorrect) b++; else s++; });
-              const t = results.length;
-              const p = t>0 ? ((b/t)*100).toFixed(1) : 0;
-              return { ...q, b, s, k, t, p };
-            });
+            const [qText, setQtext] = useState('');
+            const save = async (e) => {
+               e.preventDefault();
+               try {
+                 const db = await getSupabase();
+                 const newQ = { id: `q${Date.now()}`, number: questions.length+1, type: 'MCQ', category: 'Matematika', question: qText, options: [{id:'A', text:'Pilihan 1'}, {id:'B', text:'Pilihan 2'}, {id:'C', text:'Pilihan 3'}, {id:'D', text:'Pilihan 4'}], correctAnswer: 'A', points: 1 };
+                 await db.from('questions').insert([newQ]);
+                 setQtext(''); fetchSupabaseData(); alert("Soal berhasil disimpan ke Server!");
+               } catch (err) { alert(err.message); }
+            };
             return (
-              <AdminLayout title="Analisis Butir Soal">
-                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6 flex justify-between"><h3 className="font-black text-lg">Total Responden</h3><div className="text-3xl font-black text-emerald-600">{results.length}</div></div>
-                 <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
-                   <table className="w-full text-sm text-left"><thead className="bg-slate-50 font-bold border-b"><tr><th className="py-4 px-4 text-center">No</th><th className="py-4 px-4">Pertanyaan</th><th className="py-4 px-4 text-center text-emerald-600">B</th><th className="py-4 px-4 text-center text-red-600">S</th><th className="py-4 px-4 text-center text-amber-600">K</th><th className="py-4 px-4 text-center">% Benar</th></tr></thead>
-                   <tbody>{data.map((d, i) => (<tr key={d.id} className="border-b hover:bg-slate-50"><td className="py-3 px-4 text-center font-bold text-slate-500">{i+1}</td><td className="py-3 px-4 font-medium max-w-xs truncate"><div dangerouslySetInnerHTML={{__html: d.question}} className="line-clamp-1"/></td><td className="py-3 px-4 text-center font-black text-emerald-600">{d.b}</td><td className="py-3 px-4 text-center font-black text-red-600">{d.s}</td><td className="py-3 px-4 text-center font-black text-amber-600">{d.k}</td><td className="py-3 px-4 text-center font-black text-slate-700">{d.p}%</td></tr>))}</tbody></table>
-                 </div>
+              <AdminLayout title="Bank Soal">
+                <form onSubmit={save} className="bg-white p-6 rounded border mb-6 space-y-4">
+                  <h3 className="font-bold">Tambah Soal Cepat (MCQ)</h3>
+                  <textarea placeholder="Ketik Pertanyaan di sini..." value={qText} onChange={e=>setQtext(e.target.value)} className="w-full p-2 border rounded" rows="3" required></textarea>
+                  <button type="submit" className="bg-emerald-600 text-white px-4 py-2 rounded font-bold">Push ke Server Supabase</button>
+                </form>
+                <div className="space-y-3">{questions.map((q,i)=><div key={q.id} className="bg-white p-4 rounded border flex gap-3"><span className="font-bold">{i+1}.</span> <div dangerouslySetInnerHTML={{ __html: q.question }}></div></div>)}</div>
               </AdminLayout>
             );
           };
-
-          const AdminReports = () => (
-             <AdminLayout title="Laporan & Print">
-               <div className="mb-6 flex justify-end"><button onClick={()=>window.print()} className="bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold shadow-md print:hidden"><Printer size={18} className="inline mr-2"/> Cetak Laporan (F4)</button></div>
-               <div className="bg-white border shadow-xl mx-auto w-full max-w-[21.5cm] min-h-[33cm] p-12 print-container rounded-sm">
-                   <div className="text-center border-b-4 border-slate-800 pb-6 mb-8"><h1 className="text-3xl font-black uppercase text-slate-900 mb-2">Laporan Hasil Ujian Database</h1><p className="text-slate-600 font-bold">Periode: {new Date().toLocaleDateString('id-ID')}</p></div>
-                   <table className="w-full text-base text-left border-collapse border border-slate-800"><thead className="bg-slate-100 text-slate-900"><tr><th className="border border-slate-800 py-3 px-3 w-12 text-center font-black">No</th><th className="border border-slate-800 py-3 px-4 font-black">Nama Lengkap</th><th className="border border-slate-800 py-3 px-4 font-black">Asal Sekolah</th><th className="border border-slate-800 py-3 px-4 text-center font-black">Nilai</th></tr></thead>
-                   <tbody>{results.map((r, i) => (<tr key={i}><td className="border border-slate-800 py-2.5 px-3 text-center font-bold">{i+1}</td><td className="border border-slate-800 py-2.5 px-4 font-bold">{r.participant?.name}</td><td className="border border-slate-800 py-2.5 px-4 font-medium">{r.participant?.school}</td><td className="border border-slate-800 py-2.5 px-4 text-center font-black text-lg bg-slate-50">{r.score}</td></tr>))}</tbody></table>
-               </div>
-             </AdminLayout>
-          );
-
-          const AdminPublish = () => (
-             <AdminLayout title="Panduan Deploy GitHub">
-                <div className="max-w-3xl bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-                   <h2 className="text-2xl font-black text-slate-800 mb-4 flex items-center"><CloudUploadAlt size={32} className="mr-3 text-blue-600"/> Cara Deploy Otomatis</h2>
-                   <div className="prose text-slate-600 font-medium space-y-4">
-                      <p>Kini Anda menggunakan <strong>Supabase</strong> sebagai server *backend*. Anda <strong>TIDAK PERLU</strong> mendownload file ini lagi setiap kali membuat soal baru!</p>
-                      <ul className="list-decimal pl-5 space-y-2">
-                        <li>Pastikan Kunci Supabase Anda sudah tertulis permanen di <code>baris 85</code> file HTML ini.</li>
-                        <li>Upload (Commit) file HTML ini ke repositori <strong>GitHub</strong> Anda (misal: repositori <code>cbt-ujian</code>).</li>
-                        <li>Buka menu <strong>Settings</strong> di repositori GitHub tersebut, pilih <strong>Pages</strong>, lalu setel <em>Branch</em> menjadi <strong>main</strong> dan klik Save.</li>
-                        <li>Dalam 2 menit, link CBT Anda akan aktif secara publik! Setiap soal atau token yang Anda buat di menu Admin ini akan <strong>otomatis langsung muncul di layar siswa</strong> tanpa perlu mengubah file GitHub lagi!</li>
-                      </ul>
-                   </div>
-                </div>
-             </AdminLayout>
-          );
 
           switch (currentRoute) {
             case '/': case '/login': return <ParticipantLogin />;
@@ -1020,16 +420,13 @@
             case '/admin/dashboard': return <AdminDashboard />;
             case '/admin/tokens': return <AdminTokens />;
             case '/admin/results': return <AdminResults />;
-            case '/admin/analysis': return <AdminAnalysis />;
             case '/admin/questions': return <AdminQuestions />;
-            case '/admin/reports': return <AdminReports />;
-            case '/admin/publish': return <AdminPublish />;
             default: return <ParticipantLogin />;
           }
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        const ReactDOMRoot = ReactDOM.createRoot(document.getElementById('root'));
+        ReactDOMRoot.render(<App />);
     </script>
 </body>
 </html>
