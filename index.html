@@ -252,6 +252,13 @@
           const [dbStatus, setDbStatus] = useState('connecting');
           const [initErrorMsg, setInitErrorMsg] = useState('');
           
+          const [examCurrentIndex, setExamCurrentIndex] = useState(0); 
+          const [activeFolder, setActiveFolder] = useState('Utama');
+          const [organizerName, setOrganizerName] = useState('Sekolah Dasar');
+          const [scheduledTime, setScheduledTime] = useState('');
+          const [isRandomQ, setIsRandomQ] = useState(false);
+          const [isRandomOpt, setIsRandomOpt] = useState(false);
+
           const [activeSession, setActiveSession] = useStickySession(null, 'cbt_active_session');
           const [isAdminLoggedIn, setIsAdminLoggedIn] = useStickySession(false, 'cbt_admin_auth');
 
@@ -272,12 +279,26 @@
                 if(qRes.data) setQuestions(qRes.data);
                 if(tRes.data) {
                     // Filter out settings token
-                    const actualTokens = tRes.data.filter(t => t.code !== 'SYS_SETTING_DURATION');
+                    const actualTokens = tRes.data.filter(t => !t.code.startsWith('SYS_SETTING_'));
                     setTokens(actualTokens);
                     
-                    // Ekstrak durasi ujian dari token khusus
-                    const settingToken = tRes.data.find(t => t.code === 'SYS_SETTING_DURATION');
-                    if (settingToken) setExamDuration(parseInt(settingToken.status) || 60);
+                    const dToken = tRes.data.find(t => t.code === 'SYS_SETTING_DURATION');
+                    if (dToken) setExamDuration(parseInt(dToken.status) || 60);
+
+                    const fToken = tRes.data.find(t => t.code === 'SYS_SETTING_FOLDER');
+                    if (fToken) setActiveFolder(fToken.status);
+
+                    const oToken = tRes.data.find(t => t.code === 'SYS_SETTING_ORGANIZER');
+                    if (oToken) setOrganizerName(oToken.status);
+
+                    const sToken = tRes.data.find(t => t.code === 'SYS_SETTING_SCHEDULE');
+                    if (sToken) setScheduledTime(sToken.status);
+
+                    const rqToken = tRes.data.find(t => t.code === 'SYS_SETTING_RANDOM_Q');
+                    if (rqToken) setIsRandomQ(rqToken.status === 'TRUE');
+
+                    const roToken = tRes.data.find(t => t.code === 'SYS_SETTING_RANDOM_OPT');
+                    if (roToken) setIsRandomOpt(roToken.status === 'TRUE');
                 }
 
                 if (isAdminLoggedIn) {
@@ -308,6 +329,8 @@
              fetchSupabaseData(); 
           }, [isAdminLoggedIn]);
 
+          const activeQuestions = isAdminLoggedIn ? questions : questions.filter(q => (q.folder || 'Utama') === activeFolder);
+
           useEffect(() => {
             if (currentRoute === '/') {
               if (activeSession && activeSession.status === 'ACTIVE') navigate('/exam');
@@ -333,6 +356,16 @@
                 if (tokenObj.status === 'EXPIRED') { setError('Token kedaluwarsa.'); setIsChecking(false); return; }
                 if (tokenObj.status === 'BLOCKED') { setError('Token diblokir. Hubungi administrator.'); setIsChecking(false); return; }
 
+                if (scheduledTime) {
+                    const now = new Date().getTime();
+                    const sched = new Date(scheduledTime).getTime();
+                    if (now < sched) {
+                        setError(`Ujian belum diterbitkan. Jadwal: ${new Date(scheduledTime).toLocaleString('id-ID')}`);
+                        setIsChecking(false); 
+                        return;
+                    }
+                }
+
                 setActiveSession({ token: tokenObj.code, participant: null, answers: {}, flagged: [], status: 'SETUP' });
                 navigate('/identity');
               } catch (err) { setError(err.message || 'Gagal terhubung ke server.'); }
@@ -345,7 +378,7 @@
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm"><Monitor size={32} /></div>
                     <h1 className="text-2xl font-black text-slate-800 tracking-tight">CBT TKA Terpadu</h1>
-                    <p className="text-slate-500 font-medium mt-1">Ujian Sekolah Dasar</p>
+                    <p className="text-slate-500 font-medium mt-1">{organizerName}</p>
                   </div>
                   
                   {initErrorMsg && (
@@ -438,7 +471,40 @@
                 const { error: updateErr } = await db.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
                 if(updateErr) throw updateErr;
 
-                setActiveSession(prev => ({ ...prev, status: 'ACTIVE', startTime: new Date().getTime(), durationLimit: examDuration * 60 * 1000 }));
+                let sessionQuestions = JSON.parse(JSON.stringify(activeQuestions));
+                
+                // Logika Pengacak Soal
+                if (isRandomQ) {
+                    for (let i = sessionQuestions.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [sessionQuestions[i], sessionQuestions[j]] = [sessionQuestions[j], sessionQuestions[i]];
+                    }
+                }
+
+                // Logika Pengacak Opsi Pilihan Ganda (A, B, C, D)
+                if (isRandomOpt) {
+                    sessionQuestions = sessionQuestions.map(q => {
+                        if (q.type === 'MCQ' && q.options) {
+                            const originalOptions = [...q.options];
+                            const texts = originalOptions.map(o => o.text);
+                            // Acak teks opsinya
+                            for (let i = texts.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [texts[i], texts[j]] = [texts[j], texts[i]];
+                            }
+                            // Terapkan teks yang teracak kembali ke id opsi A-D agar urutan id tetap rapi
+                            q.options = originalOptions.map((opt, idx) => ({ ...opt, text: texts[idx] }));
+                            
+                            // Lacak Kunci Jawaban yang baru agar tetap akurat
+                            const originalCorrectText = originalOptions.find(o => o.id === q.correctAnswer)?.text;
+                            const newCorrectOption = q.options.find(o => o.text === originalCorrectText);
+                            if (newCorrectOption) q.correctAnswer = newCorrectOption.id;
+                        }
+                        return q;
+                    });
+                }
+
+                setActiveSession(prev => ({ ...prev, status: 'ACTIVE', startTime: new Date().getTime(), durationLimit: examDuration * 60 * 1000, sessionQuestions }));
                 navigate('/exam');
               } catch (err) { 
                  alert("Gagal memulai ujian. Cek koneksi.\nDetail: " + err.message); 
@@ -455,7 +521,7 @@
                     </div>
                     <div className="prose prose-slate max-w-none mb-8">
                        <ul className="space-y-4 text-slate-700">
-                         <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Waktu pengerjaan <strong>{examDuration} menit</strong> untuk <strong>{questions.length} soal</strong>.</li>
+                         <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Waktu pengerjaan <strong>{examDuration} menit</strong> untuk <strong>{activeQuestions.length} soal</strong>.</li>
                          <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Terdapat soal <b>Pilihan Ganda</b>, <b>Pilihan Ganda Kompleks (Bisa pilih lebih dari satu)</b>, dan <b>Tabel Kategori</b>.</li>
                          <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Jawaban tersimpan otomatis setiap Anda berpindah soal.</li>
                          <li className="flex items-start text-red-600 font-medium bg-red-50 p-4 rounded-lg border border-red-100"><AlertCircle className="text-red-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> Pastikan koneksi internet stabil. Setelah ujian dikirim, data tidak dapat diubah kembali.</li>
@@ -475,13 +541,12 @@
           };
 
           const ExamEngine = () => {
-            const [currentIndex, setCurrentIndex] = useState(0);
             const [timeLeft, setTimeLeft] = useState(0);
             
             useEffect(() => { 
                 if (!activeSession || activeSession.status !== 'ACTIVE') navigate('/'); 
                 triggerMathRender(); 
-            }, [activeSession, currentIndex]);
+            }, [activeSession, examCurrentIndex]);
 
             useEffect(() => {
               if (!activeSession || activeSession.status !== 'ACTIVE') return;
@@ -494,14 +559,24 @@
               return () => clearInterval(timer);
             }, [activeSession]);
 
-            if (!activeSession || questions.length === 0 || !questions[currentIndex]) return <div className="min-h-screen flex items-center justify-center font-medium text-slate-500">Memuat soal...</div>;
+            const examQuestions = activeSession?.sessionQuestions || activeQuestions;
             
-            const currentQuestion = questions[currentIndex];
+            if (!activeSession || examQuestions.length === 0 || !examQuestions[examCurrentIndex]) return <div className="min-h-screen flex items-center justify-center font-medium text-slate-500">Memuat soal...</div>;
+            
+            const currentQuestion = examQuestions[examCurrentIndex];
             const currentAnswer = activeSession.answers[currentQuestion.id];
             const isFlagged = activeSession.flagged?.includes(currentQuestion.id);
             
             const handleAnswerChange = (val) => { setActiveSession(prev => ({ ...prev, answers: { ...prev.answers, [currentQuestion.id]: val } })); };
             const toggleFlag = () => { setActiveSession(prev => ({ ...prev, flagged: isFlagged ? prev.flagged.filter(id => id !== currentQuestion.id) : [...(prev.flagged || []), currentQuestion.id] })); };
+
+            // Auto-next for MCQ
+            const handleAnswerChangeMCQ = (val) => {
+                handleAnswerChange(val);
+                if (examCurrentIndex < activeQuestions.length - 1) {
+                    setTimeout(() => setExamCurrentIndex(p => p + 1), 300); // Jeda 0,3 detik lalu pindah soal
+                }
+            };
 
             // Renderer MCQ
             const RenderMCQ = () => (
@@ -509,7 +584,7 @@
                 {(currentQuestion.options||[]).map(opt => (
                   <label key={opt.id} className={`flex items-start p-4 border rounded-xl cursor-pointer transition-all ${currentAnswer === opt.id ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:bg-slate-50'}`}>
                     <div className="flex items-center h-6 mt-0.5">
-                        <input type="radio" checked={currentAnswer === opt.id} onChange={() => handleAnswerChange(opt.id)} className="w-5 h-5 text-emerald-600 focus:ring-emerald-500" />
+                        <input type="radio" checked={currentAnswer === opt.id} onChange={() => handleAnswerChangeMCQ(opt.id)} className="w-5 h-5 text-emerald-600 focus:ring-emerald-500" />
                     </div>
                     <div className="ml-4 flex-1 flex text-slate-800">
                         <span className="inline-block font-bold text-slate-400 w-6 mt-0.5">{opt.id}.</span> 
@@ -611,7 +686,7 @@
                       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-8 flex-1 flex flex-col relative">
                          
                          <div className="flex flex-wrap gap-2 justify-between items-center mb-6 pb-4 border-b border-slate-100">
-                            <h2 className="text-xl font-bold text-slate-800">SOAL NO. {currentIndex + 1}</h2>
+                            <h2 className="text-xl font-bold text-slate-800">SOAL NO. {examCurrentIndex + 1}</h2>
                             <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200">{currentQuestion.category}</span>
                          </div>
                          
@@ -625,15 +700,15 @@
                          
                          {/* Tombol Navigasi Bawah */}
                          <div className="pt-5 mt-4 border-t border-slate-100 flex flex-wrap justify-between items-center gap-3 bg-white">
-                            <button onClick={() => setCurrentIndex(p => Math.max(0, p - 1))} disabled={currentIndex === 0} className="flex items-center px-4 py-2.5 bg-slate-50 text-slate-700 rounded-lg disabled:opacity-50 font-medium border border-slate-200 hover:bg-slate-100 transition-colors text-sm sm:text-base"><ChevronLeft size={18} className="mr-1" /> Sebelum</button>
+                            <button onClick={() => setExamCurrentIndex(p => Math.max(0, p - 1))} disabled={examCurrentIndex === 0} className="flex items-center px-4 py-2.5 bg-slate-50 text-slate-700 rounded-lg disabled:opacity-50 font-medium border border-slate-200 hover:bg-slate-100 transition-colors text-sm sm:text-base"><ChevronLeft size={18} className="mr-1" /> Sebelum</button>
                             
                             <label className={`flex items-center px-4 py-2.5 rounded-lg font-medium border cursor-pointer select-none transition-all text-sm sm:text-base ${isFlagged ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-600'}`}>
                                <input type="checkbox" checked={isFlagged} onChange={toggleFlag} className="mr-2 w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-500" />
                                Ragu-ragu
                             </label>
                             
-                            {currentIndex < questions.length - 1 ? (
-                               <button onClick={() => setCurrentIndex(p => p + 1)} className="flex items-center px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-sm transition-colors text-sm sm:text-base">Lanjut <i className="fas fa-chevron-right ml-2 text-sm"></i></button>
+                            {examCurrentIndex < examQuestions.length - 1 ? (
+                               <button onClick={() => setExamCurrentIndex(p => p + 1)} className="flex items-center px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-sm transition-colors text-sm sm:text-base">Lanjut <i className="fas fa-chevron-right ml-2 text-sm"></i></button>
                             ) : (
                                <button onClick={() => navigate('/review')} className="px-5 py-2.5 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 shadow-sm transition-colors text-sm sm:text-base">Selesai <i className="fas fa-check ml-1.5 text-sm"></i></button>
                             )}
@@ -647,10 +722,10 @@
                          <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center border-b pb-3"><LayoutDashboard size={18} className="mr-2 text-slate-400"/> Navigator Soal</h3>
                          
                          <div className="grid grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto pr-1 pb-1">
-                            {questions.map((q, idx) => {
+                            {examQuestions.map((q, idx) => {
                                const ans = activeSession.answers[q.id];
                                const isAns = ans && (q.type !== 'CATEGORY' || Object.keys(ans).length === (q.statements||[]).length);
-                               const isCur = idx === currentIndex;
+                               const isCur = idx === examCurrentIndex;
                                const isFlg = activeSession.flagged?.includes(q.id);
                                
                                let cls = "h-10 w-full rounded-lg font-semibold text-sm flex items-center justify-center border transition-all cursor-pointer ";
@@ -659,7 +734,7 @@
                                else if (isAns) cls += "bg-emerald-500 text-white border-emerald-600 opacity-90";
                                else cls += "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100";
                                
-                               return <button key={q.id} onClick={() => setCurrentIndex(idx)} className={cls}>{idx + 1}</button>;
+                               return <button key={q.id} onClick={() => setExamCurrentIndex(idx)} className={cls}>{idx + 1}</button>;
                             })}
                          </div>
                          
@@ -680,8 +755,9 @@
              const [showConfirm, setShowConfirm] = useState(false);
              if (!activeSession || activeSession.status !== 'ACTIVE') { navigate('/'); return null; }
 
-             const totalQ = questions.length;
-             const ansQ = questions.filter(q => {
+             const examQuestions = activeSession?.sessionQuestions || activeQuestions;
+             const totalQ = examQuestions.length;
+             const ansQ = examQuestions.filter(q => {
                 const ans = activeSession.answers[q.id];
                 if(!ans) return false;
                 if(q.type === 'CATEGORY') return Object.keys(ans).length === (q.statements||[]).length;
@@ -690,7 +766,7 @@
 
              const handleFinalSubmit = async () => {
                setIsSubmitting(true);
-               const result = calculateScore(activeSession.answers, questions);
+               const result = calculateScore(activeSession.answers, examQuestions);
                const payload = {
                   participant_name: activeSession.participant.name, participant_school: activeSession.participant.school,
                   participant_nis: activeSession.participant.nis, participant_grade: activeSession.participant.grade,
@@ -839,29 +915,42 @@
 
           const AdminDashboard = () => {
              const [tempDuration, setTempDuration] = useState(examDuration);
+             const [tempFolder, setTempFolder] = useState(activeFolder);
+             const [tempOrganizer, setTempOrganizer] = useState(organizerName);
+             const [tempSchedule, setTempSchedule] = useState(scheduledTime);
+             const [tempRandomQ, setTempRandomQ] = useState(isRandomQ);
+             const [tempRandomOpt, setTempRandomOpt] = useState(isRandomOpt);
              const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+             const folders = [...new Set([...questions.map(q => q.folder || 'Utama'), 'Utama', 'Bahasa Indonesia', 'Matematika', 'IPA', 'Umum'])];
 
              const saveSettings = async () => {
                 setIsSavingSettings(true);
                 try {
                     const db = await getSupabase();
-                    const payload = { code: 'SYS_SETTING_DURATION', status: tempDuration.toString(), generatedAt: new Date().toISOString() };
                     
-                    // Supabase upsert requires specifying the unique key constraint if conflict happens, 
-                    // To be safe, we check if exists, then update or insert.
-                    const { data } = await db.from('tokens').select('code').eq('code', 'SYS_SETTING_DURATION').single();
-                    let err;
-                    if (data) {
-                        const res = await db.from('tokens').update({ status: tempDuration.toString() }).eq('code', 'SYS_SETTING_DURATION');
-                        err = res.error;
-                    } else {
-                        const res = await db.from('tokens').insert([payload]);
-                        err = res.error;
-                    }
+                    const upsertSetting = async (code, val) => {
+                        const { data } = await db.from('tokens').select('code').eq('code', code).maybeSingle();
+                        if (data) await db.from('tokens').update({ status: val }).eq('code', code);
+                        else await db.from('tokens').insert([{ code, status: val, generatedAt: new Date().toISOString() }]);
+                    };
 
-                    if (err) throw err;
+                    await Promise.all([
+                        upsertSetting('SYS_SETTING_DURATION', tempDuration.toString()),
+                        upsertSetting('SYS_SETTING_FOLDER', tempFolder),
+                        upsertSetting('SYS_SETTING_ORGANIZER', tempOrganizer),
+                        upsertSetting('SYS_SETTING_SCHEDULE', tempSchedule),
+                        upsertSetting('SYS_SETTING_RANDOM_Q', tempRandomQ ? 'TRUE' : 'FALSE'),
+                        upsertSetting('SYS_SETTING_RANDOM_OPT', tempRandomOpt ? 'TRUE' : 'FALSE')
+                    ]);
+
                     setExamDuration(tempDuration);
-                    alert("Pengaturan waktu berhasil disimpan!");
+                    setActiveFolder(tempFolder);
+                    setOrganizerName(tempOrganizer);
+                    setScheduledTime(tempSchedule);
+                    setIsRandomQ(tempRandomQ);
+                    setIsRandomOpt(tempRandomOpt);
+                    alert("Pengaturan ujian berhasil disimpan!");
                 } catch(e) {
                     alert("Gagal menyimpan pengaturan: " + e.message);
                 }
@@ -883,14 +972,49 @@
                         <div className="text-slate-500 text-xs font-medium mb-1">Token Tersedia</div>
                         <div className="text-2xl font-bold text-slate-800">{tokens.filter(t=>t.status==='AVAILABLE').length}</div>
                     </div>
-                    <div className="bg-blue-50 p-5 rounded-xl border border-blue-100 flex flex-col justify-between">
-                        <div className="text-blue-700 text-xs font-medium mb-2">Durasi Ujian (Menit)</div>
-                        <div className="flex gap-2 items-center">
-                            <input type="number" value={tempDuration} onChange={e=>setTempDuration(parseInt(e.target.value)||60)} className="w-16 p-1.5 rounded border border-blue-200 text-sm font-bold text-center" />
-                            <button onClick={saveSettings} disabled={isSavingSettings || tempDuration === examDuration} className="bg-blue-600 text-white text-xs px-3 py-2 rounded font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">Simpan</button>
+                </div>
+
+                <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 mb-8">
+                    <h3 className="text-base font-bold text-blue-900 mb-4 flex items-center"><Settings size={18} className="mr-2"/> Pengaturan Penerbitan Ujian</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label className="block text-sm font-semibold text-blue-800 mb-1">Pilih Folder / Bank Soal Aktif</label>
+                            <select value={tempFolder} onChange={e=>setTempFolder(e.target.value)} className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500">
+                                {folders.length === 0 && <option value="Utama">Utama</option>}
+                                {folders.map(f => <option key={f} value={f}>{f}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-blue-800 mb-1">Nama Penyelenggara</label>
+                            <input type="text" value={tempOrganizer} onChange={e=>setTempOrganizer(e.target.value)} placeholder="Contoh: SD Negeri 1 Jakarta" className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-blue-800 mb-1">Jadwal Diterbitkan (Waktu Mulai)</label>
+                            <input type="datetime-local" value={tempSchedule} onChange={e=>setTempSchedule(e.target.value)} className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-blue-800 mb-1">Durasi Ujian (Menit)</label>
+                            <input type="number" value={tempDuration} onChange={e=>setTempDuration(parseInt(e.target.value)||60)} className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-bold bg-white focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        
+                        <div className="md:col-span-2 bg-white/60 p-4 rounded-xl border border-blue-200 flex flex-wrap gap-x-8 gap-y-3 items-center mt-2">
+                            <label className="flex items-center cursor-pointer font-bold text-blue-800 text-sm hover:text-blue-600 transition-colors">
+                                <input type="checkbox" checked={tempRandomQ} onChange={e=>setTempRandomQ(e.target.checked)} className="w-5 h-5 mr-3 text-blue-600 rounded focus:ring-blue-500 border-slate-300" />
+                                <i className="fas fa-random mr-2 text-blue-500"></i> Acak Urutan Soal (Tiap Peserta Berbeda)
+                            </label>
+                            <label className="flex items-center cursor-pointer font-bold text-blue-800 text-sm hover:text-blue-600 transition-colors">
+                                <input type="checkbox" checked={tempRandomOpt} onChange={e=>setTempRandomOpt(e.target.checked)} className="w-5 h-5 mr-3 text-blue-600 rounded focus:ring-blue-500 border-slate-300" />
+                                <i className="fas fa-list-ol mr-2 text-blue-500"></i> Acak Opsi Jawaban (A, B, C, D)
+                            </label>
                         </div>
                     </div>
+                    <div className="mt-5 flex justify-end">
+                        <button onClick={saveSettings} disabled={isSavingSettings} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-bold shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center">
+                            <Save size={18} className="mr-2"/> {isSavingSettings ? 'Menyimpan...' : 'Simpan Pengaturan'}
+                        </button>
+                    </div>
                 </div>
+
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 overflow-x-auto">
                     <h3 className="text-base font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">Aktivitas Terbaru</h3>
                     <table className="w-full text-left text-sm min-w-[500px]">
@@ -1086,9 +1210,9 @@
             const [isSaving, setIsSaving] = useState(false);
             const [view, setView] = useState('list'); // list, create, edit
             
-            const defaultMCQ = { id: '', type: 'MCQ', category: 'Bahasa Indonesia', points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
-            const defaultMCMA = { id: '', type: 'MCMA', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}, {id:3, text:''}], correctAnswers: [] };
-            const defaultCAT = { id: '', type: 'CATEGORY', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'},{id:2, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
+            const defaultMCQ = { id: '', type: 'MCQ', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
+            const defaultMCMA = { id: '', type: 'MCMA', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}, {id:3, text:''}], correctAnswers: [] };
+            const defaultCAT = { id: '', type: 'CATEGORY', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'},{id:2, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
             
             const [formData, setFormData] = useState(defaultMCQ);
 
@@ -1257,19 +1381,32 @@
                         </div>
                         
                         <form onSubmit={saveQuestion} className="p-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200">
                                 <div>
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Tipe Soal</label>
                                     <select value={formData.type} onChange={e => {
                                         const type = e.target.value;
-                                        if (type === 'MCQ') setFormData({...defaultMCQ, type, category: formData.category, points: formData.points});
-                                        else if (type === 'MCMA') setFormData({...defaultMCMA, type, category: formData.category, points: formData.points});
-                                        else setFormData({...defaultCAT, type, category: formData.category, points: formData.points});
+                                        if (type === 'MCQ') setFormData({...defaultMCQ, type, category: formData.category, folder: formData.folder, points: formData.points});
+                                        else if (type === 'MCMA') setFormData({...defaultMCMA, type, category: formData.category, folder: formData.folder, points: formData.points});
+                                        else setFormData({...defaultCAT, type, category: formData.category, folder: formData.folder, points: formData.points});
                                     }} disabled={view === 'edit'} className="w-full p-2 border rounded bg-white text-sm font-medium disabled:opacity-60">
                                         <option value="MCQ">Pilihan Ganda (A-D)</option>
                                         <option value="MCMA">Pilihan Ganda Kompleks</option>
                                         <option value="CATEGORY">Matriks Kategori</option>
                                     </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 mb-1">Folder / Paket</label>
+                                    <input list="folder-suggestions" type="text" value={formData.folder || 'Utama'} onChange={e => setFormData({...formData, folder: e.target.value})} placeholder="Ketik atau pilih folder..." className="w-full p-2 border rounded bg-white text-sm font-medium"/>
+                                    <datalist id="folder-suggestions">
+                                        <option value="Utama" />
+                                        <option value="Bahasa Indonesia" />
+                                        <option value="Matematika" />
+                                        <option value="IPA" />
+                                        <option value="Umum" />
+                                        {/* Menambahkan folder kustom yang pernah diketik pengguna ke dalam saran otomatis */}
+                                        {[...new Set(questions.map(q => q.folder).filter(f => f && !['Utama', 'Bahasa Indonesia', 'Matematika', 'IPA', 'Umum'].includes(f)))].map(f => <option key={f} value={f} />)}
+                                    </datalist>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-slate-500 mb-1">Mata Pelajaran</label>
@@ -1323,9 +1460,10 @@
                           {idx + 1}
                        </div>
                        <div className="flex-1 overflow-hidden min-w-0">
-                          <div className="flex gap-2 mb-3">
+                          <div className="flex flex-wrap gap-2 mb-3 items-center">
                             <span className="text-[10px] font-bold px-2 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded uppercase">{q.type}</span>
                             <span className="text-[10px] font-semibold text-slate-500 bg-slate-50 px-2 py-1 rounded border">{q.category}</span>
+                            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded border border-indigo-100"><i className="fas fa-folder mr-1"></i> {q.folder || 'Utama'}</span>
                           </div>
                           
                           <div className="font-medium text-slate-800 text-sm sm:text-base mb-3 rich-text-content" dangerouslySetInnerHTML={{__html: q.question}}></div>
