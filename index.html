@@ -1281,7 +1281,7 @@
           const AdminQuestions = () => {
             const [isSaving, setIsSaving] = useState(false);
             const [view, setView] = useState('list'); 
-            
+            const [filterFolder, setFilterFolder] = useState('Semua'); // Added missing state
             const defaultMCQ = { id: '', type: 'MCQ', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
             const defaultMCMA = { id: '', type: 'MCMA', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}, {id:3, text:''}], correctAnswers: [] };
             const defaultCAT = { id: '', type: 'CATEGORY', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'},{id:2, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
@@ -1513,14 +1513,28 @@
 
             return (
               <AdminLayout title="Bank Soal">
-                <div className="mb-6 flex flex-wrap gap-3 items-center justify-end">
+                <div className="mb-6 flex flex-wrap gap-3 items-center justify-between">
+                   <div className="flex items-center gap-2">
+                       <label className="text-sm font-semibold text-slate-600">Filter Folder:</label>
+                       <select 
+                           value={filterFolder} 
+                           onChange={e => setFilterFolder(e.target.value)} 
+                           className="border border-slate-300 rounded-lg p-2 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500"
+                       >
+                           <option value="Semua">Semua Folder</option>
+                           <option value="Utama">Utama</option>
+                           {[...new Set(questions.map(q => q.folder).filter(f => f && f !== 'Utama'))].map(f => (
+                               <option key={f} value={f}>{f}</option>
+                           ))}
+                       </select>
+                   </div>
                    <button onClick={clearAllQuestions} disabled={isSaving} className="bg-white text-rose-600 border border-rose-200 hover:bg-rose-50 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors disabled:opacity-50">
                      <Trash2 size={16} className="mr-1.5" /> Kosongkan Bank Soal
                    </button>
                 </div>
 
                 <div className="space-y-4">
-                  {questions.map((q, idx) => (
+                  {(filterFolder === 'Semua' ? questions : questions.filter(q => (q.folder || 'Utama') === filterFolder)).map((q, idx) => (
                      <div key={q.id} className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 hover:border-blue-300 transition-colors">
                        <div className="w-10 h-10 flex-shrink-0 bg-slate-50 rounded-lg flex items-center justify-center font-bold text-slate-500 border border-slate-200 text-sm">
                           {idx + 1}
@@ -1554,10 +1568,11 @@
                        </div>
                      </div>
                   ))}
-                  {questions.length === 0 && (
+                  {/* Pastikan keterangan kosong juga membaca dari hasil filter */}
+                  {(filterFolder === 'Semua' ? questions : questions.filter(q => (q.folder || 'Utama') === filterFolder)).length === 0 && (
                      <div className="text-center py-16 bg-white rounded-xl border border-dashed border-slate-300">
                        <Database size={40} className="mx-auto text-slate-300 mb-4"/>
-                       <p className="text-slate-500 font-medium text-sm">Belum ada soal tersimpan.</p>
+                       <p className="text-slate-500 font-medium text-sm">Belum ada soal tersimpan di folder ini.</p>
                      </div>
                   )}
                 </div>
