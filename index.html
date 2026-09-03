@@ -475,6 +475,10 @@
             if (!activeSession || !activeSession.participant) { navigate('/login'); return null; }
             
             const startExam = async () => {
+              if (activeQuestions.length === 0) {
+                  alert("Sistem mendeteksi 0 soal. Pastikan Admin telah menerbitkan folder ujian yang berisi soal.");
+                  return;
+              }
               setIsStarting(true);
               try {
                 const db = await getSupabase();
@@ -534,8 +538,20 @@
                        <h2 className="text-2xl font-bold text-slate-800">Petunjuk Ujian</h2>
                     </div>
                     <div className="prose prose-slate max-w-none mb-8">
+                       {(!isLoadingData && activeQuestions.length === 0) && (
+                           <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-start border border-red-200 shadow-sm animate-pulse">
+                               <AlertCircle className="mr-3 flex-shrink-0 mt-0.5" size={24}/>
+                               <div>
+                                   <strong className="text-lg block mb-1">Soal Belum Tersedia! (0 Soal)</strong>
+                                   <p className="text-sm">Folder ujian yang diterbitkan saat ini tidak memiliki soal. Harap hubungi Pengawas/Admin untuk mengatur "Folder Ujian" di Dashboard Admin.</p>
+                               </div>
+                           </div>
+                       )}
                        <ul className="space-y-4 text-slate-700 font-medium">
-                         <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Waktu pengerjaan <strong>{examDuration} menit</strong> untuk <strong>{activeQuestions.length} soal</strong>.</li>
+                         <li className="flex items-start">
+                             <CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> 
+                             Waktu pengerjaan <strong>{examDuration} menit</strong> untuk <strong>{isLoadingData ? '...' : activeQuestions.length} soal</strong>.
+                         </li>
                          <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Jawaban akan <b>tersimpan otomatis</b> setiap Anda berpindah nomor.</li>
                          <li className="flex items-start text-red-600 font-medium bg-red-50 p-4 rounded-lg border border-red-100"><AlertCircle className="text-red-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> Dilarang keras membuka tab/jendela lain. Sistem akan mencatat setiap pelanggaran yang terjadi.</li>
                        </ul>
@@ -544,9 +560,15 @@
                        <div className="text-blue-900 text-center sm:text-left">
                          Peserta: <strong className="text-lg block sm:inline">{activeSession.participant.name}</strong> <br className="sm:hidden"/>({activeSession.participant.school})
                        </div>
-                       <button onClick={startExam} disabled={isStarting} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50">
-                          {isStarting ? 'Memulai...' : 'Mulai Ujian'}
-                       </button>
+                       {isLoadingData ? (
+                           <button disabled className="w-full sm:w-auto py-3.5 px-8 bg-slate-400 text-white font-bold text-lg rounded-xl shadow-md cursor-not-allowed flex items-center justify-center">
+                               <i className="fas fa-spinner fa-spin mr-2"></i> Memuat Data...
+                           </button>
+                       ) : (
+                           <button onClick={startExam} disabled={isStarting || activeQuestions.length === 0} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                               {isStarting ? 'Memproses...' : 'Mulai Ujian'}
+                           </button>
+                       )}
                     </div>
                  </div>
               </div>
