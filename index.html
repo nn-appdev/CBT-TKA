@@ -272,39 +272,43 @@
 
           const navigate = (path) => { window.scrollTo(0,0); setCurrentRoute(path); };
 
+          // PENYELESAIAN MASALAH "0 SOAL": Memisahkan Query Settings dari Query Token
+          // Supabase memiliki limit default 1000 baris. Jika digabung, setting akan terpotong oleh data token siswa.
           const fetchSupabaseData = async () => {
              setIsLoadingData(true);
              try {
                 const db = await getSupabase();
-                const [qRes, tRes] = await Promise.all([
+                const [qRes, tRes, sRes] = await Promise.all([
                     db.from('questions').select('*').order('number', { ascending: true }),
-                    db.from('tokens').select('*').order('generatedAt', { ascending: false })
+                    db.from('tokens').select('*').not('code', 'ilike', 'SYS_SETTING_%').order('generatedAt', { ascending: false }).limit(3000),
+                    db.from('tokens').select('*').like('code', 'SYS_SETTING_%')
                 ]);
                 
                 if(qRes.error) throw qRes.error;
                 if(tRes.error) throw tRes.error;
+                if(sRes.error) throw sRes.error;
                 
                 if(qRes.data) setQuestions(qRes.data);
-                if(tRes.data) {
-                    const actualTokens = tRes.data.filter(t => !t.code.startsWith('SYS_SETTING_'));
-                    setTokens(actualTokens);
-                    
-                    const dToken = tRes.data.find(t => t.code === 'SYS_SETTING_DURATION');
+                if(tRes.data) setTokens(tRes.data);
+                
+                // Menerapkan pengaturan dari server secara independen
+                if(sRes.data) {
+                    const dToken = sRes.data.find(t => t.code === 'SYS_SETTING_DURATION');
                     if (dToken) setExamDuration(parseInt(dToken.status) || 60);
 
-                    const fToken = tRes.data.find(t => t.code === 'SYS_SETTING_FOLDER');
+                    const fToken = sRes.data.find(t => t.code === 'SYS_SETTING_FOLDER');
                     if (fToken) setActiveFolder(fToken.status);
 
-                    const oToken = tRes.data.find(t => t.code === 'SYS_SETTING_ORGANIZER');
+                    const oToken = sRes.data.find(t => t.code === 'SYS_SETTING_ORGANIZER');
                     if (oToken) setOrganizerName(oToken.status);
 
-                    const sToken = tRes.data.find(t => t.code === 'SYS_SETTING_SCHEDULE');
+                    const sToken = sRes.data.find(t => t.code === 'SYS_SETTING_SCHEDULE');
                     if (sToken) setScheduledTime(sToken.status);
 
-                    const rqToken = tRes.data.find(t => t.code === 'SYS_SETTING_RANDOM_Q');
+                    const rqToken = sRes.data.find(t => t.code === 'SYS_SETTING_RANDOM_Q');
                     if (rqToken) setIsRandomQ(rqToken.status === 'TRUE');
 
-                    const roToken = tRes.data.find(t => t.code === 'SYS_SETTING_RANDOM_OPT');
+                    const roToken = sRes.data.find(t => t.code === 'SYS_SETTING_RANDOM_OPT');
                     if (roToken) setIsRandomOpt(roToken.status === 'TRUE');
                 }
 
@@ -336,8 +340,10 @@
              fetchSupabaseData(); 
           }, [isAdminLoggedIn]);
 
-          // Filter pertanyaan berdasarkan folder aktif
-          const activeQuestions = isAdminLoggedIn ? questions : questions.filter(q => (q.folder || 'Utama') === activeFolder);
+          // Filter folder mutlak anti spasi dan anti kapital
+          const activeQuestions = isAdminLoggedIn 
+            ? questions 
+            : questions.filter(q => String(q.folder || 'Utama').trim().toLowerCase() === String(activeFolder || 'Utama').trim().toLowerCase());
 
           useEffect(() => {
             if (currentRoute === '/') {
@@ -357,6 +363,8 @@
               setIsChecking(true); setError('');
               try {
                 const db = await getSupabase();
+                
+                // Menarik data token spesifik (tanpa bergantung state lokal yang mungkin delay)
                 const { data: tokenObj, error: fetchErr } = await db.from('tokens').select('*').eq('code', inputToken.trim().toUpperCase()).single();
                 
                 if (fetchErr || !tokenObj || tokenObj.code.startsWith('SYS_SETTING_')) { setError('Token tidak valid atau tidak ditemukan.'); setIsChecking(false); return; }
@@ -364,17 +372,22 @@
                 if (tokenObj.status === 'EXPIRED') { setError('Token kedaluwarsa.'); setIsChecking(false); return; }
                 if (tokenObj.status === 'BLOCKED') { setError('Token diblokir. Hubungi administrator.'); setIsChecking(false); return; }
 
-                if (scheduledTime) {
-                    const now = new Date().getTime();
-                    const sched = new Date(scheduledTime).getTime();
-                    if (now < sched) {
-                        setError(`Ujian belum diterbitkan. Jadwal: ${new Date(scheduledTime).toLocaleString('id-ID')}`);
-                        setIsChecking(false); 
-                        return;
-                    }
-                }
+                // Pastikan data terbaru ditarik agar folder & waktu 100% akurat sebelum masuk identity
+                await fetchSupabaseData();
 
-                setActiveSession({ token: tokenObj.code, participant: null, answers: {}, flagged: [], status: 'SETUP' });
+                // Menyimpan nama & sekolah PASTI dari token ke session
+                setActiveSession({ 
+                    token: tokenObj.code, 
+                    participant: {
+                        name: tokenObj.participant_name || 'Peserta', // Default aman
+                        school: tokenObj.participant_school || 'Sekolah',
+                        nis: '',
+                        grade: '6'
+                    }, 
+                    answers: {}, 
+                    flagged: [], 
+                    status: 'SETUP' 
+                });
                 navigate('/identity');
               } catch (err) { setError(err.message || 'Gagal terhubung ke server.'); }
               setIsChecking(false);
@@ -424,12 +437,22 @@
           };
 
           const ParticipantIdentity = () => {
-            const [formData, setFormData] = useState({ name: '', nis: '', school: '', grade: '6' });
+            // MENGUNCI IDENTITAS: Ambil langsung dari activeSession yang sudah diverifikasi di handleLogin
+            const lockedName = activeSession?.participant?.name || '';
+            const lockedSchool = activeSession?.participant?.school || '';
+            const [formData, setFormData] = useState({ 
+                nis: activeSession?.participant?.nis || '', 
+                grade: activeSession?.participant?.grade || '6' 
+            });
+            
             if (!activeSession || activeSession.status !== 'SETUP') { navigate('/login'); return null; }
             
             const handleSubmit = (e) => {
               e.preventDefault();
-              setActiveSession(prev => ({ ...prev, participant: formData }));
+              setActiveSession(prev => ({ 
+                  ...prev, 
+                  participant: { ...prev.participant, nis: formData.nis, grade: formData.grade } 
+              }));
               navigate('/instruction');
             };
             
@@ -444,11 +467,11 @@
                        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                          <div className="sm:col-span-2">
                            <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap *</label>
-                           <input type="text" required value={formData.name} onChange={e=>setFormData({...formData, name:e.target.value})} className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-800"/>
+                           <input type="text" required readOnly value={lockedName} className="w-full p-3 border border-slate-300 rounded-lg text-slate-500 font-bold bg-slate-100 cursor-not-allowed outline-none"/>
                          </div>
                          <div className="sm:col-span-2">
                            <label className="block text-sm font-medium text-slate-700 mb-1">Asal Sekolah *</label>
-                           <input type="text" required value={formData.school} onChange={e=>setFormData({...formData, school:e.target.value})} className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-slate-800"/>
+                           <input type="text" required readOnly value={lockedSchool} className="w-full p-3 border border-slate-300 rounded-lg text-slate-500 font-bold bg-slate-100 cursor-not-allowed outline-none"/>
                          </div>
                          <div>
                            <label className="block text-sm font-medium text-slate-700 mb-1">NIS/NISN</label>
@@ -482,12 +505,12 @@
               setIsStarting(true);
               try {
                 const db = await getSupabase();
+                // Kunci Token
                 const { error: updateErr } = await db.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
                 if(updateErr) throw updateErr;
 
                 let sessionQuestions = JSON.parse(JSON.stringify(activeQuestions));
                 
-                // Algoritma Acak Soal
                 if (isRandomQ) {
                     for (let i = sessionQuestions.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
@@ -495,7 +518,6 @@
                     }
                 }
 
-                // Algoritma Acak Opsi Jawaban
                 if (isRandomOpt) {
                     sessionQuestions = sessionQuestions.map(q => {
                         if (q.type === 'MCQ' && q.options) {
@@ -515,11 +537,25 @@
                     });
                 }
 
+                // Kalkulasi Timer Absolut
+                const now = new Date().getTime();
+                let endTime = now + (examDuration * 60 * 1000);
+                if (scheduledTime) {
+                    const schedTime = new Date(scheduledTime).getTime();
+                    if (now >= schedTime) {
+                        endTime = schedTime + (examDuration * 60 * 1000); // Waktu habis ditarik kaku dari jadwal tayang
+                    } else {
+                        alert("Ujian belum dapat dimulai sesuai jadwal yang ditentukan.");
+                        setIsStarting(false);
+                        return;
+                    }
+                }
+
                 setActiveSession(prev => ({ 
                     ...prev, 
                     status: 'ACTIVE', 
-                    startTime: new Date().getTime(), 
-                    durationLimit: examDuration * 60 * 1000, 
+                    startTime: now, 
+                    durationLimit: endTime - now, // Limit durasi yang sebenarnya tersisa
                     sessionQuestions,
                     examCurrentIndex: 0 
                 }));
@@ -539,11 +575,14 @@
                     </div>
                     <div className="prose prose-slate max-w-none mb-8">
                        {(!isLoadingData && activeQuestions.length === 0) && (
-                           <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-start border border-red-200 shadow-sm animate-pulse">
-                               <AlertCircle className="mr-3 flex-shrink-0 mt-0.5" size={24}/>
-                               <div>
+                           <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex flex-col sm:flex-row items-start border border-red-200 shadow-sm">
+                               <AlertCircle className="mr-3 flex-shrink-0 mt-0.5 mb-2 sm:mb-0" size={24}/>
+                               <div className="flex-1">
                                    <strong className="text-lg block mb-1">Soal Belum Tersedia! (0 Soal)</strong>
-                                   <p className="text-sm">Folder ujian yang diterbitkan saat ini tidak memiliki soal. Harap hubungi Pengawas/Admin untuk mengatur "Folder Ujian" di Dashboard Admin.</p>
+                                   <p className="text-sm mb-3">Sistem dikunci pada folder ujian: <b>"{activeFolder || 'Utama'}"</b>. Jika Admin sudah menerbitkan, silakan tekan tombol di bawah ini.</p>
+                                   <button onClick={() => fetchSupabaseData()} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center">
+                                       <i className="fas fa-sync-alt mr-2"></i> {isLoadingData ? 'Menyinkronkan...' : 'Sinkronisasi Data Terbaru'}
+                                   </button>
                                </div>
                            </div>
                        )}
@@ -660,10 +699,13 @@
                   else newArr.push(id);
                   handleAnswerChange(newArr.length > 0 ? newArr : null);
                };
+               
+               const isIncomplete = selectedArr.length > 0 && selectedArr.length < 2; // Peringatan belum lengkap
+               
                return (
                   <div className="space-y-3 mt-6">
-                     <div className="bg-blue-50 border border-blue-100 text-blue-700 p-3 rounded-lg font-medium text-sm mb-4 flex items-center">
-                         <AlertCircle size={16} className="mr-2"/> Anda dapat memilih lebih dari satu jawaban.
+                     <div className={`border p-3 rounded-lg font-medium text-sm mb-4 flex items-center transition-colors ${isIncomplete ? 'bg-red-50 border-red-200 text-red-700 animate-pulse' : 'bg-blue-50 border-blue-100 text-blue-700'}`}>
+                         <AlertCircle size={16} className="mr-2"/> {isIncomplete ? 'Pilih minimal 2 jawaban agar soal ini tuntas!' : 'Anda dapat memilih lebih dari satu jawaban.'}
                      </div>
                      {(currentQuestion.statements||[]).map((stmt, idx) => (
                         <label key={stmt.id} className={`flex items-start p-4 border rounded-xl cursor-pointer transition-all ${selectedArr.includes(stmt.id) ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 hover:bg-slate-50'}`}>
@@ -684,10 +726,15 @@
                const catAnswer = currentAnswer || {};
                const cat1Label = currentQuestion.statements?.[0]?.category1 || 'Benar';
                const cat2Label = currentQuestion.statements?.[0]?.category2 || 'Salah';
+               
+               const answeredCount = Object.keys(catAnswer).length;
+               const totalStatements = (currentQuestion.statements||[]).length;
+               const isIncomplete = answeredCount > 0 && answeredCount < totalStatements;
+               
                return (
                   <div className="mt-6 overflow-x-auto pb-2">
-                     <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 p-3 rounded-lg font-medium text-sm mb-4 flex items-center">
-                         <AlertCircle size={16} className="mr-2"/> Tentukan kategori untuk SETIAP pernyataan.
+                     <div className={`border p-3 rounded-lg font-medium text-sm mb-4 flex items-center transition-colors ${isIncomplete ? 'bg-red-50 border-red-200 text-red-700 animate-pulse' : 'bg-indigo-50 border-indigo-100 text-indigo-700'}`}>
+                         <AlertCircle size={16} className="mr-2"/> {isIncomplete ? `Lengkapi ${totalStatements - answeredCount} baris lagi agar soal tuntas!` : 'Tentukan kategori untuk SETIAP pernyataan.'}
                      </div>
                      <table className="w-full text-left border-collapse min-w-[500px] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <thead>
@@ -699,8 +746,10 @@
                            </tr>
                         </thead>
                         <tbody>
-                           {(currentQuestion.statements||[]).map((stmt, idx) => (
-                              <tr key={stmt.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                           {(currentQuestion.statements||[]).map((stmt, idx) => {
+                              const isRowMissing = isIncomplete && !catAnswer[stmt.id];
+                              return (
+                              <tr key={stmt.id} className={`border-b transition-colors ${isRowMissing ? 'bg-red-50 border-red-100' : 'border-slate-100 hover:bg-slate-50'}`}>
                                  <td className="py-4 px-4 text-slate-400 font-medium text-center align-top">{idx + 1}</td>
                                  <td className="py-4 px-4 text-slate-800 align-top"><div className="rich-text-content text-sm" dangerouslySetInnerHTML={{__html: stmt.text}}></div></td>
                                  <td className="py-4 px-4 text-center align-middle border-l bg-emerald-50/30 cursor-pointer" onClick={() => handleAnswerChange({...catAnswer, [stmt.id]: cat1Label})}>
@@ -710,7 +759,8 @@
                                     <input type="radio" checked={catAnswer[stmt.id] === cat2Label} onChange={() => {}} className="w-5 h-5 text-amber-600 cursor-pointer" />
                                  </td>
                               </tr>
-                           ))}
+                              );
+                           })}
                         </tbody>
                      </table>
                   </div>
@@ -818,11 +868,18 @@
              const handleFinalSubmit = async () => {
                setIsSubmitting(true);
                const result = calculateScore(activeSession.answers, examQuestions);
+               
+               // Menyisipkan data pelanggaran (Cheat Warnings) ke dalam detailed_results
+               const finalDetail = [...result.detailedResults];
+               if (activeSession.cheatWarnings > 0) {
+                   finalDetail.push({ qId: 'SYS_CHEATS', type: 'SYS', cheatCount: activeSession.cheatWarnings });
+               }
+
                const payload = {
                   participant_name: activeSession.participant.name, participant_school: activeSession.participant.school,
                   participant_nis: activeSession.participant.nis, participant_grade: activeSession.participant.grade,
                   token: activeSession.token, score: result.finalScore, start_time: activeSession.startTime,
-                  end_time: new Date().getTime(), detailed_results: result.detailedResults
+                  end_time: new Date().getTime(), detailed_results: finalDetail
                };
                
                try {
@@ -963,14 +1020,11 @@
 
           const AdminDashboard = () => {
              const [tempDuration, setTempDuration] = useState(examDuration);
-             const [tempFolder, setTempFolder] = useState(activeFolder);
              const [tempOrganizer, setTempOrganizer] = useState(organizerName);
              const [tempSchedule, setTempSchedule] = useState(scheduledTime);
              const [tempRandomQ, setTempRandomQ] = useState(isRandomQ);
              const [tempRandomOpt, setTempRandomOpt] = useState(isRandomOpt);
              const [isSavingSettings, setIsSavingSettings] = useState(false);
-
-             const folders = [...new Set([...questions.map(q => q.folder || 'Utama')])];
 
              const saveSettings = async () => {
                 setIsSavingSettings(true);
@@ -985,7 +1039,6 @@
 
                     await Promise.all([
                         upsertSetting('SYS_SETTING_DURATION', tempDuration.toString()),
-                        upsertSetting('SYS_SETTING_FOLDER', tempFolder),
                         upsertSetting('SYS_SETTING_ORGANIZER', tempOrganizer),
                         upsertSetting('SYS_SETTING_SCHEDULE', tempSchedule),
                         upsertSetting('SYS_SETTING_RANDOM_Q', tempRandomQ ? 'TRUE' : 'FALSE'),
@@ -993,7 +1046,6 @@
                     ]);
 
                     setExamDuration(tempDuration);
-                    setActiveFolder(tempFolder);
                     setOrganizerName(tempOrganizer);
                     setScheduledTime(tempSchedule);
                     setIsRandomQ(tempRandomQ);
@@ -1025,14 +1077,6 @@
                 <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 mb-8">
                     <h3 className="text-base font-semibold text-blue-900 mb-4 flex items-center"><Settings size={18} className="mr-2"/> Pengaturan Penerbitan Ujian</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
-                            <label className="block text-sm font-semibold text-blue-800 mb-1">Pilih Folder Ujian Aktif</label>
-                            <select value={tempFolder} onChange={e=>setTempFolder(e.target.value)} className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500">
-                                {folders.length === 0 && <option value="Utama">Utama</option>}
-                                {folders.map(f => <option key={f} value={f}>{f}</option>)}
-                            </select>
-                            <p className="text-xs text-blue-600 mt-1">Mengambil dari Bank Soal Anda.</p>
-                        </div>
                         <div>
                             <label className="block text-sm font-semibold text-blue-800 mb-1">Nama Penyelenggara</label>
                             <input type="text" value={tempOrganizer} onChange={e=>setTempOrganizer(e.target.value)} placeholder="Contoh: SD Negeri 1 Jakarta" className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500" />
@@ -1090,6 +1134,8 @@
           const AdminTokens = () => {
              const [isSaving, setIsSaving] = useState(false);
              const [showImport, setShowImport] = useState(false);
+             const [showManual, setShowManual] = useState(false);
+             const [manualData, setManualData] = useState({ name: '', school: '' });
              const [fileUploadError, setFileUploadError] = useState('');
              
              const [isMassEdit, setIsMassEdit] = useState(false);
@@ -1164,6 +1210,27 @@
                      finally { setIsSaving(false); e.target.value = null; }
                  };
                  reader.readAsText(file);
+             };
+
+             const handleManualAdd = async (e) => {
+                 e.preventDefault();
+                 setIsSaving(true);
+                 try {
+                     const db = await getSupabase();
+                     const newCode = `TKA-${Math.random().toString(36).substring(2,6).toUpperCase()}`;
+                     const { error } = await db.from('tokens').insert([{ 
+                         code: newCode, 
+                         status: 'AVAILABLE',
+                         participant_name: manualData.name.trim(),
+                         participant_school: manualData.school.trim(),
+                         generatedAt: new Date().toISOString()
+                     }]);
+                     if (error) throw error;
+                     setShowManual(false);
+                     setManualData({ name: '', school: '' });
+                     await fetchSupabaseData();
+                 } catch (err) { alert(err.message); }
+                 finally { setIsSaving(false); }
              };
 
              // --- Fitur Aksi Massal (Pilih Semua & Hapus) ---
@@ -1255,13 +1322,16 @@
                <AdminLayout title="Data Peserta & Token Ujian">
                  
                  <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-wrap gap-4 items-center justify-between">
-                    <div className="flex gap-2 w-full sm:w-auto">
+                    <div className="flex gap-2 w-full sm:w-auto flex-wrap">
                        <button onClick={() => setShowImport(true)} disabled={isSaving || isMassEdit} className="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 flex items-center shadow-sm">
                            <FileText size={16} className="mr-2"/> Unggah Data (Impor)
                        </button>
+                       <button onClick={() => setShowManual(true)} disabled={isSaving || isMassEdit} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center shadow-sm">
+                           <Plus size={16} className="mr-2"/> Tambah Manual
+                       </button>
                        {!isMassEdit ? (
-                           <button onClick={startMassEdit} disabled={isSaving || actualTokens.length === 0} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center shadow-sm">
-                               <Edit size={16} className="mr-2"/> Edit Semua Peserta
+                           <button onClick={startMassEdit} disabled={isSaving || actualTokens.length === 0} className="bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 flex items-center shadow-sm">
+                               <Edit size={16} className="mr-2"/> Edit Semua
                            </button>
                        ) : (
                            <div className="flex gap-2">
@@ -1302,6 +1372,7 @@
                             <div className="p-5 flex-1">
                                 <div className="bg-blue-50 text-blue-800 text-sm p-4 rounded-lg border border-blue-100 mb-5">
                                     <strong>Langkah 1:</strong> Unduh format templat resmi di bawah ini. <br/>
+                                    <strong>Langkah 2:</strong> Buka dengan Excel, isi 2 kolomnya (Nama & Sekolah), dan simpan kembali dalam format CSV.<br/>
                                     <button type="button" onClick={downloadTemplate} className="mt-3 bg-white border border-blue-300 text-blue-700 px-4 py-2 rounded-lg shadow-sm font-bold hover:bg-blue-100 transition-colors flex items-center">
                                         <FileText size={16} className="mr-2"/> Download Templat (CSV)
                                     </button>
@@ -1323,6 +1394,34 @@
                             </div>
                         </div>
                      </div>
+                 )}
+
+                 {/* Modal Tambah Manual */}
+                 {showManual && (
+                    <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col">
+                            <div className="bg-slate-50 border-b px-5 py-3 flex justify-between items-center">
+                                <h3 className="font-semibold text-slate-800 flex items-center"><User size={18} className="mr-2 text-blue-600"/> Tambah Peserta Manual</h3>
+                                <button type="button" onClick={()=>setShowManual(false)} className="text-slate-400 hover:text-slate-700"><X size={18}/></button>
+                            </div>
+                            <form onSubmit={handleManualAdd} className="p-5">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-1">Nama Peserta</label>
+                                        <input type="text" required value={manualData.name} onChange={e=>setManualData({...manualData, name: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"/>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-slate-700 mb-1">Asal Sekolah</label>
+                                        <input type="text" required value={manualData.school} onChange={e=>setManualData({...manualData, school: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"/>
+                                    </div>
+                                </div>
+                                <div className="mt-6 pt-4 border-t flex justify-end gap-2">
+                                    <button type="button" onClick={()=>setShowManual(false)} className="px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-lg">Batal</button>
+                                    <button type="submit" disabled={isSaving} className="px-4 py-2.5 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50">Simpan & Generate Token</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                  )}
 
                  {/* Tabel Data Peserta */}
@@ -1514,6 +1613,9 @@
                     if(error) throw error;
                  }
                  await fetchSupabaseData(); 
+                 
+                 // KUNCI POSISI FOLDER TETAP
+                 setFilterFolder(payload.folder || 'Utama'); 
                  setView('list');
                } catch (err) { alert(err.message); }
                finally { setIsSaving(false); }
@@ -1608,17 +1710,21 @@
                         <div className="space-y-4 mt-6 border-t pt-4">
                             <h3 className="font-semibold text-slate-800 text-sm">Pengaturan Tabel Kategori</h3>
                             
-                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                <label className="block text-slate-600 font-semibold text-xs mb-2">Format Label Kategori Kolom (Otomatis):</label>
-                                <select className="w-full p-2.5 rounded-lg border border-slate-300 bg-white font-medium text-slate-700 text-sm focus:ring-2 focus:ring-blue-500" onChange={(e) => {
-                                    const [cat1, cat2] = e.target.value.split('|');
-                                    const newStmts = formData.statements.map(s => ({...s, category1: cat1, category2: cat2, correctCategory: cat1}));
-                                    setFormData({...formData, statements: newStmts});
-                                }}>
-                                    <option value="Benar|Salah">Benar / Salah</option>
-                                    <option value="Sesuai|Tidak Sesuai">Sesuai / Tidak Sesuai</option>
-                                    <option value="Setuju|Tidak Setuju">Setuju / Tidak Setuju</option>
-                                </select>
+                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex gap-4 items-end">
+                                <div className="flex-1">
+                                    <label className="block text-slate-600 font-semibold text-xs mb-1">Kategori 1 (Kolom Kiri)</label>
+                                    <input type="text" value={formData.statements[0]?.category1 || 'Benar'} onChange={(e) => {
+                                        const newStmts = formData.statements.map(s => ({...s, category1: e.target.value}));
+                                        setFormData({...formData, statements: newStmts});
+                                    }} className="w-full p-2.5 rounded-lg border border-slate-300 bg-white font-medium text-slate-700 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Misal: Fakta"/>
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-slate-600 font-semibold text-xs mb-1">Kategori 2 (Kolom Kanan)</label>
+                                    <input type="text" value={formData.statements[0]?.category2 || 'Salah'} onChange={(e) => {
+                                        const newStmts = formData.statements.map(s => ({...s, category2: e.target.value}));
+                                        setFormData({...formData, statements: newStmts});
+                                    }} className="w-full p-2.5 rounded-lg border border-slate-300 bg-white font-medium text-slate-700 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Misal: Opini"/>
+                                </div>
                             </div>
 
                             {formData.statements.map((stmt, idx) => (
@@ -1674,7 +1780,7 @@
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-500 mb-1">Folder / Paket</label>
-                                    <input type="text" value={formData.folder || 'Utama'} disabled className="w-full p-2.5 border border-slate-300 rounded-lg bg-slate-100 text-sm font-bold text-slate-500 cursor-not-allowed focus:outline-none" title="Folder ditetapkan dari menu sebelumnya"/>
+                                    <input type="text" value={formData.folder || 'Utama'} onChange={e => setFormData({...formData, folder: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm font-bold focus:ring-2 focus:ring-blue-500"/>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-500 mb-1">Mata Pelajaran</label>
@@ -1793,6 +1899,22 @@
                 }
             };
 
+            const publishFolder = async (fname, e) => {
+                e.stopPropagation();
+                if(!confirm(`Terbitkan folder "${fname}" ke web peserta sekarang?`)) return;
+                setIsSaving(true);
+                try {
+                    const db = await getSupabase();
+                    const { data } = await db.from('tokens').select('code').eq('code', 'SYS_SETTING_FOLDER').maybeSingle();
+                    if (data) await db.from('tokens').update({ status: fname }).eq('code', 'SYS_SETTING_FOLDER');
+                    else await db.from('tokens').insert([{ code: 'SYS_SETTING_FOLDER', status: fname, generatedAt: new Date().toISOString() }]);
+                    
+                    setActiveFolder(fname);
+                    alert(`Folder "${fname}" berhasil diterbitkan dan siap diakses peserta!`);
+                } catch(err) { alert(err.message); }
+                finally { setIsSaving(false); }
+            };
+
             return (
               <AdminLayout title="Manajemen Folder Bank Soal">
                  <div className="mb-6">
@@ -1814,7 +1936,17 @@
                                 <i className="fas fa-folder-open text-3xl"></i>
                             </div>
                             <span className="font-bold text-slate-800 text-center text-base line-clamp-1">{fname}</span>
-                            <span className="text-xs font-semibold text-slate-500 mt-1.5 bg-slate-50 px-2.5 py-1 rounded-md border">{count} Butir Soal</span>
+                            <span className="text-xs font-semibold text-slate-500 mt-1.5 bg-slate-50 px-2.5 py-1 rounded-md border mb-2">{count} Butir Soal</span>
+                            
+                            {activeFolder === fname ? (
+                                <div className="mt-2 bg-emerald-100 text-emerald-700 text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center shadow-sm">
+                                    <CheckCircle size={12} className="mr-1"/> Diterbitkan
+                                </div>
+                            ) : (
+                                <button onClick={(e) => publishFolder(fname, e)} disabled={isSaving} className="mt-2 bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white text-[11px] font-bold px-3 py-1.5 rounded-full transition-colors flex items-center border border-slate-200 hover:border-blue-600">
+                                    <Cloud size={12} className="mr-1"/> Terbitkan Ini
+                                </button>
+                            )}
                         </div>
                     ))}
                  </div>
@@ -1943,10 +2075,17 @@
 
           const AdminReports = () => {
              const [filterSchool, setFilterSchool] = useState('Semua');
-             const [activeTab, setActiveTab] = useState('NILAI'); // 'NILAI' atau 'PELANGGARAN'
+             const [filterGrade, setFilterGrade] = useState('Semua');
+             const [activeTab, setActiveTab] = useState('NILAI'); 
              
              const schoolList = ['Semua', ...new Set(results.map(r => r.participant?.school).filter(Boolean))];
-             const filteredResults = filterSchool === 'Semua' ? results : results.filter(r => r.participant?.school === filterSchool);
+             const gradeList = ['Semua', ...new Set(results.map(r => r.participant?.grade).filter(Boolean))];
+             
+             const filteredResults = results.filter(r => {
+                 const matchSchool = filterSchool === 'Semua' || r.participant?.school === filterSchool;
+                 const matchGrade = filterGrade === 'Semua' || r.participant?.grade === filterGrade;
+                 return matchSchool && matchGrade;
+             });
 
              return (
                 <AdminLayout title="Cetak Laporan Dokumen (F4)">
@@ -1956,11 +2095,17 @@
                           <button onClick={() => setActiveTab('PELANGGARAN')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'PELANGGARAN' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Laporan Pelanggaran</button>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+                      <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto flex-wrap">
                           <div className="flex items-center w-full sm:w-auto">
-                             <label className="text-sm font-semibold text-slate-600 mr-2 flex items-center"><BarChart2 size={16} className="text-blue-500 mr-1.5"/> Filter Sekolah:</label>
-                             <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="border border-slate-300 bg-white rounded-lg p-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 flex-1 cursor-pointer outline-none min-w-[150px]">
+                             <label className="text-sm font-semibold text-slate-600 mr-2 flex items-center">Sekolah:</label>
+                             <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="border border-slate-300 bg-white rounded-lg p-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 cursor-pointer outline-none">
                                 {schoolList.map(s => <option key={s} value={s}>{s}</option>)}
+                             </select>
+                          </div>
+                          <div className="flex items-center w-full sm:w-auto">
+                             <label className="text-sm font-semibold text-slate-600 mr-2 flex items-center">Kelas:</label>
+                             <select value={filterGrade} onChange={e=>setFilterGrade(e.target.value)} className="border border-slate-300 bg-white rounded-lg p-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 cursor-pointer outline-none">
+                                {gradeList.map(s => <option key={s} value={s}>{s}</option>)}
                              </select>
                           </div>
                           <button onClick={() => window.print()} className="w-full sm:w-auto bg-slate-800 text-white px-5 py-2 rounded-lg font-semibold shadow-md hover:bg-slate-900 transition-colors text-sm flex items-center justify-center">
@@ -1978,7 +2123,7 @@
                       </div>
                       
                       <div className="mb-6 flex flex-col sm:flex-row justify-between text-sm sm:text-base font-medium text-slate-800 bg-slate-50 p-4 rounded border border-slate-200">
-                         <div>Filter Asal Sekolah: <span className="font-bold underline text-blue-700">{filterSchool}</span></div>
+                         <div>Sekolah: <span className="font-bold underline text-blue-700">{filterSchool}</span> | Kelas: <span className="font-bold underline text-blue-700">{filterGrade}</span></div>
                          <div>Total Peserta: <span className="font-bold">{filteredResults.length}</span> Siswa</div>
                       </div>
 
@@ -1986,7 +2131,7 @@
                          <thead className="bg-slate-100 text-slate-900 uppercase font-bold text-xs"><tr className="border-b border-slate-800">
                             <th className="border-r border-slate-800 py-2.5 px-3 text-center w-12">No</th>
                             <th className="border-r border-slate-800 py-2.5 px-3">Nama Peserta</th>
-                            <th className="border-r border-slate-800 py-2.5 px-3">Asal Sekolah</th>
+                            <th className="border-r border-slate-800 py-2.5 px-3 text-center w-20">Kelas</th>
                             {activeTab === 'NILAI' ? (
                                 <>
                                     <th className="border-r border-slate-800 py-2.5 px-3 text-center w-28">Durasi</th>
@@ -1995,19 +2140,19 @@
                             ) : (
                                 <>
                                     <th className="border-r border-slate-800 py-2.5 px-3 text-center w-28">Status Keamanan</th>
-                                    <th className="py-2.5 px-3 text-center w-36">Buka Tab / Keluar</th>
+                                    <th className="py-2.5 px-3 text-center w-36">Keluar Layar/Tab</th>
                                 </>
                             )}
                          </tr></thead>
                          <tbody>
                             {filteredResults.map((r, i) => {
                                const durSecs = Math.floor((r.endTime - r.startTime) / 1000);
-                               const cheats = r.detailed_results?.find(x => x.qId === 'SYS_CHEATS')?.cheatCount || 0;
+                               const cheats = r.detail?.detailedResults?.find(x => x.qId === 'SYS_CHEATS')?.cheatCount || 0;
                                return (
                                <tr key={i} className="border-b border-slate-800 text-slate-800 font-medium break-inside-avoid">
                                   <td className="border-r border-slate-800 py-2.5 px-3 text-center">{i+1}</td>
                                   <td className="border-r border-slate-800 py-2.5 px-3">{r.participant?.name}</td>
-                                  <td className="border-r border-slate-800 py-2.5 px-3">{r.participant?.school}</td>
+                                  <td className="border-r border-slate-800 py-2.5 px-3 text-center">{r.participant?.grade}</td>
                                   
                                   {activeTab === 'NILAI' ? (
                                       <>
@@ -2020,13 +2165,13 @@
                                               {cheats === 0 ? <span className="text-emerald-600 font-bold">AMAN</span> : <span className="text-red-600 font-bold">TERDETEKSI</span>}
                                           </td>
                                           <td className="py-2.5 px-3 text-center font-bold">
-                                              {cheats === 0 ? '-' : <span className="text-red-600">{cheats}x Keluar Layar</span>}
+                                              {cheats === 0 ? '-' : <span className="text-red-600">{cheats}x Keluar</span>}
                                           </td>
                                       </>
                                   )}
                                </tr>
                             )})}
-                            {filteredResults.length === 0 && <tr><td colSpan="5" className="text-center py-8 text-slate-500 font-medium">Tidak ada data untuk filter sekolah ini.</td></tr>}
+                            {filteredResults.length === 0 && <tr><td colSpan="5" className="text-center py-8 text-slate-500 font-medium">Tidak ada data untuk filter ini.</td></tr>}
                          </tbody>
                       </table>
                       <div className="mt-16 flex justify-end text-center text-slate-800 font-medium text-sm break-inside-avoid"><div><p className="mb-16">Mengetahui,<br/>Administrator Sistem</p><p className="font-bold underline">_____________________</p></div></div>
