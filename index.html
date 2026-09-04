@@ -498,56 +498,44 @@
             if (!activeSession || !activeSession.participant) { navigate('/login'); return null; }
             
             const startExam = async () => {
-              if (activeQuestions.length === 0) {
-                  alert("Sistem mendeteksi 0 soal. Pastikan Admin telah menerbitkan folder ujian yang berisi soal.");
+              const db = await getSupabase();
+              
+              const { data: latestFolderData } = await db.from('tokens').select('status').eq('code', 'SYS_SETTING_FOLDER').maybeSingle();
+              const latestFolder = latestFolderData ? latestFolderData.status : 'Utama';
+              const aFolder = String(latestFolder).trim().toLowerCase();
+              const finalActiveQuestions = questions.filter(q => String(q.folder || 'Utama').trim().toLowerCase() === aFolder);
+              
+              if (finalActiveQuestions.length === 0) {
+                  alert(`Sistem mengidentifikasi 0 soal pada folder: "${latestFolder}". Harap minta pengawas mengecek bank soal.`);
                   return;
               }
+              
               setIsStarting(true);
               try {
-                const db = await getSupabase();
-                // Kunci Token
                 const { error: updateErr } = await db.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
                 if(updateErr) throw updateErr;
 
-                let sessionQuestions = JSON.parse(JSON.stringify(activeQuestions));
-                
-                if (isRandomQ) {
-                    for (let i = sessionQuestions.length - 1; i > 0; i--) {
-                        const j = Math.floor(Math.random() * (i + 1));
-                        [sessionQuestions[i], sessionQuestions[j]] = [sessionQuestions[j], sessionQuestions[i]];
-                    }
-                }
-
-                if (isRandomOpt) {
-                    sessionQuestions = sessionQuestions.map(q => {
-                        if (q.type === 'MCQ' && q.options) {
-                            const originalOptions = [...q.options];
-                            const texts = originalOptions.map(o => o.text);
-                            for (let i = texts.length - 1; i > 0; i--) {
-                                const j = Math.floor(Math.random() * (i + 1));
-                                [texts[i], texts[j]] = [texts[j], texts[i]];
-                            }
-                            q.options = originalOptions.map((opt, idx) => ({ ...opt, text: texts[idx] }));
-                            
-                            const originalCorrectText = originalOptions.find(o => o.id === q.correctAnswer)?.text;
-                            const newCorrectOption = q.options.find(o => o.text === originalCorrectText);
-                            if (newCorrectOption) q.correctAnswer = newCorrectOption.id;
-                        }
-                        return q;
-                    });
-                }
-
-                // Kalkulasi Timer Absolut
                 const now = new Date().getTime();
-                let endTime = now + (examDuration * 60 * 1000);
-                if (scheduledTime) {
-                    const schedTime = new Date(scheduledTime).getTime();
-                    if (now >= schedTime) {
-                        endTime = schedTime + (examDuration * 60 * 1000); // Waktu habis ditarik kaku dari jadwal tayang
-                    } else {
-                        alert("Ujian belum dapat dimulai sesuai jadwal yang ditentukan.");
-                        setIsStarting(false);
-                        return;
+                
+                // Menghitung Sisa Waktu berdasarkan Jam Selesai
+                let durationLimit = 60 * 60 * 1000; 
+                if (examDate && examEndTime) {
+                    const endStr = `${examDate}T${examEndTime}`;
+                    const end = new Date(endStr).getTime();
+                    durationLimit = end - now;
+                }
+                
+                if (durationLimit <= 0) {
+                    alert("Waktu ujian sudah habis!"); 
+                    setIsStarting(false); 
+                    return;
+                }
+
+                let finalQuestions = [...finalActiveQuestions];
+                if (typeof isRandomQ !== 'undefined' && isRandomQ) {
+                    for (let i = finalQuestions.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [finalQuestions[i], finalQuestions[j]] = [finalQuestions[j], finalQuestions[i]];
                     }
                 }
 
@@ -555,8 +543,8 @@
                     ...prev, 
                     status: 'ACTIVE', 
                     startTime: now, 
-                    durationLimit: endTime - now, // Limit durasi yang sebenarnya tersisa
-                    sessionQuestions,
+                    durationLimit: durationLimit,
+                    sessionQuestions: finalQuestions,
                     examCurrentIndex: 0 
                 }));
                 navigate('/exam');
@@ -573,26 +561,14 @@
                        <FileText className="text-amber-500 mr-3" size={28} />
                        <h2 className="text-2xl font-bold text-slate-800">Petunjuk Ujian</h2>
                     </div>
+                    
                     <div className="prose prose-slate max-w-none mb-8">
-                       {(!isLoadingData && activeQuestions.length === 0) && (
-                           <div className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex flex-col sm:flex-row items-start border border-red-200 shadow-sm">
-                               <AlertCircle className="mr-3 flex-shrink-0 mt-0.5 mb-2 sm:mb-0" size={24}/>
-                               <div className="flex-1">
-                                   <strong className="text-lg block mb-1">Soal Belum Tersedia! (0 Soal)</strong>
-                                   <p className="text-sm mb-3">Sistem dikunci pada folder ujian: <b>"{activeFolder || 'Utama'}"</b>. Jika Admin sudah menerbitkan, silakan tekan tombol di bawah ini.</p>
-                                   <button onClick={() => fetchSupabaseData()} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center">
-                                       <i className="fas fa-sync-alt mr-2"></i> {isLoadingData ? 'Menyinkronkan...' : 'Sinkronisasi Data Terbaru'}
-                                   </button>
-                               </div>
-                           </div>
-                       )}
                        <ul className="space-y-4 text-slate-700 font-medium">
                          <li className="flex items-start">
                              <CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> 
-                             Waktu pengerjaan <strong>{examDuration} menit</strong> untuk <strong>{isLoadingData ? '...' : activeQuestions.length} soal</strong>.
+                             <span>Waktu pengerjaan dibatasi hingga <strong>Jam {examEndTime || '...'}</strong> untuk menyelesaikan <strong>{activeQuestions.length} soal</strong>.</span>
                          </li>
                          <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Jawaban akan <b>tersimpan otomatis</b> setiap Anda berpindah nomor.</li>
-                         <li className="flex items-start text-red-600 font-medium bg-red-50 p-4 rounded-lg border border-red-100"><AlertCircle className="text-red-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> Dilarang keras membuka tab/jendela lain. Sistem akan mencatat setiap pelanggaran yang terjadi.</li>
                        </ul>
                     </div>
                     <div className="bg-blue-50 p-5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-blue-100">
