@@ -108,6 +108,7 @@
         const Menu = ({size=24, className=""}) => <i className={`fas fa-bars ${className}`} style={{fontSize: size}}></i>;
         const Calculator = ({size=24, className=""}) => <i className={`fas fa-calculator ${className}`} style={{fontSize: size}}></i>;
         const Copy = ({size=24, className=""}) => <i className={`fas fa-copy ${className}`} style={{fontSize: size}}></i>;
+        const Upload = ({size=24, className=""}) => <i className={`fas fa-upload ${className}`} style={{fontSize: size}}></i>;
 
         const getSupabase = async () => {
             if (supabase) return supabase;
@@ -256,10 +257,12 @@
           const [questions, setQuestions] = useState([]);
           
           // State Pengaturan dari Database
-          const [examDuration, setExamDuration] = useState(60); 
+          const [examDate, setExamDate] = useState('');
+          const [examStartTime, setExamStartTime] = useState('');
+          const [examEndTime, setExamEndTime] = useState('');
+          const [appLogo, setAppLogo] = useState('');
           const [activeFolder, setActiveFolder] = useState('Utama');
           const [organizerName, setOrganizerName] = useState('Sekolah Dasar');
-          const [scheduledTime, setScheduledTime] = useState('');
           const [isRandomQ, setIsRandomQ] = useState(false);
           const [isRandomOpt, setIsRandomOpt] = useState(false);
 
@@ -293,17 +296,23 @@
                 
                 // Menerapkan pengaturan dari server secara independen
                 if(sRes.data) {
-                    const dToken = sRes.data.find(t => t.code === 'SYS_SETTING_DURATION');
-                    if (dToken) setExamDuration(parseInt(dToken.status) || 60);
+                    const dToken = sRes.data.find(t => t.code === 'SYS_SETTING_DATE');
+                    if (dToken) setExamDate(dToken.status);
+                    
+                    const stToken = sRes.data.find(t => t.code === 'SYS_SETTING_START_TIME');
+                    if (stToken) setExamStartTime(stToken.status);
+                    
+                    const etToken = sRes.data.find(t => t.code === 'SYS_SETTING_END_TIME');
+                    if (etToken) setExamEndTime(etToken.status);
+
+                    const lToken = sRes.data.find(t => t.code === 'SYS_SETTING_LOGO');
+                    if (lToken) setAppLogo(lToken.status);
 
                     const fToken = sRes.data.find(t => t.code === 'SYS_SETTING_FOLDER');
                     if (fToken) setActiveFolder(fToken.status);
 
                     const oToken = sRes.data.find(t => t.code === 'SYS_SETTING_ORGANIZER');
                     if (oToken) setOrganizerName(oToken.status);
-
-                    const sToken = sRes.data.find(t => t.code === 'SYS_SETTING_SCHEDULE');
-                    if (sToken) setScheduledTime(sToken.status);
 
                     const rqToken = sRes.data.find(t => t.code === 'SYS_SETTING_RANDOM_Q');
                     if (rqToken) setIsRandomQ(rqToken.status === 'TRUE');
@@ -397,7 +406,11 @@
               <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">
                 <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border-t-4 border-blue-600">
                   <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm"><Monitor size={32} /></div>
+                    {appLogo ? (
+                        <img src={appLogo} alt="Logo" className="h-16 mx-auto mb-4 object-contain rounded-lg p-1" />
+                    ) : (
+                        <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm"><Monitor size={32} /></div>
+                    )}
                     <h1 className="text-2xl font-black text-slate-800 tracking-tight">CBT Sukses TKA</h1>
                     <p className="text-slate-500 font-medium mt-1">{organizerName}</p>
                   </div>
@@ -925,12 +938,18 @@
 
           const AdminLogin = () => {
             const [u, setU] = useState(''); const [p, setP] = useState('');
+            const [showP, setShowP] = useState(false);
             return (
               <div className="min-h-screen bg-slate-900 flex justify-center items-center p-4">
                 <form onSubmit={(e)=>{e.preventDefault(); if(u==='admin'&&p==='bismillah'){setIsAdminLoggedIn(true); navigate('/admin/dashboard');}else alert('Salah');}} className="bg-white p-8 rounded-2xl max-w-sm w-full shadow-2xl">
-                   <div className="text-center mb-6"><div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3"><Settings size={24}/></div><h1 className="text-xl font-bold text-slate-800">Admin Panel</h1></div>
+                   <div className="text-center mb-6"><div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3"><Settings size={24}/></div><h1 className="text-xl font-bold text-slate-800">Admin</h1></div>
                    <input type="text" placeholder="Username" value={u} onChange={e=>setU(e.target.value)} className="w-full p-3 border border-slate-300 rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 text-sm" required/>
-                   <input type="password" placeholder="Password" value={p} onChange={e=>setP(e.target.value)} className="w-full p-3 border border-slate-300 rounded-lg mb-6 focus:ring-2 focus:ring-blue-500 text-sm" required/>
+                   <div className="relative mb-6">
+                       <input type={showP ? "text" : "password"} placeholder="Password" value={p} onChange={e=>setP(e.target.value)} className="w-full p-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" required/>
+                       <button type="button" onClick={()=>setShowP(!showP)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+                           <i className={`fas ${showP ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                       </button>
+                   </div>
                    <button type="submit" className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-sm transition-colors">Login</button>
                    <button type="button" onClick={()=>navigate('/')} className="w-full mt-4 text-xs text-slate-500 hover:text-slate-800 font-medium">Kembali ke Web Peserta</button>
                 </form>
@@ -995,12 +1014,31 @@
           };
 
           const AdminDashboard = () => {
-             const [tempDuration, setTempDuration] = useState(examDuration);
+             const [tempDate, setTempDate] = useState(examDate);
+             const [tempStartTime, setTempStartTime] = useState(examStartTime);
+             const [tempEndTime, setTempEndTime] = useState(examEndTime);
+             const [tempLogo, setTempLogo] = useState(appLogo);
              const [tempOrganizer, setTempOrganizer] = useState(organizerName);
-             const [tempSchedule, setTempSchedule] = useState(scheduledTime);
              const [tempRandomQ, setTempRandomQ] = useState(isRandomQ);
              const [tempRandomOpt, setTempRandomOpt] = useState(isRandomOpt);
              const [isSavingSettings, setIsSavingSettings] = useState(false);
+             const fileInputRef = useRef(null);
+
+             const handleLogoUpload = (e) => {
+                 const file = e.target.files[0];
+                 if (file) {
+                     // Peringatan ukuran file
+                     if (file.size > 2 * 1024 * 1024) {
+                         alert("Ukuran file gambar terlalu besar. Maksimal 2MB.");
+                         return;
+                     }
+                     const reader = new FileReader();
+                     reader.onloadend = () => {
+                         setTempLogo(reader.result);
+                     };
+                     reader.readAsDataURL(file);
+                 }
+             };
 
              const saveSettings = async () => {
                 setIsSavingSettings(true);
@@ -1014,16 +1052,20 @@
                     };
 
                     await Promise.all([
-                        upsertSetting('SYS_SETTING_DURATION', tempDuration.toString()),
+                        upsertSetting('SYS_SETTING_DATE', tempDate),
+                        upsertSetting('SYS_SETTING_START_TIME', tempStartTime),
+                        upsertSetting('SYS_SETTING_END_TIME', tempEndTime),
+                        upsertSetting('SYS_SETTING_LOGO', tempLogo),
                         upsertSetting('SYS_SETTING_ORGANIZER', tempOrganizer),
-                        upsertSetting('SYS_SETTING_SCHEDULE', tempSchedule),
                         upsertSetting('SYS_SETTING_RANDOM_Q', tempRandomQ ? 'TRUE' : 'FALSE'),
                         upsertSetting('SYS_SETTING_RANDOM_OPT', tempRandomOpt ? 'TRUE' : 'FALSE')
                     ]);
 
-                    setExamDuration(tempDuration);
+                    setExamDate(tempDate);
+                    setExamStartTime(tempStartTime);
+                    setExamEndTime(tempEndTime);
+                    setAppLogo(tempLogo);
                     setOrganizerName(tempOrganizer);
-                    setScheduledTime(tempSchedule);
                     setIsRandomQ(tempRandomQ);
                     setIsRandomOpt(tempRandomOpt);
                     alert("Pengaturan ujian berhasil disimpan!");
@@ -1053,17 +1095,40 @@
                 <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 mb-8">
                     <h3 className="text-base font-semibold text-blue-900 mb-4 flex items-center"><Settings size={18} className="mr-2"/> Pengaturan Penerbitan Ujian</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="md:col-span-2 flex flex-col sm:flex-row gap-4 items-start sm:items-center p-4 bg-white/60 rounded-xl border border-blue-200">
+                             <div>
+                                 <label className="block text-sm font-semibold text-blue-800 mb-2">Logo Penyelenggara</label>
+                                 <div className="flex items-center gap-4">
+                                     <div className="w-16 h-16 bg-white border border-slate-300 rounded-lg flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                                         {tempLogo ? <img src={tempLogo} alt="Preview Logo" className="w-full h-full object-contain" /> : <ImageIcon className="text-slate-300" size={24}/>}
+                                     </div>
+                                     <div className="flex flex-col gap-2">
+                                         <button onClick={() => fileInputRef.current.click()} className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs font-bold rounded hover:bg-blue-200 transition-colors flex items-center border border-blue-200">
+                                            <Upload size={14} className="mr-1"/> Unggah Gambar
+                                         </button>
+                                         <span className="text-[10px] text-slate-500 font-medium">Maks. 2MB (PNG/JPG)</span>
+                                         {tempLogo && <button onClick={() => setTempLogo('')} className="text-xs text-rose-500 hover:text-rose-700 text-left w-fit font-medium flex items-center"><X size={12} className="mr-0.5"/> Hapus Logo</button>}
+                                     </div>
+                                     <input type="file" ref={fileInputRef} onChange={handleLogoUpload} accept="image/*" className="hidden" />
+                                 </div>
+                             </div>
+                        </div>
                         <div>
                             <label className="block text-sm font-semibold text-blue-800 mb-1">Nama Penyelenggara</label>
                             <input type="text" value={tempOrganizer} onChange={e=>setTempOrganizer(e.target.value)} placeholder="Contoh: SD Negeri 1 Jakarta" className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500" />
                         </div>
                         <div>
-                            <label className="block text-sm font-semibold text-blue-800 mb-1">Jadwal Diterbitkan (Waktu Mulai)</label>
-                            <input type="datetime-local" value={tempSchedule} onChange={e=>setTempSchedule(e.target.value)} className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500" />
+                            <label className="block text-sm font-semibold text-blue-800 mb-1">Jadwal Diterbitkan (Tanggal)</label>
+                            <input type="date" value={tempDate} onChange={e=>setTempDate(e.target.value)} className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500" />
                         </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-blue-800 mb-1">Durasi Ujian (Menit)</label>
-                            <input type="number" value={tempDuration} onChange={e=>setTempDuration(parseInt(e.target.value)||60)} className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-bold bg-white focus:ring-2 focus:ring-blue-500" />
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-semibold text-blue-800 mb-1">Waktu Pelaksanaan Ujian</label>
+                            <div className="flex items-center gap-3 bg-white p-2.5 rounded-lg border border-blue-200 w-full sm:w-auto">
+                                <span className="text-sm font-medium text-slate-600 whitespace-nowrap">Mulai Jam</span>
+                                <input type="time" value={tempStartTime} onChange={e=>setTempStartTime(e.target.value)} className="p-1.5 rounded border border-slate-300 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
+                                <span className="text-sm font-medium text-slate-600 whitespace-nowrap mx-1">Sampai Jam</span>
+                                <input type="time" value={tempEndTime} onChange={e=>setTempEndTime(e.target.value)} className="p-1.5 rounded border border-slate-300 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
+                            </div>
                         </div>
                         
                         <div className="md:col-span-2 bg-white/60 p-4 rounded-xl border border-blue-200 flex flex-wrap gap-x-8 gap-y-3 items-center mt-2">
