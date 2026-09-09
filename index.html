@@ -1629,6 +1629,11 @@
             const [isSaving, setIsSaving] = useState(false);
             const [view, setView] = useState('folders'); 
             const [filterFolder, setFilterFolder] = useState('Utama');
+            
+            // Tambahan State untuk Impor Soal
+            const [showImport, setShowImport] = useState(false);
+            const [fileUploadError, setFileUploadError] = useState('');
+
             const defaultMCQ = { id: '', type: 'MCQ', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
             const defaultMCMA = { id: '', type: 'MCMA', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}, {id:3, text:''}], correctAnswers: [] };
             const defaultCAT = { id: '', type: 'CATEGORY', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'},{id:2, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
@@ -1636,6 +1641,81 @@
             const [formData, setFormData] = useState(defaultMCQ);
 
             useEffect(() => { triggerMathRender(); }, [view, questions, formData.type]);
+
+            // Fungsi Download Templat Excel Soal
+            const downloadTemplateSoal = () => {
+                 const csvContent = "Tipe Soal (MCQ),Mata Pelajaran,Pertanyaan,Bobot Poin,Opsi A,Opsi B,Opsi C,Opsi D,Kunci Jawaban (A/B/C/D)\nMCQ,Bahasa Indonesia,Apa ibu kota Indonesia?,1,Jakarta,Bandung,Surabaya,Medan,A\nMCQ,Matematika,Berapa 5+5?,1,8,9,10,11,C\n";
+                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                 const link = document.createElement("a");
+                 const url = URL.createObjectURL(blob);
+                 link.setAttribute("href", url);
+                 link.setAttribute("download", "Template_Soal_Pilihan_Ganda.csv");
+                 link.style.visibility = 'hidden';
+                 document.body.appendChild(link);
+                 link.click();
+                 document.body.removeChild(link);
+             };
+
+             // Fungsi Pemroses Unggah File Soal CSV
+             const handleFileUploadSoal = (e) => {
+                 const file = e.target.files[0];
+                 if (!file) return;
+                 
+                 setFileUploadError('');
+                 const reader = new FileReader();
+                 reader.onload = async (event) => {
+                     const text = event.target.result;
+                     const lines = text.split('\n').filter(line => line.trim() !== '');
+                     
+                     // Deteksi baris pertama apakah header atau bukan
+                     const startIndex = lines[0].toLowerCase().includes('tipe') ? 1 : 0;
+                     
+                     const payloads = [];
+                     for (let i = startIndex; i < lines.length; i++) {
+                         const delimiter = lines[i].includes(';') ? ';' : ',';
+                         const cols = lines[i].split(delimiter);
+                         
+                         // Validasi kolom minimal (butuh 9 kolom untuk MCQ)
+                         if (cols.length >= 9 && cols[0].trim().toUpperCase() === 'MCQ') {
+                              payloads.push({
+                                  id: `q${Date.now()}${Math.floor(Math.random()*1000)}`,
+                                  number: questions.length + payloads.length + 1,
+                                  type: 'MCQ',
+                                  folder: filterFolder, // Langsung masuk ke folder aktif
+                                  category: cols[1]?.replace(/["\r]/g, '').trim() || 'Umum',
+                                  question: cols[2]?.replace(/["\r]/g, '').trim() || '',
+                                  points: parseInt(cols[3]?.replace(/["\r]/g, '').trim()) || 1,
+                                  options: [
+                                      { id: 'A', text: cols[4]?.replace(/["\r]/g, '').trim() || '' },
+                                      { id: 'B', text: cols[5]?.replace(/["\r]/g, '').trim() || '' },
+                                      { id: 'C', text: cols[6]?.replace(/["\r]/g, '').trim() || '' },
+                                      { id: 'D', text: cols[7]?.replace(/["\r]/g, '').trim() || '' }
+                                  ],
+                                  correctAnswer: cols[8]?.replace(/["\r]/g, '').trim().toUpperCase() || 'A'
+                              });
+                         }
+                     }
+                     
+                     if (payloads.length === 0) {
+                          setFileUploadError('Tidak ada data soal valid atau format tidak sesuai templat.');
+                          e.target.value = null;
+                          return;
+                     }
+                     
+                     setIsSaving(true);
+                     try {
+                          const db = await getSupabase();
+                          const { error } = await db.from('questions').insert(payloads);
+                          if (error) throw error;
+                          
+                          setShowImport(false);
+                          await fetchSupabaseData();
+                          alert(`Berhasil mengimpor ${payloads.length} soal ke dalam folder "${filterFolder}"!`);
+                     } catch (err) { alert("Gagal Impor Soal: " + err.message); }
+                     finally { setIsSaving(false); e.target.value = null; }
+                 };
+                 reader.readAsText(file);
+             };
 
             const saveQuestion = async (e) => {
                e.preventDefault();
@@ -1866,9 +1946,14 @@
                      <button onClick={() => setView('folders')} className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors">
                        <ChevronLeft size={16} className="mr-1.5" /> Kembali ke Folder
                      </button>
-                     <button onClick={clearAllQuestions} disabled={isSaving} className="bg-white text-rose-600 border border-rose-200 hover:bg-rose-50 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors disabled:opacity-50">
-                       <Trash2 size={16} className="mr-1.5" /> Kosongkan Bank Soal
-                     </button>
+                     <div className="flex gap-2">
+                         <button onClick={() => setShowImport(true)} disabled={isSaving} className="bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors disabled:opacity-50 shadow-sm">
+                           <Upload size={16} className="mr-1.5" /> Unggah Soal (CSV)
+                         </button>
+                         <button onClick={clearAllQuestions} disabled={isSaving} className="bg-white text-rose-600 border border-rose-200 hover:bg-rose-50 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors disabled:opacity-50">
+                           <Trash2 size={16} className="mr-1.5" /> Kosongkan Bank Soal
+                         </button>
+                     </div>
                   </div>
 
                   <div className="space-y-4">
@@ -1916,6 +2001,43 @@
                   <button onClick={() => {setFormData({...defaultMCQ, folder: filterFolder}); setView('create');}} className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 z-40 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-2xl hover:bg-blue-700 hover:scale-105 transition-all focus:ring-4 focus:ring-blue-300" title="Tambah Soal Baru">
                       <Plus size={28} />
                   </button>
+
+                  {/* Modal Impor Soal Pilihan Ganda */}
+                  {showImport && (
+                     <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+                            <div className="bg-slate-50 border-b px-5 py-3 flex justify-between items-center">
+                                <h3 className="font-semibold text-slate-800 flex items-center"><Cloud size={18} className="mr-2 text-emerald-600"/> Unggah Soal (CSV)</h3>
+                                <button type="button" onClick={()=>setShowImport(false)} className="text-slate-400 hover:text-slate-700"><X size={18}/></button>
+                            </div>
+                            <div className="p-5 flex-1">
+                                <div className="bg-emerald-50 text-emerald-800 text-sm p-4 rounded-lg border border-emerald-100 mb-5">
+                                    <strong>Panduan Impor:</strong> <br/>
+                                    1. Impor ini khusus untuk soal <strong>Pilihan Ganda (A-D)</strong>.<br/>
+                                    2. Unduh templat di bawah, isi melalui Excel, lalu <i>Save As</i> berformat CSV.<br/>
+                                    3. Soal akan otomatis masuk ke folder <strong>"{filterFolder}"</strong>.
+                                    <button type="button" onClick={downloadTemplateSoal} className="mt-3 bg-white border border-emerald-300 text-emerald-700 px-4 py-2 rounded-lg shadow-sm font-bold hover:bg-emerald-100 transition-colors flex items-center">
+                                        <FileText size={16} className="mr-2"/> Download Templat Soal (CSV)
+                                    </button>
+                                </div>
+                                
+                                <div className="border-2 border-dashed border-slate-300 p-8 rounded-xl text-center bg-slate-50 hover:bg-slate-100 transition-colors relative group">
+                                    <input type="file" accept=".csv" onChange={handleFileUploadSoal} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                    <div className="flex flex-col items-center pointer-events-none">
+                                        <Cloud size={40} className="text-slate-400 mb-3 group-hover:text-emerald-500 transition-colors"/>
+                                        <span className="font-bold text-slate-700 text-base">Klik atau Tarik File CSV Soal ke sini</span>
+                                        <span className="text-sm text-slate-500 mt-1">Hanya menerima format .csv</span>
+                                    </div>
+                                </div>
+                                {fileUploadError && <p className="text-rose-500 text-sm mt-3 font-bold text-center bg-rose-50 p-2 rounded-lg border border-rose-100">{fileUploadError}</p>}
+                                {isSaving && <p className="text-emerald-600 text-sm mt-3 font-bold text-center animate-pulse">Sedang memproses unggahan soal...</p>}
+                            </div>
+                            <div className="p-4 border-t bg-slate-50 flex justify-end">
+                                <button type="button" onClick={()=>setShowImport(false)} className="px-5 py-2.5 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100">Batal / Tutup</button>
+                            </div>
+                        </div>
+                     </div>
+                  )}
                 </AdminLayout>
               );
             }
