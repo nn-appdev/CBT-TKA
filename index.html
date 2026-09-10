@@ -261,7 +261,6 @@
           const [examStartTime, setExamStartTime] = useState('');
           const [examEndTime, setExamEndTime] = useState('');
           const [appLogo, setAppLogo] = useState('');
-          const [activeFolder, setActiveFolder] = useState('Utama');
           const [organizerName, setOrganizerName] = useState('Sekolah Dasar');
           const [isRandomQ, setIsRandomQ] = useState(false);
           const [isRandomOpt, setIsRandomOpt] = useState(false);
@@ -275,49 +274,42 @@
 
           const navigate = (path) => { window.scrollTo(0,0); setCurrentRoute(path); };
 
-          // PENYELESAIAN MASALAH "0 SOAL": Memisahkan Query Settings dari Query Token
-          // Supabase memiliki limit default 1000 baris. Jika digabung, setting akan terpotong oleh data token siswa.
           const fetchSupabaseData = async () => {
              setIsLoadingData(true);
              try {
                 const db = await getSupabase();
-                const [qRes, tRes, sRes] = await Promise.all([
-                    db.from('questions').select('*').order('number', { ascending: true }),
-                    db.from('tokens').select('*').not('code', 'ilike', 'SYS_SETTING_%').order('generatedAt', { ascending: false }).limit(3000),
-                    db.from('tokens').select('*').like('code', 'SYS_SETTING_%')
+                const [qRes, tRes] = await Promise.all([
+                    db.from('questions').select('*'),
+                    db.from('tokens').select('*').order('generatedAt', { ascending: false })
                 ]);
                 
                 if(qRes.error) throw qRes.error;
                 if(tRes.error) throw tRes.error;
-                if(sRes.error) throw sRes.error;
                 
                 if(qRes.data) setQuestions(qRes.data);
                 if(tRes.data) setTokens(tRes.data);
                 
                 // Menerapkan pengaturan dari server secara independen
-                if(sRes.data) {
-                    const dToken = sRes.data.find(t => t.code === 'SYS_SETTING_DATE');
+                if(tRes.data) {
+                    const dToken = tRes.data.find(t => t.code === 'SYS_SETTING_DATE');
                     if (dToken) setExamDate(dToken.status);
                     
-                    const stToken = sRes.data.find(t => t.code === 'SYS_SETTING_START_TIME');
+                    const stToken = tRes.data.find(t => t.code === 'SYS_SETTING_START_TIME');
                     if (stToken) setExamStartTime(stToken.status);
                     
-                    const etToken = sRes.data.find(t => t.code === 'SYS_SETTING_END_TIME');
+                    const etToken = tRes.data.find(t => t.code === 'SYS_SETTING_END_TIME');
                     if (etToken) setExamEndTime(etToken.status);
 
-                    const lToken = sRes.data.find(t => t.code === 'SYS_SETTING_LOGO');
+                    const lToken = tRes.data.find(t => t.code === 'SYS_SETTING_LOGO');
                     if (lToken) setAppLogo(lToken.status);
 
-                    const fToken = sRes.data.find(t => t.code === 'SYS_SETTING_FOLDER');
-                    if (fToken) setActiveFolder(fToken.status);
-
-                    const oToken = sRes.data.find(t => t.code === 'SYS_SETTING_ORGANIZER');
+                    const oToken = tRes.data.find(t => t.code === 'SYS_SETTING_ORGANIZER');
                     if (oToken) setOrganizerName(oToken.status);
 
-                    const rqToken = sRes.data.find(t => t.code === 'SYS_SETTING_RANDOM_Q');
+                    const rqToken = tRes.data.find(t => t.code === 'SYS_SETTING_RANDOM_Q');
                     if (rqToken) setIsRandomQ(rqToken.status === 'TRUE');
 
-                    const roToken = sRes.data.find(t => t.code === 'SYS_SETTING_RANDOM_OPT');
+                    const roToken = tRes.data.find(t => t.code === 'SYS_SETTING_RANDOM_OPT');
                     if (roToken) setIsRandomOpt(roToken.status === 'TRUE');
                 }
 
@@ -349,11 +341,6 @@
              fetchSupabaseData(); 
           }, [isAdminLoggedIn]);
 
-          // Filter folder mutlak anti spasi dan anti kapital
-          const activeQuestions = isAdminLoggedIn 
-            ? questions 
-            : questions.filter(q => String(q.folder || 'Utama').trim().toLowerCase() === String(activeFolder || 'Utama').trim().toLowerCase());
-
           useEffect(() => {
             if (currentRoute === '/') {
               if (activeSession && activeSession.status === 'ACTIVE') navigate('/exam');
@@ -383,6 +370,24 @@
 
                 // Pastikan data terbaru ditarik agar folder & waktu 100% akurat sebelum masuk identity
                 await fetchSupabaseData();
+
+                // Validasi Jadwal Ujian
+                if (examDate && examStartTime && examEndTime) {
+                    const now = new Date();
+                    const startDate = new Date(`${examDate}T${examStartTime}`);
+                    const endDate = new Date(`${examDate}T${examEndTime}`);
+                    
+                    if (now < startDate) {
+                        setError(`Ujian belum dimulai. Jadwal: ${startDate.toLocaleString('id-ID')}`);
+                        setIsChecking(false);
+                        return;
+                    }
+                    if (now > endDate) {
+                        setError(`Ujian telah berakhir pada: ${endDate.toLocaleString('id-ID')}`);
+                        setIsChecking(false);
+                        return;
+                    }
+                }
 
                 // Menyimpan nama & sekolah PASTI dari token ke session
                 setActiveSession({ 
@@ -510,21 +515,18 @@
             const [isStarting, setIsStarting] = useState(false);
             if (!activeSession || !activeSession.participant) { navigate('/login'); return null; }
             
+            // Filter folder aktif untuk peserta (hanya soal yang diterbitkan = PUBLISHED)
+            const activeQuestionsForParticipant = questions.filter(q => q.status === 'PUBLISHED');
+            
             const startExam = async () => {
-              const db = await getSupabase();
-              
-              const { data: latestFolderData } = await db.from('tokens').select('status').eq('code', 'SYS_SETTING_FOLDER').maybeSingle();
-              const latestFolder = latestFolderData ? latestFolderData.status : 'Utama';
-              const aFolder = String(latestFolder).trim().toLowerCase();
-              const finalActiveQuestions = questions.filter(q => String(q.folder || 'Utama').trim().toLowerCase() === aFolder);
-              
-              if (finalActiveQuestions.length === 0) {
-                  alert(`Sistem mengidentifikasi 0 soal pada folder: "${latestFolder}". Harap minta pengawas mengecek bank soal.`);
+              if (activeQuestionsForParticipant.length === 0) {
+                  alert("Sistem mengidentifikasi 0 soal yang diterbitkan. Harap minta pengawas mengecek bank soal.");
                   return;
               }
               
               setIsStarting(true);
               try {
+                const db = await getSupabase();
                 const { error: updateErr } = await db.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
                 if(updateErr) throw updateErr;
 
@@ -544,7 +546,7 @@
                     return;
                 }
 
-                let finalQuestions = [...finalActiveQuestions];
+                let finalQuestions = [...activeQuestionsForParticipant];
                 if (typeof isRandomQ !== 'undefined' && isRandomQ) {
                     for (let i = finalQuestions.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
@@ -579,11 +581,17 @@
                        <ul className="space-y-4 text-slate-700 font-medium">
                          <li className="flex items-start">
                              <CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> 
-                             <span>Waktu pengerjaan dibatasi hingga <strong>Jam {examEndTime || '...'}</strong> untuk menyelesaikan <strong>{activeQuestions.length} soal</strong>.</span>
+                             <span>Waktu pengerjaan dibatasi hingga <strong>Jam {examEndTime || '...'}</strong> untuk menyelesaikan <strong>{activeQuestionsForParticipant.length} soal</strong>.</span>
                          </li>
                          <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Jawaban akan <b>tersimpan otomatis</b> setiap Anda berpindah nomor.</li>
                        </ul>
                     </div>
+                    
+                    <div className="mb-8 p-4 bg-red-50 text-red-700 rounded-lg border border-red-100 flex items-start">
+                        <AlertCircle className="text-red-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> 
+                        <span className="font-medium">Dilarang keras membuka tab/jendela lain. Sistem akan mencatat setiap pelanggaran yang terjadi.</span>
+                    </div>
+
                     <div className="bg-blue-50 p-5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-blue-100">
                        <div className="text-blue-900 text-center sm:text-left">
                          Peserta: <strong className="text-lg block sm:inline">{activeSession.participant.name}</strong> <br className="sm:hidden"/>({activeSession.participant.school})
@@ -593,7 +601,7 @@
                                <i className="fas fa-spinner fa-spin mr-2"></i> Memuat Data...
                            </button>
                        ) : (
-                           <button onClick={startExam} disabled={isStarting || activeQuestions.length === 0} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                           <button onClick={startExam} disabled={isStarting || activeQuestionsForParticipant.length === 0} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
                                {isStarting ? 'Memproses...' : 'Mulai Ujian'}
                            </button>
                        )}
@@ -645,7 +653,7 @@
               return () => clearInterval(timer);
             }, [activeSession]);
 
-            const examQuestions = activeSession?.sessionQuestions || activeQuestions;
+            const examQuestions = activeSession?.sessionQuestions || [];
             
             if (!activeSession || examQuestions.length === 0 || !examQuestions[examCurrentIndex]) return <div className="min-h-screen flex items-center justify-center font-medium text-slate-500">Memuat soal...</div>;
             
@@ -845,7 +853,7 @@
              const [showConfirm, setShowConfirm] = useState(false);
              if (!activeSession || activeSession.status !== 'ACTIVE') { navigate('/'); return null; }
 
-             const examQuestions = activeSession?.sessionQuestions || activeQuestions;
+             const examQuestions = activeSession?.sessionQuestions || [];
              const totalQ = examQuestions.length;
              const ansQ = examQuestions.filter(q => {
                 const ans = activeSession.answers[q.id];
@@ -1027,7 +1035,6 @@
              const handleLogoUpload = (e) => {
                  const file = e.target.files[0];
                  if (file) {
-                     // Peringatan ukuran file
                      if (file.size > 2 * 1024 * 1024) {
                          alert("Ukuran file gambar terlalu besar. Maksimal 2MB.");
                          return;
@@ -1545,6 +1552,17 @@
                 finally { setIsSaving(false); }
              };
 
+             // FIX: Mencegah Crash (Blank Screen) karena JSONB terkirim sebagai String
+             const getSafeDetailedResults = (raw) => {
+                 if (!raw) return [];
+                 if (Array.isArray(raw)) return raw;
+                 try {
+                     const parsed = JSON.parse(raw);
+                     if (Array.isArray(parsed)) return parsed;
+                 } catch(e) {}
+                 return [];
+             };
+
              return (
                <AdminLayout title="Hasil Ujian">
                  <div className="mb-5 flex justify-end">
@@ -1575,7 +1593,9 @@
                                     </thead>
                                     <tbody>
                                         {questions.map((q, i) => {
-                                            const d = selectedAnalysis.detail?.detailedResults?.find(x => x.qId === q.id);
+                                            const safeArray = getSafeDetailedResults(selectedAnalysis.detail?.detailedResults);
+                                            const d = safeArray.find(x => x.qId === q.id);
+                                            
                                             return (
                                                 <tr key={q.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                                                     <td className="p-4 text-center font-bold text-slate-500 border-r border-slate-100">{i + 1}</td>
@@ -1583,12 +1603,12 @@
                                                        <span className="text-[10px] font-bold px-2 py-1 bg-slate-200 text-slate-600 rounded uppercase tracking-wider">{q.type}</span>
                                                     </td>
                                                     <td className="p-4 text-slate-700 border-r border-slate-100">
-                                                        <div className="line-clamp-2 rich-text-content text-xs font-medium" dangerouslySetInnerHTML={{__html: q.question}}></div>
+                                                        <div className="line-clamp-2 rich-text-content text-xs font-medium" dangerouslySetInnerHTML={{__html: q.question || ''}}></div>
                                                     </td>
                                                     <td className="p-4 text-center font-semibold text-slate-600 border-r border-slate-100">{q.points} Poin</td>
                                                     <td className="p-4 text-center">
-                                                        {d?.isEmpty ? <span className="text-amber-600 font-bold bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 flex items-center justify-center text-xs"><AlertCircle size={14} className="mr-1"/> KOSONG</span> :
-                                                         d?.isCorrect ? <span className="text-emerald-600 font-bold bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 flex items-center justify-center text-xs"><CheckCircle size={14} className="mr-1"/> BENAR</span> :
+                                                        {(!d || d.isEmpty) ? <span className="text-amber-600 font-bold bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 flex items-center justify-center text-xs"><AlertCircle size={14} className="mr-1"/> KOSONG</span> :
+                                                         d.isCorrect ? <span className="text-emerald-600 font-bold bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 flex items-center justify-center text-xs"><CheckCircle size={14} className="mr-1"/> BENAR</span> :
                                                          <span className="text-red-600 font-bold bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 flex items-center justify-center text-xs"><X size={14} className="mr-1"/> SALAH</span>}
                                                     </td>
                                                 </tr>
@@ -1630,92 +1650,17 @@
             const [view, setView] = useState('folders'); 
             const [filterFolder, setFilterFolder] = useState('Utama');
             
-            // Tambahan State untuk Impor Soal
+            // State untuk fitur Impor Soal (CSV)
             const [showImport, setShowImport] = useState(false);
             const [fileUploadError, setFileUploadError] = useState('');
 
-            const defaultMCQ = { id: '', type: 'MCQ', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
-            const defaultMCMA = { id: '', type: 'MCMA', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}, {id:3, text:''}], correctAnswers: [] };
-            const defaultCAT = { id: '', type: 'CATEGORY', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'},{id:2, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
+            const defaultMCQ = { id: '', type: 'MCQ', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A', status: 'DRAFT' };
+            const defaultMCMA = { id: '', type: 'MCMA', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}, {id:3, text:''}], correctAnswers: [], status: 'DRAFT' };
+            const defaultCAT = { id: '', type: 'CATEGORY', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'},{id:2, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}], status: 'DRAFT' };
             
             const [formData, setFormData] = useState(defaultMCQ);
 
             useEffect(() => { triggerMathRender(); }, [view, questions, formData.type]);
-
-            // Fungsi Download Templat Excel Soal
-            const downloadTemplateSoal = () => {
-                 const csvContent = "Tipe Soal (MCQ),Mata Pelajaran,Pertanyaan,Bobot Poin,Opsi A,Opsi B,Opsi C,Opsi D,Kunci Jawaban (A/B/C/D)\nMCQ,Bahasa Indonesia,Apa ibu kota Indonesia?,1,Jakarta,Bandung,Surabaya,Medan,A\nMCQ,Matematika,Berapa 5+5?,1,8,9,10,11,C\n";
-                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                 const link = document.createElement("a");
-                 const url = URL.createObjectURL(blob);
-                 link.setAttribute("href", url);
-                 link.setAttribute("download", "Template_Soal_Pilihan_Ganda.csv");
-                 link.style.visibility = 'hidden';
-                 document.body.appendChild(link);
-                 link.click();
-                 document.body.removeChild(link);
-             };
-
-             // Fungsi Pemroses Unggah File Soal CSV
-             const handleFileUploadSoal = (e) => {
-                 const file = e.target.files[0];
-                 if (!file) return;
-                 
-                 setFileUploadError('');
-                 const reader = new FileReader();
-                 reader.onload = async (event) => {
-                     const text = event.target.result;
-                     const lines = text.split('\n').filter(line => line.trim() !== '');
-                     
-                     // Deteksi baris pertama apakah header atau bukan
-                     const startIndex = lines[0].toLowerCase().includes('tipe') ? 1 : 0;
-                     
-                     const payloads = [];
-                     for (let i = startIndex; i < lines.length; i++) {
-                         const delimiter = lines[i].includes(';') ? ';' : ',';
-                         const cols = lines[i].split(delimiter);
-                         
-                         // Validasi kolom minimal (butuh 9 kolom untuk MCQ)
-                         if (cols.length >= 9 && cols[0].trim().toUpperCase() === 'MCQ') {
-                              payloads.push({
-                                  id: `q${Date.now()}${Math.floor(Math.random()*1000)}`,
-                                  number: questions.length + payloads.length + 1,
-                                  type: 'MCQ',
-                                  folder: filterFolder, // Langsung masuk ke folder aktif
-                                  category: cols[1]?.replace(/["\r]/g, '').trim() || 'Umum',
-                                  question: cols[2]?.replace(/["\r]/g, '').trim() || '',
-                                  points: parseInt(cols[3]?.replace(/["\r]/g, '').trim()) || 1,
-                                  options: [
-                                      { id: 'A', text: cols[4]?.replace(/["\r]/g, '').trim() || '' },
-                                      { id: 'B', text: cols[5]?.replace(/["\r]/g, '').trim() || '' },
-                                      { id: 'C', text: cols[6]?.replace(/["\r]/g, '').trim() || '' },
-                                      { id: 'D', text: cols[7]?.replace(/["\r]/g, '').trim() || '' }
-                                  ],
-                                  correctAnswer: cols[8]?.replace(/["\r]/g, '').trim().toUpperCase() || 'A'
-                              });
-                         }
-                     }
-                     
-                     if (payloads.length === 0) {
-                          setFileUploadError('Tidak ada data soal valid atau format tidak sesuai templat.');
-                          e.target.value = null;
-                          return;
-                     }
-                     
-                     setIsSaving(true);
-                     try {
-                          const db = await getSupabase();
-                          const { error } = await db.from('questions').insert(payloads);
-                          if (error) throw error;
-                          
-                          setShowImport(false);
-                          await fetchSupabaseData();
-                          alert(`Berhasil mengimpor ${payloads.length} soal ke dalam folder "${filterFolder}"!`);
-                     } catch (err) { alert("Gagal Impor Soal: " + err.message); }
-                     finally { setIsSaving(false); e.target.value = null; }
-                 };
-                 reader.readAsText(file);
-             };
 
             const saveQuestion = async (e) => {
                e.preventDefault();
@@ -1726,7 +1671,6 @@
                  let payload = { ...formData };
                  if(!payload.id) { 
                     payload.id = `q${Date.now()}`;
-                    payload.number = questions.length + 1;
                     const { error } = await db.from('questions').insert([payload]);
                     if(error) throw error;
                  } else { 
@@ -1734,9 +1678,6 @@
                     if(error) throw error;
                  }
                  await fetchSupabaseData(); 
-                 
-                 // KUNCI POSISI FOLDER TETAP
-                 setFilterFolder(payload.folder || 'Utama'); 
                  setView('list');
                } catch (err) { alert(err.message); }
                finally { setIsSaving(false); }
@@ -1771,13 +1712,89 @@
                 setIsSaving(true);
                 try {
                    const db = await getSupabase();
-                   const newQ = { ...q, id: `q${Date.now()}`, number: questions.length + 1 };
+                   const newQ = { ...q, id: `q${Date.now()}` };
                    const { error } = await db.from('questions').insert([newQ]);
                    if (error) throw error;
                    await fetchSupabaseData();
                    alert("Soal berhasil diduplikat.");
                 } catch(err) { alert("Gagal menyalin soal: " + err.message); }
                 finally { setIsSaving(false); }
+             };
+
+             // --- FITUR UNDUH TEMPLAT DAN UNGGAH SOAL (CSV) ---
+             const downloadQuestionTemplate = () => {
+                 const csvContent = "Mata Pelajaran,Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci Jawaban,Bobot Nilai\nBahasa Indonesia,Apa ibukota Indonesia?,Jakarta,Bandung,Surabaya,Medan,A,1\nMatematika,1 + 1 = ?,1,2,3,4,B,1\n";
+                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                 const link = document.createElement("a");
+                 const url = URL.createObjectURL(blob);
+                 link.setAttribute("href", url);
+                 link.setAttribute("download", "Template_Bank_Soal_PG.csv");
+                 link.style.visibility = 'hidden';
+                 document.body.appendChild(link);
+                 link.click();
+                 document.body.removeChild(link);
+             };
+
+             const handleQuestionUpload = (e) => {
+                 const file = e.target.files[0];
+                 if (!file) return;
+                 
+                 setFileUploadError('');
+                 const reader = new FileReader();
+                 reader.onload = async (event) => {
+                     const text = event.target.result;
+                     const lines = text.split('\n').filter(line => line.trim() !== '');
+                     
+                     // Deteksi baris pertama apakah header atau bukan
+                     const startIndex = lines[0].toLowerCase().includes('pertanyaan') ? 1 : 0;
+                     
+                     const payloads = [];
+                     for (let i = startIndex; i < lines.length; i++) {
+                         // Memisahkan kolom dengan delimiter , atau ;
+                         const delimiter = lines[i].includes(';') ? ';' : ',';
+                         // Menggunakan regex untuk menangani koma di dalam tanda kutip (CSV standard)
+                         const cols = lines[i].split(new RegExp(`(?:^|${delimiter})("(?:[^"]|"")*"|[^${delimiter}]*)`)).filter(val => val !== undefined && val !== "").map(val => val.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
+                         
+                         // Minimal butuh 7 kolom: Mapel, Pertanyaan, Opsi A, B, C, D, Kunci
+                         if (cols.length >= 7) {
+                              payloads.push({
+                                  id: `q${Date.now()}${i}`, // Generate unique ID
+                                  type: 'MCQ',
+                                  folder: filterFolder, // Langsung masuk ke folder yang sedang dibuka
+                                  status: 'DRAFT',
+                                  category: cols[0] || 'Umum',
+                                  question: cols[1] || '',
+                                  options: [
+                                      { id: 'A', text: cols[2] || '' },
+                                      { id: 'B', text: cols[3] || '' },
+                                      { id: 'C', text: cols[4] || '' },
+                                      { id: 'D', text: cols[5] || '' }
+                                  ],
+                                  correctAnswer: (cols[6] || 'A').toUpperCase(),
+                                  points: parseInt(cols[7]) || 1
+                              });
+                         }
+                     }
+                     
+                     if (payloads.length === 0) {
+                          setFileUploadError('Tidak ada data valid di dalam file. Pastikan format sesuai templat.');
+                          e.target.value = null; // Reset input
+                          return;
+                     }
+                     
+                     setIsSaving(true);
+                     try {
+                          const db = await getSupabase();
+                          const { error } = await db.from('questions').insert(payloads);
+                          if (error) throw error;
+                          
+                          setShowImport(false);
+                          await fetchSupabaseData();
+                          alert(`Berhasil mengimpor ${payloads.length} soal ke folder ${filterFolder}!`);
+                     } catch (err) { alert("Gagal Impor: " + err.message); }
+                     finally { setIsSaving(false); e.target.value = null; }
+                 };
+                 reader.readAsText(file);
              };
 
             const renderOptionsEditor = () => {
@@ -1831,21 +1848,17 @@
                         <div className="space-y-4 mt-6 border-t pt-4">
                             <h3 className="font-semibold text-slate-800 text-sm">Pengaturan Tabel Kategori</h3>
                             
-                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 flex gap-4 items-end">
-                                <div className="flex-1">
-                                    <label className="block text-slate-600 font-semibold text-xs mb-1">Kategori 1 (Kolom Kiri)</label>
-                                    <input type="text" value={formData.statements[0]?.category1 || 'Benar'} onChange={(e) => {
-                                        const newStmts = formData.statements.map(s => ({...s, category1: e.target.value}));
-                                        setFormData({...formData, statements: newStmts});
-                                    }} className="w-full p-2.5 rounded-lg border border-slate-300 bg-white font-medium text-slate-700 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Misal: Fakta"/>
-                                </div>
-                                <div className="flex-1">
-                                    <label className="block text-slate-600 font-semibold text-xs mb-1">Kategori 2 (Kolom Kanan)</label>
-                                    <input type="text" value={formData.statements[0]?.category2 || 'Salah'} onChange={(e) => {
-                                        const newStmts = formData.statements.map(s => ({...s, category2: e.target.value}));
-                                        setFormData({...formData, statements: newStmts});
-                                    }} className="w-full p-2.5 rounded-lg border border-slate-300 bg-white font-medium text-slate-700 text-sm focus:ring-2 focus:ring-blue-500" placeholder="Misal: Opini"/>
-                                </div>
+                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <label className="block text-slate-600 font-semibold text-xs mb-2">Format Label Kategori Kolom (Otomatis):</label>
+                                <select className="w-full p-2.5 rounded-lg border border-slate-300 bg-white font-medium text-slate-700 text-sm focus:ring-2 focus:ring-blue-500" onChange={(e) => {
+                                    const [cat1, cat2] = e.target.value.split('|');
+                                    const newStmts = formData.statements.map(s => ({...s, category1: cat1, category2: cat2, correctCategory: cat1}));
+                                    setFormData({...formData, statements: newStmts});
+                                }}>
+                                    <option value="Benar|Salah">Benar / Salah</option>
+                                    <option value="Sesuai|Tidak Sesuai">Sesuai / Tidak Sesuai</option>
+                                    <option value="Setuju|Tidak Setuju">Setuju / Tidak Setuju</option>
+                                </select>
                             </div>
 
                             {formData.statements.map((stmt, idx) => (
@@ -1901,7 +1914,7 @@
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-500 mb-1">Folder / Paket</label>
-                                    <input type="text" value={formData.folder || 'Utama'} onChange={e => setFormData({...formData, folder: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm font-bold focus:ring-2 focus:ring-blue-500"/>
+                                    <input type="text" value={formData.folder || 'Utama'} disabled className="w-full p-2.5 border border-slate-300 rounded-lg bg-slate-100 text-sm font-bold text-slate-500 cursor-not-allowed focus:outline-none" title="Folder ditetapkan dari menu sebelumnya"/>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-500 mb-1">Mata Pelajaran</label>
@@ -1947,7 +1960,7 @@
                        <ChevronLeft size={16} className="mr-1.5" /> Kembali ke Folder
                      </button>
                      <div className="flex gap-2">
-                         <button onClick={() => setShowImport(true)} disabled={isSaving} className="bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors disabled:opacity-50 shadow-sm">
+                         <button onClick={() => setShowImport(true)} disabled={isSaving} className="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors disabled:opacity-50">
                            <Upload size={16} className="mr-1.5" /> Unggah Soal (CSV)
                          </button>
                          <button onClick={clearAllQuestions} disabled={isSaving} className="bg-white text-rose-600 border border-rose-200 hover:bg-rose-50 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors disabled:opacity-50">
@@ -1955,6 +1968,42 @@
                          </button>
                      </div>
                   </div>
+
+                  {/* Modal Impor Soal */}
+                  {showImport && (
+                     <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
+                            <div className="bg-slate-50 border-b px-5 py-3 flex justify-between items-center">
+                                <h3 className="font-semibold text-slate-800 flex items-center"><Cloud size={18} className="mr-2 text-emerald-600"/> Unggah Bank Soal (CSV)</h3>
+                                <button type="button" onClick={()=>setShowImport(false)} className="text-slate-400 hover:text-slate-700"><X size={18}/></button>
+                            </div>
+                            <div className="p-5 flex-1">
+                                <div className="bg-blue-50 text-blue-800 text-sm p-4 rounded-lg border border-blue-100 mb-5">
+                                    <strong>Langkah 1:</strong> Unduh format templat soal Pilihan Ganda (PG) di bawah ini. <br/>
+                                    <strong>Langkah 2:</strong> Buka dengan Excel, isi soal beserta opsi dan kunci jawabannya, lalu simpan kembali dalam format CSV.<br/>
+                                    <strong>Penting:</strong> Soal yang diunggah akan otomatis masuk ke folder: <strong>{filterFolder}</strong>
+                                    <button type="button" onClick={downloadQuestionTemplate} className="mt-3 bg-white border border-blue-300 text-blue-700 px-4 py-2 rounded-lg shadow-sm font-bold hover:bg-blue-100 transition-colors flex items-center">
+                                        <FileText size={16} className="mr-2"/> Download Templat Soal (CSV)
+                                    </button>
+                                </div>
+                                
+                                <div className="border-2 border-dashed border-slate-300 p-8 rounded-xl text-center bg-slate-50 hover:bg-slate-100 transition-colors relative group">
+                                    <input type="file" id="fileUploadSoal" accept=".csv" onChange={handleQuestionUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                    <div className="flex flex-col items-center pointer-events-none">
+                                        <Cloud size={40} className="text-slate-400 mb-3 group-hover:text-emerald-500 transition-colors"/>
+                                        <span className="font-bold text-slate-700 text-base">Klik atau Tarik File CSV ke sini</span>
+                                        <span className="text-sm text-slate-500 mt-1">Hanya menerima format .csv (Pilihan Ganda)</span>
+                                    </div>
+                                </div>
+                                {fileUploadError && <p className="text-rose-500 text-sm mt-3 font-bold text-center bg-rose-50 p-2 rounded-lg border border-rose-100">{fileUploadError}</p>}
+                                {isSaving && <p className="text-emerald-600 text-sm mt-3 font-bold text-center animate-pulse">Sedang mengunggah soal...</p>}
+                            </div>
+                            <div className="p-4 border-t bg-slate-50 flex justify-end">
+                                <button type="button" onClick={()=>setShowImport(false)} className="px-5 py-2.5 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100">Batal / Tutup</button>
+                            </div>
+                        </div>
+                     </div>
+                  )}
 
                   <div className="space-y-4">
                     {folderQuestions.map((q, idx) => (
@@ -1966,6 +2015,9 @@
                             <div className="flex flex-wrap gap-2 mb-3 items-center">
                               <span className="text-[10px] font-bold px-2 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded uppercase tracking-wider">{q.type}</span>
                               <span className="text-[10px] font-semibold text-slate-600 bg-slate-50 px-2 py-1 rounded border">{q.category}</span>
+                              <span className={`text-[10px] font-bold px-2 py-1 rounded border uppercase tracking-wider ${q.status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                  {q.status === 'PUBLISHED' ? 'Diterbitkan' : 'Draf'}
+                              </span>
                             </div>
                             
                             <div className="font-medium text-slate-800 text-sm sm:text-base mb-3 rich-text-content" dangerouslySetInnerHTML={{__html: q.question}}></div>
@@ -2001,43 +2053,6 @@
                   <button onClick={() => {setFormData({...defaultMCQ, folder: filterFolder}); setView('create');}} className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 z-40 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-2xl hover:bg-blue-700 hover:scale-105 transition-all focus:ring-4 focus:ring-blue-300" title="Tambah Soal Baru">
                       <Plus size={28} />
                   </button>
-
-                  {/* Modal Impor Soal Pilihan Ganda */}
-                  {showImport && (
-                     <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
-                            <div className="bg-slate-50 border-b px-5 py-3 flex justify-between items-center">
-                                <h3 className="font-semibold text-slate-800 flex items-center"><Cloud size={18} className="mr-2 text-emerald-600"/> Unggah Soal (CSV)</h3>
-                                <button type="button" onClick={()=>setShowImport(false)} className="text-slate-400 hover:text-slate-700"><X size={18}/></button>
-                            </div>
-                            <div className="p-5 flex-1">
-                                <div className="bg-emerald-50 text-emerald-800 text-sm p-4 rounded-lg border border-emerald-100 mb-5">
-                                    <strong>Panduan Impor:</strong> <br/>
-                                    1. Impor ini khusus untuk soal <strong>Pilihan Ganda (A-D)</strong>.<br/>
-                                    2. Unduh templat di bawah, isi melalui Excel, lalu <i>Save As</i> berformat CSV.<br/>
-                                    3. Soal akan otomatis masuk ke folder <strong>"{filterFolder}"</strong>.
-                                    <button type="button" onClick={downloadTemplateSoal} className="mt-3 bg-white border border-emerald-300 text-emerald-700 px-4 py-2 rounded-lg shadow-sm font-bold hover:bg-emerald-100 transition-colors flex items-center">
-                                        <FileText size={16} className="mr-2"/> Download Templat Soal (CSV)
-                                    </button>
-                                </div>
-                                
-                                <div className="border-2 border-dashed border-slate-300 p-8 rounded-xl text-center bg-slate-50 hover:bg-slate-100 transition-colors relative group">
-                                    <input type="file" accept=".csv" onChange={handleFileUploadSoal} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                    <div className="flex flex-col items-center pointer-events-none">
-                                        <Cloud size={40} className="text-slate-400 mb-3 group-hover:text-emerald-500 transition-colors"/>
-                                        <span className="font-bold text-slate-700 text-base">Klik atau Tarik File CSV Soal ke sini</span>
-                                        <span className="text-sm text-slate-500 mt-1">Hanya menerima format .csv</span>
-                                    </div>
-                                </div>
-                                {fileUploadError && <p className="text-rose-500 text-sm mt-3 font-bold text-center bg-rose-50 p-2 rounded-lg border border-rose-100">{fileUploadError}</p>}
-                                {isSaving && <p className="text-emerald-600 text-sm mt-3 font-bold text-center animate-pulse">Sedang memproses unggahan soal...</p>}
-                            </div>
-                            <div className="p-4 border-t bg-slate-50 flex justify-end">
-                                <button type="button" onClick={()=>setShowImport(false)} className="px-5 py-2.5 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100">Batal / Tutup</button>
-                            </div>
-                        </div>
-                     </div>
-                  )}
                 </AdminLayout>
               );
             }
@@ -2045,13 +2060,15 @@
             // Mode Default: Menampilkan Daftar Folder
             const folderStats = questions.reduce((acc, q) => {
                 const fname = q.folder || 'Utama';
-                acc[fname] = (acc[fname] || 0) + 1;
+                if (!acc[fname]) acc[fname] = { count: 0, published: 0 };
+                acc[fname].count += 1;
+                if (q.status === 'PUBLISHED') acc[fname].published += 1;
                 return acc;
             }, {});
             
             // Pastikan folder Utama selalu ada meskipun kosong
             if (!folderStats['Utama'] && questions.length === 0) {
-                folderStats['Utama'] = 0;
+                folderStats['Utama'] = { count: 0, published: 0 };
             }
 
             const handleCreateNewFolder = () => {
@@ -2062,20 +2079,27 @@
                 }
             };
 
-            const publishFolder = async (fname, e) => {
-                e.stopPropagation();
-                if(!confirm(`Terbitkan folder "${fname}" ke web peserta sekarang?`)) return;
+            const publishFolder = async (e, folderName) => {
+                e.stopPropagation(); // Mencegah klik folder saat klik tombol terbit
+                if (!confirm(`Terbitkan semua soal di folder "${folderName}" ke web peserta?`)) return;
                 setIsSaving(true);
                 try {
                     const db = await getSupabase();
-                    const { data } = await db.from('tokens').select('code').eq('code', 'SYS_SETTING_FOLDER').maybeSingle();
-                    if (data) await db.from('tokens').update({ status: fname }).eq('code', 'SYS_SETTING_FOLDER');
-                    else await db.from('tokens').insert([{ code: 'SYS_SETTING_FOLDER', status: fname, generatedAt: new Date().toISOString() }]);
                     
-                    setActiveFolder(fname);
-                    alert(`Folder "${fname}" berhasil diterbitkan dan siap diakses peserta!`);
-                } catch(err) { alert(err.message); }
-                finally { setIsSaving(false); }
+                    // 1. Drafkan semua soal (unpublish all)
+                    const { error: err1 } = await db.from('questions').update({ status: 'DRAFT' }).neq('id', 'dummy');
+                    if (err1) throw err1;
+                    
+                    // 2. Terbitkan hanya soal di folder yang dipilih
+                    const { error: err2 } = await db.from('questions').update({ status: 'PUBLISHED' }).eq('folder', folderName);
+                    if (err2) throw err2;
+                    
+                    await fetchSupabaseData();
+                    alert(`Soal di folder "${folderName}" berhasil diterbitkan ke peserta!`);
+                } catch(err) {
+                    alert("Gagal menerbitkan soal: " + err.message);
+                }
+                setIsSaving(false);
             };
 
             return (
@@ -2092,36 +2116,51 @@
                         <span className="font-bold text-sm">Buat Folder Baru</span>
                     </div>
 
-                    {Object.entries(folderStats).map(([fname, count]) => (
+                    {Object.entries(folderStats).map(([fname, stats]) => {
+                        const isPublished = stats.published > 0 && stats.published === stats.count && stats.count > 0;
+                        return (
                         <div key={fname} onClick={() => { setFilterFolder(fname); setView('list'); }} className="bg-white border border-slate-200 shadow-sm rounded-2xl p-6 flex flex-col items-center justify-center text-slate-700 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all min-h-[180px] group relative overflow-hidden">
                             <div className="absolute top-0 left-0 w-full h-1 bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            
+                            {isPublished && (
+                                <div className="absolute top-3 right-3 flex items-center bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">
+                                    <CheckCircle size={10} className="mr-1"/> Aktif
+                                </div>
+                            )}
+                            
                             <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-inner">
                                 <i className="fas fa-folder-open text-3xl"></i>
                             </div>
                             <span className="font-bold text-slate-800 text-center text-base line-clamp-1">{fname}</span>
-                            <span className="text-xs font-semibold text-slate-500 mt-1.5 bg-slate-50 px-2.5 py-1 rounded-md border mb-2">{count} Butir Soal</span>
+                            <span className="text-xs font-semibold text-slate-500 mt-1.5 bg-slate-50 px-2.5 py-1 rounded-md border">{stats.count} Butir Soal</span>
                             
-                            {activeFolder === fname ? (
-                                <div className="mt-2 bg-emerald-100 text-emerald-700 text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center shadow-sm">
-                                    <CheckCircle size={12} className="mr-1"/> Diterbitkan
-                                </div>
-                            ) : (
-                                <button onClick={(e) => publishFolder(fname, e)} disabled={isSaving} className="mt-2 bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white text-[11px] font-bold px-3 py-1.5 rounded-full transition-colors flex items-center border border-slate-200 hover:border-blue-600">
-                                    <Cloud size={12} className="mr-1"/> Terbitkan Ini
-                                </button>
-                            )}
+                            <button onClick={(e) => publishFolder(e, fname)} disabled={isSaving || stats.count === 0} className="mt-4 w-full bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-600 text-xs font-bold py-2 rounded-lg transition-colors border border-slate-200 hover:border-blue-600 flex items-center justify-center disabled:opacity-50 disabled:hover:bg-slate-100 disabled:hover:text-slate-600">
+                                <Cloud size={14} className="mr-1.5"/> Terbitkan Folder Ini
+                            </button>
                         </div>
-                    ))}
+                    )})}
                  </div>
               </AdminLayout>
             );
           };
 
           const AdminItemAnalysis = () => {
+            // FIX: Mencegah Crash (Blank Screen) karena JSONB terkirim sebagai String
+            const getSafeDetailedResults = (raw) => {
+                 if (!raw) return [];
+                 if (Array.isArray(raw)) return raw;
+                 try {
+                     const parsed = JSON.parse(raw);
+                     if (Array.isArray(parsed)) return parsed;
+                 } catch(e) {}
+                 return [];
+            };
+
             const analysisData = questions.map(q => {
               let correct = 0, wrong = 0, empty = 0;
               results.forEach(r => {
-                const d = r.detail?.detailedResults?.find(x => x.qId === q.id);
+                const safeArray = getSafeDetailedResults(r.detail?.detailedResults);
+                const d = safeArray.find(x => x.qId === q.id);
                 if (!d || d.isEmpty) empty++;
                 else if (d.isCorrect) correct++;
                 else wrong++;
@@ -2174,7 +2213,7 @@
                              <div className="text-xs text-slate-500 font-medium">{d.category}</div>
                           </td>
                           <td className="py-3 px-4 text-slate-800 max-w-xs truncate">
-                            <div dangerouslySetInnerHTML={{ __html: d.question }} className="line-clamp-1 rich-text-content text-xs" />
+                            <div dangerouslySetInnerHTML={{ __html: d.question || '' }} className="line-clamp-1 rich-text-content text-xs" />
                           </td>
                           <td className="py-3 px-4 text-center font-bold text-emerald-600">{d.correct}</td>
                           <td className="py-3 px-4 text-center font-bold text-red-600">{d.wrong}</td>
@@ -2202,7 +2241,7 @@
                         <thead className="bg-slate-50 text-slate-700 border-b">
                             <tr>
                                 <th className="p-3 border-r font-semibold sticky left-0 z-10 bg-slate-50 border-b">Nama Siswa</th>
-                                {questions.map((q, i) => <th key={q.id} className="p-3 text-center border-r font-semibold w-12 text-slate-500" title={q.question.replace(/<[^>]+>/g, '')}>Q{i+1}</th>)}
+                                {questions.map((q, i) => <th key={q.id} className="p-3 text-center border-r font-semibold w-12 text-slate-500" title={(q.question || '').replace(/<[^>]+>/g, '')}>Q{i+1}</th>)}
                                 <th className="p-3 text-center font-bold text-blue-600 bg-blue-50/50">Skor</th>
                             </tr>
                         </thead>
@@ -2211,13 +2250,14 @@
                                 <tr key={r.id} className="border-b hover:bg-slate-50">
                                     <td className="p-3 border-r font-medium text-slate-800 sticky left-0 z-10 bg-white border-b">{r.participant?.name}</td>
                                     {questions.map((q) => {
-                                        const d = r.detail?.detailedResults?.find(x => x.qId === q.id);
+                                        const safeArray = getSafeDetailedResults(r.detail?.detailedResults);
+                                        const d = safeArray.find(x => x.qId === q.id);
                                         let icon = <span className="text-slate-300">-</span>;
-                                        if (d) {
-                                            if (d.isEmpty) icon = <span className="text-amber-500 font-bold">O</span>;
-                                            else if (d.isCorrect) icon = <span className="text-emerald-500 font-bold">✓</span>;
-                                            else icon = <span className="text-red-500 font-bold">✗</span>;
-                                        }
+                                        
+                                        if (!d || d.isEmpty) icon = <span className="text-amber-500 font-bold">O</span>;
+                                        else if (d.isCorrect) icon = <span className="text-emerald-500 font-bold">✓</span>;
+                                        else icon = <span className="text-red-500 font-bold">✗</span>;
+                                        
                                         return <td key={q.id} className="p-3 text-center border-r bg-white">{icon}</td>;
                                     })}
                                     <td className="p-3 text-center font-bold text-blue-600 bg-blue-50/30">{r.score}</td>
