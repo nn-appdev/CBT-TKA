@@ -1054,9 +1054,9 @@
             const [showImport, setShowImport] = useState(false);
             const [fileError, setFileError] = useState('');
 
-            const defaultMCQ = { id: '', type: 'MCQ', folder: filterFolder, category: 'Bahasa Indonesia', points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
-            const defaultMCMA = { id: '', type: 'MCMA', folder: filterFolder, category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}], correctAnswers: [] };
-            const defaultCAT = { id: '', type: 'CATEGORY', folder: filterFolder, category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
+            const defaultMCQ = { id: '', type: 'MCQ', folder: filterFolder, points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
+            const defaultMCMA = { id: '', type: 'MCMA', folder: filterFolder, points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}], correctAnswers: [] };
+            const defaultCAT = { id: '', type: 'CATEGORY', folder: filterFolder, points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
             
             const [formData, setFormData] = useState(defaultMCQ);
 
