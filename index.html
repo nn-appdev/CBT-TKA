@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- KaTeX untuk Rumus Matematika -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
@@ -15,6 +16,8 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Fallback Import Supabase JS untuk mengatasi blokir AdBlock -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
@@ -48,7 +51,6 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_kzMgSC5JniUeJZGBGW1RIA_7aKyk0vh';
         let supabase = null;
 
-        // Icons
         const Monitor = ({size=24, className=""}) => <i className={`fas fa-desktop ${className}`} style={{fontSize: size}}></i>;
         const Key = ({size=24, className=""}) => <i className={`fas fa-key ${className}`} style={{fontSize: size}}></i>;
         const User = ({size=24, className=""}) => <i className={`fas fa-user ${className}`} style={{fontSize: size}}></i>;
@@ -110,7 +112,7 @@
                 if (file) {
                     const reader = new FileReader();
                     reader.onloadend = () => {
-                        const imgHTML = `<img src="${reader.result}" alt="Gambar" style="max-width: 100%; border-radius: 8px; margin: 8px 0;" /><br/>`;
+                        const imgHTML = `<img src="${reader.result}" alt="Gambar Sisipan" style="max-width: 100%; border-radius: 8px; margin: 8px 0;" /><br/>`;
                         document.execCommand('insertHTML', false, imgHTML);
                         handleInput();
                     };
@@ -229,8 +231,8 @@
                 
                 if(qRes.data) setQuestions(qRes.data);
                 if(tRes.data) {
-                    const actualTokens = tRes.data.filter(t => !t.code.startsWith('SYS_SETTING_'));
-                    setTokens(actualTokens);
+                    const actualTokens = tRes.data.filter(t => !t.code.startsWith('SYS_SETTING_') && !t.code.startsWith('SYS_FOLDER_'));
+                    setTokens(tRes.data); // Menyimpan semua token termasuk setting dan folder untuk keperluan AdminDashboard
                     
                     const fToken = tRes.data.find(t => t.code === 'SYS_SETTING_FOLDER');
                     if (fToken) setActiveFolder(fToken.status);
@@ -303,24 +305,37 @@
               setIsChecking(true); setError('');
               try {
                 const db = await getSupabase();
+                // Tarik data token spesifik
                 const { data: tokenObj, error: fetchErr } = await db.from('tokens').select('*').eq('code', inputToken.trim().toUpperCase()).single();
                 
-                if (fetchErr || !tokenObj || tokenObj.code.startsWith('SYS_SETTING_')) { setError('Token tidak valid atau tidak ditemukan.'); setIsChecking(false); return; }
+                if (fetchErr || !tokenObj || tokenObj.code.startsWith('SYS_SETTING_') || tokenObj.code.startsWith('SYS_FOLDER_')) { setError('Token tidak valid atau tidak ditemukan.'); setIsChecking(false); return; }
                 if (tokenObj.status === 'USED') { setError('Token sudah digunakan.'); setIsChecking(false); return; }
                 if (tokenObj.status === 'EXPIRED') { setError('Token kedaluwarsa.'); setIsChecking(false); return; }
                 if (tokenObj.status === 'BLOCKED') { setError('Token diblokir. Hubungi administrator.'); setIsChecking(false); return; }
 
-                if (examDate && startTimeStr && endTimeStr) {
-                    const now = new Date();
-                    const startDateTime = new Date(`${examDate}T${startTimeStr}:00`);
-                    const endDateTime = new Date(`${examDate}T${endTimeStr}:00`);
-                    if (now < startDateTime) {
-                        setError(`Ujian belum dimulai. Jadwal: ${examDate} pukul ${startTimeStr}`);
-                        setIsChecking(false); return;
-                    }
-                    if (now > endDateTime) {
-                        setError(`Waktu ujian telah berakhir pada ${examDate} pukul ${endTimeStr}`);
-                        setIsChecking(false); return;
+                // Sinkronisasi paksa Pengaturan (Tanggal & Waktu) saat Login
+                const { data: settingsData } = await db.from('tokens').select('code, status').like('code', 'SYS_SETTING_%');
+                if (settingsData) {
+                    const dtToken = settingsData.find(t => t.code === 'SYS_SETTING_DATE');
+                    const stToken = settingsData.find(t => t.code === 'SYS_SETTING_START_TIME');
+                    const etToken = settingsData.find(t => t.code === 'SYS_SETTING_END_TIME');
+                    
+                    const curDate = dtToken ? dtToken.status : examDate;
+                    const curStart = stToken ? stToken.status : startTimeStr;
+                    const curEnd = etToken ? etToken.status : endTimeStr;
+
+                    if (curDate && curStart && curEnd) {
+                        const now = new Date();
+                        const startDateTime = new Date(`${curDate}T${curStart}:00`);
+                        const endDateTime = new Date(`${curDate}T${curEnd}:00`);
+                        if (now < startDateTime) {
+                            setError(`Ujian belum dapat dimulai. Jadwal aktif pada: ${curDate} pukul ${curStart}`);
+                            setIsChecking(false); return;
+                        }
+                        if (now > endDateTime) {
+                            setError(`Waktu ujian telah berakhir pada ${curDate} pukul ${curEnd}`);
+                            setIsChecking(false); return;
+                        }
                     }
                 }
 
@@ -329,7 +344,7 @@
                     participant: { name: tokenObj.participant_name || 'Peserta', school: tokenObj.participant_school || organizerName, nis: '', grade: '6' }, 
                     answers: {}, flagged: [], status: 'SETUP' 
                 });
-                navigate('/instruction');
+                navigate('/identity');
               } catch (err) { setError(err.message || 'Gagal terhubung ke server.'); }
               setIsChecking(false);
             };
@@ -357,7 +372,7 @@
                       <label className="block text-sm font-bold text-slate-700 mb-2">Masukkan Token Ujian</label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Key className="h-5 w-5 text-slate-400" /></div>
-                        <input type="text" className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 uppercase tracking-widest font-bold text-slate-800 placeholder-slate-300 bg-slate-50 focus:bg-white" placeholder="Ketik Token..." value={inputToken} onChange={(e) => setInputToken(e.target.value.toUpperCase())} required disabled={isChecking || dbStatus === 'error'}/>
+                        <input type="text" className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 uppercase tracking-widest font-bold text-slate-800 placeholder-slate-300 bg-slate-50 focus:bg-white transition-colors" placeholder="Ketik Token..." value={inputToken} onChange={(e) => setInputToken(e.target.value.toUpperCase())} required disabled={isChecking || dbStatus === 'error'}/>
                       </div>
                       {error && <p className="mt-2 text-sm text-rose-500 font-medium flex items-center"><AlertCircle size={14} className="mr-1.5"/> {error}</p>}
                     </div>
@@ -376,7 +391,52 @@
             );
           };
 
-          const ParticipantIdentity = () => { return null; }; // Logic bypass, handled directly after login
+          const ParticipantIdentity = () => {
+            if (!activeSession || activeSession.status !== 'SETUP') { navigate('/login'); return null; }
+            const [formData, setFormData] = useState({ name: activeSession.participant?.name || '', school: activeSession.participant?.school || '', nis: '', grade: '6' });
+            
+            const handleSubmit = (e) => {
+              e.preventDefault();
+              setActiveSession(prev => ({ ...prev, participant: formData }));
+              navigate('/instruction');
+            };
+            
+            return (
+              <div className="min-h-screen bg-slate-50 py-10 px-4 flex justify-center items-center">
+                 <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl p-8 border-t-4 border-blue-600">
+                    <div className="flex items-center mb-6 pb-4 border-b border-slate-100">
+                      <User className="text-blue-600 mr-3" size={24} />
+                      <h2 className="text-xl font-bold text-slate-800">Identitas Diri</h2>
+                    </div>
+                    <form onSubmit={handleSubmit} className="space-y-5">
+                       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                         <div className="sm:col-span-2">
+                           <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap (Dari Token)</label>
+                           <input type="text" readOnly value={formData.name} className="w-full p-3 border border-slate-300 rounded-lg bg-slate-100 text-slate-500 font-semibold cursor-not-allowed"/>
+                         </div>
+                         <div className="sm:col-span-2">
+                           <label className="block text-sm font-medium text-slate-700 mb-1">Asal Sekolah (Dari Token)</label>
+                           <input type="text" readOnly value={formData.school} className="w-full p-3 border border-slate-300 rounded-lg bg-slate-100 text-slate-500 font-semibold cursor-not-allowed"/>
+                         </div>
+                         <div>
+                           <label className="block text-sm font-medium text-slate-700 mb-1">NIS/NISN</label>
+                           <input type="text" value={formData.nis} onChange={e=>setFormData({...formData, nis:e.target.value})} className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"/>
+                         </div>
+                         <div>
+                           <label className="block text-sm font-medium text-slate-700 mb-1">Kelas</label>
+                           <select value={formData.grade} onChange={e=>setFormData({...formData, grade:e.target.value})} className="w-full p-3 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500">
+                             {[1,2,3,4,5,6].map(g => <option key={g} value={g}>Kelas {g}</option>)}
+                           </select>
+                         </div>
+                       </div>
+                       <div className="pt-4 mt-6 border-t border-slate-100">
+                         <button type="submit" className="w-full py-3.5 bg-blue-600 text-white font-semibold text-lg rounded-xl shadow-md hover:bg-blue-700 transition-colors">Lanjutkan ke Petunjuk</button>
+                       </div>
+                    </form>
+                 </div>
+              </div>
+            );
+          };
 
           const ParticipantInstruction = () => {
             const [isStarting, setIsStarting] = useState(false);
@@ -386,9 +446,35 @@
               setIsStarting(true);
               try {
                 const db = await getSupabase();
+                // Tarik folder & durasi AKTIF saat ini untuk memastikan sinkronisasi sempurna
+                const { data: settingsData } = await db.from('tokens').select('code, status').like('code', 'SYS_SETTING_%');
+                let forceActiveFolder = activeFolder;
+                let forceDate = examDate;
+                let forceEndTime = endTimeStr;
+
+                if (settingsData) {
+                    const fToken = settingsData.find(t => t.code === 'SYS_SETTING_FOLDER');
+                    if (fToken) forceActiveFolder = fToken.status;
+
+                    const dToken = settingsData.find(t => t.code === 'SYS_SETTING_DATE');
+                    if (dToken) forceDate = dToken.status;
+
+                    const etToken = settingsData.find(t => t.code === 'SYS_SETTING_END_TIME');
+                    if (etToken) forceEndTime = etToken.status;
+                }
+
+                // Ambil ulang soal berdasarkan folder yang paling baru
+                const { data: freshQuestions } = await db.from('questions').select('*');
+                const syncedQuestions = freshQuestions ? freshQuestions.filter(q => String(q.folder || 'Utama').trim().toLowerCase() === String(forceActiveFolder || 'Utama').trim().toLowerCase()) : activeQuestions;
+
+                if (syncedQuestions.length === 0) {
+                    alert("Gagal Memulai: Tidak ada soal di dalam folder ujian yang aktif. Hubungi Pengawas!");
+                    setIsStarting(false); return;
+                }
+
                 await db.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
 
-                let sessionQuestions = JSON.parse(JSON.stringify(activeQuestions));
+                let sessionQuestions = JSON.parse(JSON.stringify(syncedQuestions));
                 if (isRandomQ) {
                     for (let i = sessionQuestions.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
@@ -413,16 +499,15 @@
                     });
                 }
 
-                let durationLimitMs = 60 * 60 * 1000;
-                if (examDate && endTimeStr) {
-                    const endDateTime = new Date(`${examDate}T${endTimeStr}:00`).getTime();
-                    durationLimitMs = Math.max(60000, endDateTime - new Date().getTime());
-                }
+                // Hitung batas waktu berdasarkan jam selesai dikurangi jam sekarang
+                const now = new Date().getTime();
+                const endDateTime = new Date(`${forceDate}T${forceEndTime}:00`).getTime();
+                const durationLimitMs = Math.max(60000, endDateTime - now); // Minimal 1 menit agar tidak minus
 
                 setActiveSession(prev => ({ 
                     ...prev, 
                     status: 'ACTIVE', 
-                    startTime: new Date().getTime(), 
+                    startTime: now, 
                     durationLimit: durationLimitMs, 
                     sessionQuestions,
                     examCurrentIndex: 0 
@@ -442,18 +527,27 @@
                        <h2 className="text-2xl font-bold text-slate-800">Petunjuk Ujian</h2>
                     </div>
                     <div className="prose prose-slate max-w-none mb-8">
-                       <ul className="space-y-4 text-slate-700 font-medium">
-                         <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Waktu pengerjaan disesuaikan hingga jam selesai untuk <b>{activeQuestions.length} soal</b>.</li>
-                         <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Jawaban akan <b>tersimpan otomatis</b> setiap Anda berpindah nomor.</li>
-                         <li className="flex items-start text-red-600 font-medium bg-red-50 p-4 rounded-lg border border-red-100"><AlertCircle className="text-red-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> Dilarang keras membuka tab/jendela lain. Sistem akan mencatat setiap pelanggaran yang terjadi.</li>
+                       <ul className="space-y-4 text-slate-700 font-medium list-none p-0">
+                         <li className="flex items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <CheckCircle className="text-emerald-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> 
+                            <div>Waktu pengerjaan disesuaikan dengan tenggat waktu jam selesai yang ditentukan pengawas. Sistem akan otomatis menutup ujian saat waktu habis.</div>
+                         </li>
+                         <li className="flex items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <CheckCircle className="text-emerald-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> 
+                            <div>Jawaban Anda akan <b>tersimpan secara otomatis</b> setiap kali Anda memencet pilihan jawaban atau berpindah nomor soal.</div>
+                         </li>
+                         <li className="flex items-start text-red-600 font-medium bg-red-50 p-4 rounded-lg border border-red-100 mt-5">
+                            <AlertCircle className="text-red-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> 
+                            <div>Sistem Ujian Terkunci (Anti-Curang): Dilarang keras membuka tab/jendela lain, memperkecil jendela browser, atau keluar dari aplikasi. Sistem akan mendeteksi dan mencatat setiap pelanggaran yang terjadi sebagai indikasi kecurangan!</div>
+                         </li>
                        </ul>
                     </div>
                     <div className="bg-blue-50 p-5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-blue-100">
                        <div className="text-blue-900 text-center sm:text-left">
                          Peserta: <strong className="text-lg block sm:inline">{activeSession.participant.name}</strong> <br className="sm:hidden"/>({activeSession.participant.school})
                        </div>
-                       <button onClick={startExam} disabled={isStarting || activeQuestions.length === 0} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50">
-                           {isStarting ? 'Memproses...' : 'Mulai Ujian'}
+                       <button onClick={startExam} disabled={isStarting} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50">
+                           {isStarting ? 'Mempersiapkan Soal...' : 'Mulai Ujian'}
                        </button>
                     </div>
                  </div>
@@ -502,7 +596,7 @@
               return () => clearInterval(timer);
             }, [activeSession]);
 
-            const examQuestions = activeSession?.sessionQuestions || activeQuestions;
+            const examQuestions = activeSession?.sessionQuestions || [];
             if (!activeSession || examQuestions.length === 0 || !examQuestions[examCurrentIndex]) return <div className="min-h-screen flex items-center justify-center font-medium text-slate-500">Memuat soal...</div>;
             
             const currentQuestion = examQuestions[examCurrentIndex];
@@ -591,6 +685,7 @@
                       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-8 flex-1 flex flex-col">
                          <div className="flex flex-wrap gap-2 justify-between items-center mb-6 pb-4 border-b">
                             <h2 className="text-xl font-bold text-slate-800">SOAL NO. {examCurrentIndex + 1}</h2>
+                            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">{currentQuestion.category}</span>
                          </div>
                          <div className="flex-1 overflow-y-auto pr-1 pb-8">
                             <div className="text-base sm:text-lg text-slate-800 leading-relaxed font-medium mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: currentQuestion.question || '' }} />
@@ -811,7 +906,7 @@
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                     <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Peserta Selesai</div><div className="text-2xl font-bold">{results.length}</div></div>
                     <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Total Soal</div><div className="text-2xl font-bold">{questions.length}</div></div>
-                    <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Token Tersedia</div><div className="text-2xl font-bold">{tokens.filter(t=>t.status==='AVAILABLE').length}</div></div>
+                    <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Token Tersedia</div><div className="text-2xl font-bold">{tokens.filter(t=>t.status==='AVAILABLE' && !t.code.startsWith('SYS_')).length}</div></div>
                 </div>
 
                 <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 mb-8">
@@ -849,7 +944,7 @@
              const [editingToken, setEditingToken] = useState(null);
              const [fileUploadError, setFileUploadError] = useState('');
              
-             const actualTokens = tokens.filter(t => !t.code.startsWith('SYS_SETTING_'));
+             const actualTokens = tokens.filter(t => !t.code.startsWith('SYS_SETTING_') && !t.code.startsWith('SYS_FOLDER_'));
 
              const downloadTemplate = () => {
                  const csvContent = "Nama Murid,Asal Sekolah\nBudi Santoso,SDN 1\nSiti Aminah,SDN 2\n";
@@ -1025,7 +1120,7 @@
             useEffect(() => { triggerMathRender(); }, [view, questions, formData.type]);
 
             const downloadTemplate = () => {
-                const csvContent = "Mapel,Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci\nUmum,Ibu kota Indonesia adalah?,Jakarta,Bandung,Surabaya,Medan,A\n";
+                const csvContent = "Topik,Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci\nUmum,Ibu kota Indonesia adalah?,Jakarta,Bandung,Surabaya,Medan,A\n";
                 const link = document.createElement("a");
                 link.setAttribute("href", URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })));
                 link.setAttribute("download", "Template_Bank_Soal.csv");
@@ -1039,7 +1134,9 @@
                 reader.onload = async (event) => {
                     const lines = event.target.result.split('\n').filter(l => l.trim() !== '');
                     const payloads = [];
-                    for (let i = (lines[0].toLowerCase().includes('mapel') ? 1 : 0); i < lines.length; i++) {
+                    const startIndex = lines[0].toLowerCase().includes('topik') || lines[0].toLowerCase().includes('mapel') ? 1 : 0;
+                    
+                    for (let i = startIndex; i < lines.length; i++) {
                         const cols = lines[i].split(',');
                         if (cols.length >= 7) {
                             payloads.push({
@@ -1076,14 +1173,18 @@
                setIsSaving(true);
                try {
                  const db = await getSupabase();
-                 let payload = { ...formData }; // Menyimpan berdasarkan pilihan form, bukan paksaan filterFolder
+                 let payload = { ...formData };
                  if(!payload.id) { 
                     payload.id = `q${Date.now()}`;
                     await db.from('questions').insert([payload]);
                  } else { 
                     await db.from('questions').update(payload).eq('id', payload.id);
                  }
-                 fetchSupabaseData(); setView('list');
+                 await fetchSupabaseData();
+                 
+                 // Pindah view dan ganti filterFolder agar menyesuaikan dengan yang barusan dipilih
+                 setFilterFolder(payload.folder);
+                 setView('list');
                } catch (err) { alert(err.message); }
                finally { setIsSaving(false); }
             };
@@ -1102,6 +1203,48 @@
                     setActiveFolder(fname);
                     alert(`Folder "${fname}" berhasil diterbitkan ke peserta!`);
                 } catch(e) { alert("Gagal terbit: " + e.message); }
+            };
+
+            const folderStats = questions.reduce((acc, q) => { 
+                const f = q.folder || 'Utama'; 
+                acc[f] = (acc[f] || 0) + 1; 
+                return acc; 
+            }, {});
+            
+            // Tambahkan folder kosong dari database (tokens)
+            tokens.forEach(t => {
+                if (t.code && t.code.startsWith('SYS_FOLDER_') && folderStats[t.status] === undefined) {
+                    folderStats[t.status] = 0;
+                }
+            });
+
+            if (folderStats['Utama'] === undefined) {
+                folderStats['Utama'] = 0;
+            }
+
+            const handleCreateNewFolder = async () => {
+                const fname = prompt("Masukkan Nama Folder Baru:\n(Contoh: Tryout 1, STS Ganjil)");
+                if (fname && fname.trim() !== '') {
+                    const folderName = fname.trim();
+                    setIsSaving(true);
+                    try {
+                        const db = await getSupabase();
+                        // Simpan nama folder ke tabel tokens sebagai data permanen
+                        await db.from('tokens').insert([{ 
+                            code: `SYS_FOLDER_${Date.now()}`, 
+                            status: folderName, 
+                            generatedAt: new Date().toISOString(),
+                            participant_name: 'SYSTEM_FOLDER' 
+                        }]);
+                        
+                        await fetchSupabaseData(); // Refresh data untuk mendapatkan folder baru
+                        setFilterFolder(folderName);
+                        setView('list');
+                    } catch (e) {
+                        alert("Gagal menyimpan folder: " + e.message);
+                    }
+                    setIsSaving(false);
+                }
             };
 
             const renderOptionsEditor = () => {
@@ -1194,7 +1337,7 @@
             };
 
             if (view === 'create' || view === 'edit') {
-               const availableFolders = [...new Set([...questions.map(q => q.folder || 'Utama'), filterFolder, 'Utama'])];
+               const availableFolders = [...new Set([...Object.keys(folderStats), filterFolder, 'Utama'])];
 
                return (
                  <AdminLayout title={view === 'create' ? "Buat Soal Baru" : "Edit Soal"}>
@@ -1257,14 +1400,14 @@
               return (
                 <AdminLayout title={`Folder: ${filterFolder}`}>
                   <div className="mb-6 flex gap-3">
-                     <button onClick={() => setView('folders')} className="border px-4 py-2 rounded-lg text-sm font-semibold">Kembali</button>
-                     <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><Upload size={16} className="mr-2"/> Unggah Soal (CSV)</button>
+                     <button onClick={() => setView('folders')} className="border px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors">Kembali ke Folder</button>
+                     <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center hover:bg-emerald-700 transition-colors"><Upload size={16} className="mr-2"/> Unggah Soal (CSV)</button>
                   </div>
                   {showImport && (
                      <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
-                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Impor Soal CSV</h3><button onClick={()=>setShowImport(false)}><X size={18}/></button></div>
-                            <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText size={16} className="mr-2"/> Download Templat Soal</button>
+                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Impor Soal CSV</h3><button onClick={()=>setShowImport(false)} className="hover:text-rose-500"><X size={18}/></button></div>
+                            <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 hover:bg-blue-100 transition-colors px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText size={16} className="mr-2"/> Download Templat Soal</button>
                             <input type="file" accept=".csv" onChange={handleUploadSoal} className="w-full p-4 border-2 border-dashed rounded-xl"/>
                             {fileError && <p className="text-rose-500 text-xs mt-2">{fileError}</p>}
                         </div>
@@ -1310,27 +1453,19 @@
               );
             }
 
-            const folderStats = questions.reduce((acc, q) => { const f = q.folder || 'Utama'; acc[f] = (acc[f] || 0) + 1; return acc; }, {});
-            if (!folderStats['Utama']) folderStats['Utama'] = 0;
-
-            const createFolder = () => {
-                const fname = prompt("Nama Folder Baru:");
-                if (fname) { setFilterFolder(fname.trim()); setView('list'); }
-            };
-
             return (
               <AdminLayout title="Manajemen Bank Soal">
                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                    <div onClick={createFolder} className="bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer min-h-[160px]">
+                    <div onClick={handleCreateNewFolder} className="bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer min-h-[160px] hover:bg-emerald-100 transition-colors">
                         <Plus size={24} className="text-emerald-600 mb-2"/><span className="font-bold text-sm text-emerald-700">Buat Folder Baru</span>
                     </div>
                     {Object.entries(folderStats).map(([fname, count]) => (
-                        <div key={fname} className="bg-white border rounded-2xl p-6 flex flex-col justify-between shadow-sm min-h-[160px]">
+                        <div key={fname} className="bg-white border rounded-2xl p-6 flex flex-col justify-between shadow-sm min-h-[160px] hover:border-blue-400 transition-colors group">
                             <div onClick={() => { setFilterFolder(fname); setView('list'); }} className="cursor-pointer">
-                                <h4 className="font-bold text-lg text-slate-800">{fname}</h4>
+                                <h4 className="font-bold text-lg text-slate-800 group-hover:text-blue-600 transition-colors">{fname}</h4>
                                 <p className="text-xs text-slate-500 mt-1">{count} Soal</p>
                             </div>
-                            <button onClick={() => publishFolder(fname)} className={`mt-4 w-full py-2 rounded-lg text-xs font-bold ${activeFolder.toLowerCase() === fname.toLowerCase() ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                            <button onClick={() => publishFolder(fname)} className={`mt-4 w-full py-2 rounded-lg text-xs font-bold transition-colors ${activeFolder.toLowerCase() === fname.toLowerCase() ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
                                 {activeFolder.toLowerCase() === fname.toLowerCase() ? 'Sedang Diterbitkan' : 'Terbitkan Folder Ini'}
                             </button>
                         </div>
@@ -1372,8 +1507,8 @@
             return (
               <AdminLayout title="Analisis Butir Soal">
                 <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
-                   <h3 className="font-bold text-slate-800 text-lg mb-2">Statistik Responden</h3>
-                   <p className="text-slate-600 text-sm">Total peserta ujian selesai: <strong className="text-emerald-600">{results.length} Siswa</strong></p>
+                   <h3 className="font-bold text-slate-800 text-lg mb-2">Total Responden Ujian</h3>
+                   <p className="text-slate-600 text-sm">Data diolah berdasarkan hasil ujian yang tersubmit. <br/><strong className="text-emerald-600">{results.length} Peserta</strong></p>
                 </div>
                 
                 <div className="bg-white rounded-xl shadow-sm border overflow-x-auto mb-8">
@@ -1381,41 +1516,98 @@
                     <thead className="bg-slate-50 text-slate-700 font-semibold border-b">
                       <tr>
                         <th className="py-4 px-4 text-center">No</th>
-                        <th className="py-4 px-4">Tipe</th>
-                        <th className="py-4 px-4">Pertanyaan</th>
+                        <th className="py-4 px-4">Tipe Pertanyaan</th>
                         <th className="py-4 px-4 text-center text-emerald-600">Benar</th>
                         <th className="py-4 px-4 text-center text-red-600">Salah</th>
                         <th className="py-4 px-4 text-center text-amber-600">Kosong</th>
                         <th className="py-4 px-4 text-center">% Benar</th>
-                        <th className="py-4 px-4">Kesulitan</th>
+                        <th className="py-4 px-4">Tingkat Kesulitan</th>
                       </tr>
                     </thead>
                     <tbody>
                       {analysisData.map((d, idx) => (
                         <tr key={d.id} className="border-b hover:bg-slate-50">
                           <td className="py-3 px-4 text-center font-medium text-slate-500">{idx + 1}</td>
-                          <td className="py-3 px-4 text-xs font-bold">{d.type}</td>
-                          <td className="py-3 px-4 text-slate-800 max-w-xs truncate" title={stripHtml(d.question)}>{stripHtml(d.question)}</td>
+                          <td className="py-3 px-4 text-xs font-bold text-blue-600">{d.type}</td>
                           <td className="py-3 px-4 text-center font-bold text-emerald-600">{d.correct}</td>
                           <td className="py-3 px-4 text-center font-bold text-red-600">{d.wrong}</td>
                           <td className="py-3 px-4 text-center font-bold text-amber-600">{d.empty}</td>
                           <td className="py-3 px-4 text-center font-bold text-slate-700">{d.percentage}%</td>
-                          <td className="py-3 px-4 text-xs font-bold">{d.difficulty}</td>
+                          <td className="py-3 px-4 text-xs font-bold bg-slate-50">{d.difficulty}</td>
                         </tr>
                       ))}
-                      {analysisData.length === 0 && <tr><td colSpan="8" className="text-center py-8 text-slate-500">Belum ada data soal.</td></tr>}
+                      {analysisData.length === 0 && <tr><td colSpan="7" className="text-center py-8 text-slate-500">Belum ada data soal.</td></tr>}
                     </tbody>
                   </table>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border p-6 overflow-x-auto">
+                    <h3 className="font-semibold text-slate-800 text-lg mb-4">Matriks Peta Jawaban per Siswa</h3>
+                    <table className="w-full text-sm text-left border-collapse min-w-max">
+                        <thead className="bg-slate-50 text-slate-700 border-b">
+                            <tr>
+                                <th className="p-3 border-r font-semibold">Nama Siswa</th>
+                                {questions.map((q, i) => <th key={q.id} className="p-3 text-center border-r font-semibold w-12" title={stripHtml(q.question)}>Q{i+1}</th>)}
+                                <th className="p-3 text-center font-bold text-blue-600">Skor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {results.map((r, i) => (
+                                <tr key={r.id} className="border-b hover:bg-slate-50">
+                                    <td className="p-3 border-r font-medium text-slate-800">{r.participant?.name}</td>
+                                    {questions.map((q) => {
+                                        const d = r.detail?.detailedResults?.find(x => x.qId === q.id);
+                                        let icon = <span className="text-slate-300">-</span>;
+                                        if (d) {
+                                            if (d.isEmpty) icon = <span className="text-amber-500 font-bold">O</span>;
+                                            else if (d.isCorrect) icon = <span className="text-emerald-500 font-bold">✓</span>;
+                                            else icon = <span className="text-red-500 font-bold">✗</span>;
+                                        }
+                                        return <td key={q.id} className="p-3 text-center border-r bg-white">{icon}</td>;
+                                    })}
+                                    <td className="p-3 text-center font-bold text-blue-600">{r.score}</td>
+                                </tr>
+                            ))}
+                            {results.length === 0 && <tr><td colSpan={questions.length + 2} className="text-center py-6 text-slate-500 font-medium">Belum ada peserta.</td></tr>}
+                        </tbody>
+                    </table>
                 </div>
               </AdminLayout>
             );
           };
 
           const AdminReports = () => {
+             const [filterSchool, setFilterSchool] = useState('Semua');
+             const schoolList = ['Semua', ...new Set(results.map(r => r.participant?.school).filter(Boolean))];
+             const filteredResults = filterSchool === 'Semua' ? results : results.filter(r => r.participant?.school === filterSchool);
+
              return (
                 <AdminLayout title="Cetak Laporan">
-                   <div className="bg-white border rounded-xl p-6 text-center">
-                      <button onClick={() => window.print()} className="bg-slate-800 text-white px-6 py-2.5 rounded-lg font-semibold"><Printer size={16} className="inline mr-2"/> Cetak Halaman</button>
+                   <div className="mb-6 flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm print:hidden">
+                      <div className="flex items-center">
+                         <label className="text-sm font-semibold text-slate-600 mr-2">Filter Sekolah:</label>
+                         <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="border rounded-lg p-2 text-sm font-semibold">
+                            {schoolList.map(s => <option key={s} value={s}>{s}</option>)}
+                         </select>
+                      </div>
+                      <button onClick={() => window.print()} className="bg-slate-800 text-white px-5 py-2 rounded-lg font-semibold shadow-md"><Printer size={16} className="inline mr-2"/> Cetak PDF</button>
+                   </div>
+                   <div className="bg-white border shadow-md mx-auto max-w-[21.5cm] min-h-[33cm] p-12 print-container print:border-none print:shadow-none print:p-0">
+                      <div className="text-center border-b-2 border-slate-800 pb-4 mb-6"><h1 className="text-2xl font-bold uppercase tracking-widest text-slate-900">Laporan Hasil Ujian</h1><p className="text-slate-600 font-medium">{organizerName}</p></div>
+                      <table className="w-full text-left border-collapse border border-slate-800 text-sm">
+                         <thead className="bg-slate-100 text-slate-900 uppercase font-bold text-xs"><tr className="border-b border-slate-800"><th className="border-r border-slate-800 py-2.5 px-3 text-center">No</th><th className="border-r border-slate-800 py-2.5 px-3">Nama Peserta</th><th className="border-r border-slate-800 py-2.5 px-3">Sekolah</th><th className="py-2.5 px-3 text-center">Nilai</th></tr></thead>
+                         <tbody>
+                            {filteredResults.map((r, i) => (
+                               <tr key={i} className="border-b border-slate-800 text-slate-800 font-medium">
+                                  <td className="border-r border-slate-800 py-2.5 px-3 text-center">{i+1}</td>
+                                  <td className="border-r border-slate-800 py-2.5 px-3">{r.participant?.name}</td>
+                                  <td className="border-r border-slate-800 py-2.5 px-3">{r.participant?.school}</td>
+                                  <td className="py-2.5 px-3 text-center font-bold">{r.score}</td>
+                               </tr>
+                            ))}
+                            {filteredResults.length === 0 && <tr><td colSpan="4" className="text-center py-8 text-slate-500">Kosong</td></tr>}
+                         </tbody>
+                      </table>
                    </div>
                 </AdminLayout>
              );
