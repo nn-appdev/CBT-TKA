@@ -17,58 +17,28 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Supabase JS -->
+    <!-- Fallback Import Supabase JS untuk mengatasi blokir AdBlock -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #f8fafc; 
-            -webkit-font-smoothing: antialiased;
-        }
-        
-        /* Optimasi Editor Rich Text & Render Tampilan Peserta */
-        .rich-text-content { 
-            white-space: pre-wrap; 
-            word-wrap: break-word; 
-            line-height: 1.6;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-font-smoothing: antialiased; }
+        .rich-text-content { white-space: pre-wrap; word-wrap: break-word; line-height: 1.6; }
         .rich-text-content p { min-height: 1.5rem; margin-bottom: 0.5rem; }
-        .rich-text-content img { 
-            max-width: 100%; 
-            height: auto; 
-            border-radius: 8px; 
-            margin: 8px 0;
-            display: inline-block;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
+        .rich-text-content img { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0; display: inline-block; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .math-tex { font-size: 1.15em; font-weight: normal; }
-        
-        /* Custom Scrollbar yang Elegan */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
         @media print {
             body, html { background: white !important; height: auto !important; }
             nav, header, button, .print\:hidden { display: none !important; }
             main { padding: 0 !important; overflow: visible !important; display: block !important; }
             .print-container { box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; }
         }
-
-        /* Modal Transitions */
         .modal-overlay { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
-        
-        /* Anti-Cheat: Mencegah seleksi teks saat ujian */
-        .prevent-select {
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-        }
+        .prevent-select { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
     </style>
 </head>
 <body>
@@ -77,12 +47,10 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        // KONEKSI SUPABASE
         const SUPABASE_URL = 'https://xltrmoeabasrconlhijv.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_kzMgSC5JniUeJZGBGW1RIA_7aKyk0vh';
         let supabase = null;
 
-        // Ikon Komponen
         const Monitor = ({size=24, className=""}) => <i className={`fas fa-desktop ${className}`} style={{fontSize: size}}></i>;
         const Key = ({size=24, className=""}) => <i className={`fas fa-key ${className}`} style={{fontSize: size}}></i>;
         const User = ({size=24, className=""}) => <i className={`fas fa-user ${className}`} style={{fontSize: size}}></i>;
@@ -95,7 +63,6 @@
         const Settings = ({size=24, className=""}) => <i className={`fas fa-cog ${className}`} style={{fontSize: size}}></i>;
         const LayoutDashboard = ({size=24, className=""}) => <i className={`fas fa-th-large ${className}`} style={{fontSize: size}}></i>;
         const Database = ({size=24, className=""}) => <i className={`fas fa-database ${className}`} style={{fontSize: size}}></i>;
-        const CheckSquare = ({size=24, className=""}) => <i className={`fas fa-check-square ${className}`} style={{fontSize: size}}></i>;
         const BarChart2 = ({size=24, className=""}) => <i className={`fas fa-chart-bar ${className}`} style={{fontSize: size}}></i>;
         const Printer = ({size=24, className=""}) => <i className={`fas fa-print ${className}`} style={{fontSize: size}}></i>;
         const Save = ({size=24, className=""}) => <i className={`fas fa-save ${className}`} style={{fontSize: size}}></i>;
@@ -114,33 +81,18 @@
 
         const getSupabase = async () => {
             if (supabase) return supabase;
-            const createClient = () => window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            
             if (window.supabase) {
-                supabase = createClient();
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 return supabase;
+            } else {
+                try {
+                    const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+                    supabase = module.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    return supabase;
+                } catch (e) {
+                    throw new Error("Library Supabase gagal dimuat. Matikan AdBlock atau periksa internet.");
+                }
             }
-
-            return new Promise((resolve, reject) => {
-                let attempts = 0;
-                const maxAttempts = 50; 
-                
-                const checkSupabase = setInterval(() => {
-                    attempts++;
-                    if (window.supabase) {
-                        clearInterval(checkSupabase);
-                        supabase = createClient();
-                        resolve(supabase);
-                    } else if (attempts === 15) {
-                        const script = document.createElement('script');
-                        script.src = "https://unpkg.com/@supabase/supabase-js@2";
-                        document.head.appendChild(script);
-                    } else if (attempts >= maxAttempts) {
-                        clearInterval(checkSupabase);
-                        reject(new Error("Gagal memuat database setelah 10 detik. Periksa koneksi internet Anda."));
-                    }
-                }, 200); 
-            });
         };
 
         const RichTextEditor = ({ value, onChange, placeholder, minHeight="120px" }) => {
@@ -152,19 +104,14 @@
             }, []); 
 
             const handleInput = () => { if (editorRef.current) onChange(editorRef.current.innerHTML); };
-            
-            const execCmd = (cmd, e, val=null) => {
-                e.preventDefault(); 
-                document.execCommand(cmd, false, val);
-                editorRef.current.focus(); handleInput();
-            };
+            const execCmd = (cmd, e, val=null) => { e.preventDefault(); document.execCommand(cmd, false, val); editorRef.current.focus(); handleInput(); };
 
             const handleImageUpload = (e) => {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
                     reader.onloadend = () => {
-                        const imgHTML = `<img src="${reader.result}" alt="Gambar Sisipan" style="max-width: 100%; border-radius: 8px; margin: 8px 0;" /><br/>`;
+                        const imgHTML = `<img src="${reader.result}" alt="Gambar" style="max-width: 100%; border-radius: 8px; margin: 8px 0;" /><br/>`;
                         document.execCommand('insertHTML', false, imgHTML);
                         handleInput();
                     };
@@ -174,8 +121,7 @@
 
             const insertMath = (e) => {
                 e.preventDefault();
-                const panduan = "Panduan Rumus (LaTeX):\n- Pecahan: \\frac{Atas}{Bawah} (contoh: \\frac{1}{2})\n- Kuadrat/Pangkat: x^2\n- Akar: \\sqrt{x}\n- Akar Pangkat: \\sqrt[3]{x}\n\nMasukkan Rumus Anda:";
-                const formula = prompt(panduan);
+                const formula = prompt("Masukkan Rumus LaTeX (contoh: \\frac{1}{2}, x^2, \\sqrt{x}):");
                 if (formula) {
                     const mathHTML = ` <span class="math-tex">\\(${formula}\\)</span> `;
                     document.execCommand('insertHTML', false, mathHTML);
@@ -186,27 +132,15 @@
             return (
                 <div className="border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:border-emerald-500 focus-within:ring-1 transition-all">
                     <div className="bg-slate-50 border-b border-slate-200 p-1.5 flex flex-wrap gap-1 items-center">
-                        <button onMouseDown={(e)=>execCmd('bold', e)} type="button" className="w-8 h-8 font-bold text-slate-700 hover:bg-slate-200 rounded" title="Tebal">B</button>
-                        <button onMouseDown={(e)=>execCmd('italic', e)} type="button" className="w-8 h-8 italic text-slate-700 hover:bg-slate-200 rounded font-serif" title="Miring">I</button>
-                        <button onMouseDown={(e)=>execCmd('underline', e)} type="button" className="w-8 h-8 underline text-slate-700 hover:bg-slate-200 rounded" title="Garis Bawah">U</button>
+                        <button onMouseDown={(e)=>execCmd('bold', e)} type="button" className="w-8 h-8 font-bold text-slate-700 hover:bg-slate-200 rounded">B</button>
+                        <button onMouseDown={(e)=>execCmd('italic', e)} type="button" className="w-8 h-8 italic text-slate-700 hover:bg-slate-200 rounded">I</button>
+                        <button onMouseDown={(e)=>execCmd('underline', e)} type="button" className="w-8 h-8 underline text-slate-700 hover:bg-slate-200 rounded">U</button>
                         <div className="w-px h-5 bg-slate-300 mx-1"></div>
-                        <button onMouseDown={(e)=>{e.preventDefault(); fileInputRef.current.click();}} type="button" className="h-8 px-2.5 text-slate-700 hover:bg-slate-200 rounded flex items-center text-xs font-semibold" title="Sisipkan Gambar">
-                            <ImageIcon size={14} className="mr-1 text-emerald-600"/> Gambar
-                        </button>
-                        <button onMouseDown={insertMath} type="button" className="h-8 px-2.5 text-slate-700 hover:bg-slate-200 rounded flex items-center text-xs font-semibold" title="Sisipkan Rumus Matematika">
-                            <Calculator size={14} className="mr-1 text-blue-600"/> Rumus (∑)
-                        </button>
+                        <button onMouseDown={(e)=>{e.preventDefault(); fileInputRef.current.click();}} type="button" className="h-8 px-2.5 text-slate-700 hover:bg-slate-200 rounded flex items-center text-xs font-semibold"><ImageIcon size={14} className="mr-1 text-emerald-600"/> Gambar</button>
+                        <button onMouseDown={insertMath} type="button" className="h-8 px-2.5 text-slate-700 hover:bg-slate-200 rounded flex items-center text-xs font-semibold"><Calculator size={14} className="mr-1 text-blue-600"/> Rumus</button>
                         <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
                     </div>
-                    <div 
-                        ref={editorRef} 
-                        contentEditable 
-                        onInput={handleInput} 
-                        onBlur={handleInput} 
-                        className="p-3 outline-none rich-text-content editor-ignore-math text-slate-700 text-sm" 
-                        style={{minHeight: minHeight}}
-                        placeholder={placeholder} 
-                    />
+                    <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} className="p-3 outline-none rich-text-content editor-ignore-math text-slate-700 text-sm" style={{minHeight: minHeight}} placeholder={placeholder} />
                 </div>
             );
         };
@@ -225,12 +159,7 @@
                 setTimeout(() => {
                     window.renderMathInElement(document.body, {
                         ignoredClasses: ["editor-ignore-math"],
-                        delimiters: [
-                            {left: '$$', right: '$$', display: true},
-                            {left: '$', right: '$', display: false},
-                            {left: '\\(', right: '\\)', display: false},
-                            {left: '\\[', right: '\\]', display: true}
-                        ],
+                        delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}],
                         throwOnError : false
                     });
                 }, 300);
@@ -240,13 +169,10 @@
         const calculateScore = (answers, questions) => {
           let totalPoints = 0;
           let maxPoints = questions.length; 
-          
           const detailedResults = questions.map(q => {
             const userAnswer = answers[q.id];
             let isCorrect = false;
-
             if (!userAnswer) return { qId: q.id, type: q.type, isCorrect: false, isEmpty: true };
-
             if (q.type === 'MCQ') isCorrect = userAnswer === q.correctAnswer;
             else if (q.type === 'MCMA') {
               if (Array.isArray(userAnswer)) {
@@ -262,7 +188,6 @@
             if (isCorrect) totalPoints += q.points;
             return { qId: q.id, type: q.type, isCorrect, isEmpty: false };
           });
-
           const finalScore = maxPoints > 0 ? Math.round((totalPoints / maxPoints) * 100) : 0;
           return { finalScore, totalPoints, maxPoints, detailedResults };
         };
@@ -273,15 +198,14 @@
           const [results, setResults] = useState([]);
           const [questions, setQuestions] = useState([]);
           
-          // State Pengaturan dari Database
           const [activeFolder, setActiveFolder] = useState('Utama');
           const [organizerName, setOrganizerName] = useState('Sekolah Dasar');
+          const [schoolLogo, setSchoolLogo] = useState('');
+          const [examDate, setExamDate] = useState('');
+          const [startTimeStr, setStartTimeStr] = useState('07:30');
+          const [endTimeStr, setEndTimeStr] = useState('12:00');
           const [isRandomQ, setIsRandomQ] = useState(false);
           const [isRandomOpt, setIsRandomOpt] = useState(false);
-          const [appLogo, setAppLogo] = useState('');
-          const [examDate, setExamDate] = useState('');
-          const [examStartTime, setExamStartTime] = useState('');
-          const [examEndTime, setExamEndTime] = useState('');
 
           const [isLoadingData, setIsLoadingData] = useState(false);
           const [dbStatus, setDbStatus] = useState('connecting');
@@ -296,9 +220,8 @@
              setIsLoadingData(true);
              try {
                 const db = await getSupabase();
-                // Hapus pengurutan berdasarkan kolom number agar tidak error
                 const [qRes, tRes] = await Promise.all([
-                    db.from('questions').select('*'), 
+                    db.from('questions').select('*'),
                     db.from('tokens').select('*').order('generatedAt', { ascending: false })
                 ]);
                 
@@ -309,7 +232,7 @@
                 if(tRes.data) {
                     const actualTokens = tRes.data.filter(t => !t.code.startsWith('SYS_SETTING_'));
                     setTokens(actualTokens);
-
+                    
                     const fToken = tRes.data.find(t => t.code === 'SYS_SETTING_FOLDER');
                     if (fToken) setActiveFolder(fToken.status);
 
@@ -317,16 +240,16 @@
                     if (oToken) setOrganizerName(oToken.status);
 
                     const lToken = tRes.data.find(t => t.code === 'SYS_SETTING_LOGO');
-                    if (lToken) setAppLogo(lToken.status);
+                    if (lToken) setSchoolLogo(lToken.status);
 
                     const dtToken = tRes.data.find(t => t.code === 'SYS_SETTING_DATE');
                     if (dtToken) setExamDate(dtToken.status);
 
                     const stToken = tRes.data.find(t => t.code === 'SYS_SETTING_START_TIME');
-                    if (stToken) setExamStartTime(stToken.status);
+                    if (stToken) setStartTimeStr(stToken.status);
 
                     const etToken = tRes.data.find(t => t.code === 'SYS_SETTING_END_TIME');
-                    if (etToken) setExamEndTime(etToken.status);
+                    if (etToken) setEndTimeStr(etToken.status);
 
                     const rqToken = tRes.data.find(t => t.code === 'SYS_SETTING_RANDOM_Q');
                     if (rqToken) setIsRandomQ(rqToken.status === 'TRUE');
@@ -359,16 +282,9 @@
              }
           };
 
-          useEffect(() => { 
-             fetchSupabaseData(); 
-          }, [isAdminLoggedIn]);
+          useEffect(() => { fetchSupabaseData(); }, [isAdminLoggedIn]);
 
-          // Filter pertanyaan berdasarkan folder aktif (Kebal Spasi & Huruf Kapital)
-          const activeQuestions = isAdminLoggedIn ? questions : questions.filter(q => {
-              const qFolder = String(q.folder || 'Utama').trim().toLowerCase();
-              const aFolder = String(activeFolder || 'Utama').trim().toLowerCase();
-              return qFolder === aFolder;
-          });
+          const activeQuestions = isAdminLoggedIn ? questions : questions.filter(q => String(q.folder || 'Utama').trim().toLowerCase() === String(activeFolder || 'Utama').trim().toLowerCase());
 
           useEffect(() => {
             if (currentRoute === '/') {
@@ -387,60 +303,34 @@
               e.preventDefault();
               setIsChecking(true); setError('');
               try {
-                // Tarik data Token & Pengaturan terbaru secara langsung dari Supabase
                 const db = await getSupabase();
-                const [tokenRes, settingDateRes, settingStartRes, settingEndRes] = await Promise.all([
-                    db.from('tokens').select('*').eq('code', inputToken.trim().toUpperCase()).single(),
-                    db.from('tokens').select('status').eq('code', 'SYS_SETTING_DATE').maybeSingle(),
-                    db.from('tokens').select('status').eq('code', 'SYS_SETTING_START_TIME').maybeSingle(),
-                    db.from('tokens').select('status').eq('code', 'SYS_SETTING_END_TIME').maybeSingle()
-                ]);
+                const { data: tokenObj, error: fetchErr } = await db.from('tokens').select('*').eq('code', inputToken.trim().toUpperCase()).single();
                 
-                const tokenObj = tokenRes.data;
-                
-                if (tokenRes.error || !tokenObj || tokenObj.code.startsWith('SYS_SETTING_')) { setError('Token tidak valid atau tidak ditemukan.'); setIsChecking(false); return; }
+                if (fetchErr || !tokenObj || tokenObj.code.startsWith('SYS_SETTING_')) { setError('Token tidak valid atau tidak ditemukan.'); setIsChecking(false); return; }
                 if (tokenObj.status === 'USED') { setError('Token sudah digunakan.'); setIsChecking(false); return; }
                 if (tokenObj.status === 'EXPIRED') { setError('Token kedaluwarsa.'); setIsChecking(false); return; }
                 if (tokenObj.status === 'BLOCKED') { setError('Token diblokir. Hubungi administrator.'); setIsChecking(false); return; }
 
-                // Validasi Tanggal & Jam Aktif Ujian
-                const dbDate = settingDateRes.data?.status || examDate;
-                const dbStart = settingStartRes.data?.status || examStartTime;
-                const dbEnd = settingEndRes.data?.status || examEndTime;
-
-                if (dbDate && dbStart && dbEnd) {
+                if (examDate && startTimeStr && endTimeStr) {
                     const now = new Date();
-                    
-                    const [startHour, startMin] = dbStart.split(':').map(Number);
-                    const startDateObj = new Date(dbDate);
-                    startDateObj.setHours(startHour, startMin, 0);
-
-                    const [endHour, endMin] = dbEnd.split(':').map(Number);
-                    const endDateObj = new Date(dbDate);
-                    endDateObj.setHours(endHour, endMin, 0);
-
-                    if (now < startDateObj) {
-                        setError(`Ujian belum dimulai. Akses dibuka tanggal ${dbDate} jam ${dbStart}`);
+                    const startDateTime = new Date(`${examDate}T${startTimeStr}:00`);
+                    const endDateTime = new Date(`${examDate}T${endTimeStr}:00`);
+                    if (now < startDateTime) {
+                        setError(`Ujian belum dimulai. Jadwal: ${examDate} pukul ${startTimeStr}`);
                         setIsChecking(false); return;
                     }
-                    if (now > endDateObj) {
-                        setError(`Waktu ujian telah berakhir pada ${dbDate} jam ${dbEnd}`);
+                    if (now > endDateTime) {
+                        setError(`Waktu ujian telah berakhir pada ${examDate} pukul ${endTimeStr}`);
                         setIsChecking(false); return;
                     }
                 }
 
-                // Otomatis mengunci nama & sekolah dari token ke dalam State Identitas
                 setActiveSession({ 
                     token: tokenObj.code, 
-                    participant: {
-                        name: tokenObj.participant_name || '',
-                        school: tokenObj.participant_school || '',
-                        nis: '',
-                        grade: '6'
-                    }, 
+                    participant: { name: tokenObj.participant_name || 'Peserta', school: tokenObj.participant_school || organizerName, nis: '', grade: '6' }, 
                     answers: {}, flagged: [], status: 'SETUP' 
                 });
-                navigate('/identity');
+                navigate('/instruction');
               } catch (err) { setError(err.message || 'Gagal terhubung ke server.'); }
               setIsChecking(false);
             };
@@ -449,11 +339,9 @@
               <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">
                 <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border-t-4 border-blue-600">
                   <div className="text-center mb-8">
-                    {appLogo ? (
-                        <img src={appLogo} alt="Logo Penyelenggara" className="h-20 w-auto mx-auto mb-4 object-contain" />
-                    ) : (
-                        <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm"><Monitor size={32} /></div>
-                    )}
+                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm overflow-hidden">
+                        {schoolLogo ? <img src={schoolLogo} alt="Logo" className="w-full h-full object-cover"/> : <Monitor size={32} />}
+                    </div>
                     <h1 className="text-2xl font-black text-slate-800 tracking-tight">CBT Sukses TKA</h1>
                     <p className="text-slate-500 font-medium mt-1">{organizerName}</p>
                   </div>
@@ -461,10 +349,7 @@
                   {initErrorMsg && (
                       <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-200 font-medium flex items-start">
                           <AlertCircle size={18} className="mr-2 mt-0.5 flex-shrink-0"/>
-                          <div>
-                              <p className="font-bold mb-1">Gagal Terhubung ke Database</p>
-                              <p>{initErrorMsg}</p>
-                          </div>
+                          <div><p className="font-bold mb-1">Gagal Terhubung ke Database</p><p>{initErrorMsg}</p></div>
                       </div>
                   )}
 
@@ -473,68 +358,21 @@
                       <label className="block text-sm font-bold text-slate-700 mb-2">Masukkan Token Ujian</label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Key className="h-5 w-5 text-slate-400" /></div>
-                        <input type="text" className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 uppercase tracking-widest font-bold text-slate-800 placeholder-slate-300 transition-all bg-slate-50 focus:bg-white" placeholder="Ketik Token..." value={inputToken} onChange={(e) => setInputToken(e.target.value.toUpperCase())} required disabled={isChecking || dbStatus === 'error'}/>
+                        <input type="text" className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 uppercase tracking-widest font-bold text-slate-800 placeholder-slate-300 bg-slate-50 focus:bg-white" placeholder="Ketik Token..." value={inputToken} onChange={(e) => setInputToken(e.target.value.toUpperCase())} required disabled={isChecking || dbStatus === 'error'}/>
                       </div>
                       {error && <p className="mt-2 text-sm text-rose-500 font-medium flex items-center"><AlertCircle size={14} className="mr-1.5"/> {error}</p>}
                     </div>
-                    <button type="submit" disabled={isChecking || dbStatus === 'error'} className="w-full flex justify-center py-3.5 px-4 rounded-xl text-base font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-md hover:shadow-lg disabled:opacity-50">
+                    <button type="submit" disabled={isChecking || dbStatus === 'error'} className="w-full flex justify-center py-3.5 px-4 rounded-xl text-base font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-md disabled:opacity-50">
                       {isChecking ? 'Memeriksa Token...' : 'Masuk Ujian'}
                     </button>
                   </form>
                   <div className="mt-8 pt-6 border-t border-slate-100 flex justify-between items-center">
                      <span className={`text-xs font-bold px-3 py-1.5 rounded-md flex items-center ${dbStatus === 'connected' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
-                         <Cloud size={14} className="mr-1.5"/> {dbStatus === 'connected' ? 'Server Online' : dbStatus === 'connecting' ? 'Menghubungkan...' : 'Server Offline'}
+                         <Cloud size={14} className="mr-1.5"/> {dbStatus === 'connected' ? 'Server Online' : 'Server Offline'}
                      </span>
-                     <button onClick={() => navigate('/admin/login')} className="text-xs font-semibold text-slate-400 hover:text-slate-800 transition-colors flex items-center"><Settings size={14} className="mr-1"/> Admin Panel</button>
+                     <button onClick={() => navigate('/admin/login')} className="text-xs font-semibold text-slate-400 hover:text-slate-800 transition-colors flex items-center"><Settings size={14} className="mr-1"/> Admin</button>
                   </div>
                 </div>
-              </div>
-            );
-          };
-
-          const ParticipantIdentity = () => {
-            if (!activeSession || activeSession.status !== 'SETUP') { navigate('/login'); return null; }
-            const [formData, setFormData] = useState(activeSession.participant);
-            
-            const handleSubmit = (e) => {
-              e.preventDefault();
-              setActiveSession(prev => ({ ...prev, participant: formData }));
-              navigate('/instruction');
-            };
-            
-            return (
-              <div className="min-h-screen bg-slate-50 py-10 px-4 flex justify-center items-center">
-                 <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl p-8 border-t-4 border-blue-600">
-                    <div className="flex items-center mb-6 pb-4 border-b border-slate-100">
-                      <User className="text-blue-600 mr-3" size={24} />
-                      <h2 className="text-xl font-bold text-slate-800">Identitas Diri</h2>
-                    </div>
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                         <div className="sm:col-span-2">
-                           <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap *</label>
-                           <input type="text" readOnly value={formData.name} className="w-full p-3 border border-slate-300 rounded-lg bg-slate-100 text-slate-500 font-bold cursor-not-allowed"/>
-                         </div>
-                         <div className="sm:col-span-2">
-                           <label className="block text-sm font-medium text-slate-700 mb-1">Asal Sekolah *</label>
-                           <input type="text" readOnly value={formData.school} className="w-full p-3 border border-slate-300 rounded-lg bg-slate-100 text-slate-500 font-bold cursor-not-allowed"/>
-                         </div>
-                         <div>
-                           <label className="block text-sm font-medium text-slate-700 mb-1">NIS/NISN</label>
-                           <input type="text" value={formData.nis} onChange={e=>setFormData({...formData, nis:e.target.value})} className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"/>
-                         </div>
-                         <div>
-                           <label className="block text-sm font-medium text-slate-700 mb-1">Kelas</label>
-                           <select value={formData.grade} onChange={e=>setFormData({...formData, grade:e.target.value})} className="w-full p-3 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500">
-                             {[1,2,3,4,5,6].map(g => <option key={g} value={g}>Kelas {g}</option>)}
-                           </select>
-                         </div>
-                       </div>
-                       <div className="pt-4 mt-6 border-t border-slate-100">
-                         <button type="submit" className="w-full py-3.5 bg-blue-600 text-white font-semibold text-lg rounded-xl shadow-md hover:bg-blue-700 transition-colors">Lanjutkan ke Petunjuk</button>
-                       </div>
-                    </form>
-                 </div>
               </div>
             );
           };
@@ -546,57 +384,16 @@
             const startExam = async () => {
               setIsStarting(true);
               try {
-                // Tarik Ulang Pengaturan Folder & Jam Selesai Terkini Sesaat Sebelum Mulai
                 const db = await getSupabase();
-                const [folderRes, dateRes, endRes, qRes] = await Promise.all([
-                    db.from('tokens').select('status').eq('code', 'SYS_SETTING_FOLDER').maybeSingle(),
-                    db.from('tokens').select('status').eq('code', 'SYS_SETTING_DATE').maybeSingle(),
-                    db.from('tokens').select('status').eq('code', 'SYS_SETTING_END_TIME').maybeSingle(),
-                    db.from('questions').select('*')
-                ]);
-                
-                const currentActiveFolder = folderRes.data?.status || 'Utama';
-                const currentEndDate = dateRes.data?.status || examDate;
-                const currentEndTimeStr = endRes.data?.status || examEndTime;
-                
-                // Kalkulasi Durasi absolut berdasarkan sisa waktu ke Jam Selesai
-                let finalDurationMs = 60 * 60 * 1000; // default fallback 60 mins
-                if (currentEndDate && currentEndTimeStr) {
-                    const [endHour, endMin] = currentEndTimeStr.split(':').map(Number);
-                    const endObj = new Date(currentEndDate);
-                    endObj.setHours(endHour, endMin, 0, 0);
-                    const now = new Date();
-                    finalDurationMs = endObj.getTime() - now.getTime();
-                    if (finalDurationMs <= 0) throw new Error("Waktu ujian sudah habis!");
-                }
+                await db.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
 
-                // Saring pertanyaan sesuai folder aktif terbaru
-                const dbQuestions = qRes.data || [];
-                const finalQuestions = dbQuestions.filter(q => {
-                    const qFolder = String(q.folder || 'Utama').trim().toLowerCase();
-                    const aFolder = String(currentActiveFolder).trim().toLowerCase();
-                    return qFolder === aFolder;
-                });
-
-                if (finalQuestions.length === 0) {
-                    alert(`Gagal memulai: Admin belum memasukkan soal ke dalam folder "${currentActiveFolder}".`);
-                    setIsStarting(false);
-                    return;
-                }
-
-                // Update Status Token
-                const { error: updateErr } = await db.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
-                if(updateErr) throw updateErr;
-
-                let sessionQuestions = JSON.parse(JSON.stringify(finalQuestions));
-                
+                let sessionQuestions = JSON.parse(JSON.stringify(activeQuestions));
                 if (isRandomQ) {
                     for (let i = sessionQuestions.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
                         [sessionQuestions[i], sessionQuestions[j]] = [sessionQuestions[j], sessionQuestions[i]];
                     }
                 }
-
                 if (isRandomOpt) {
                     sessionQuestions = sessionQuestions.map(q => {
                         if (q.type === 'MCQ' && q.options) {
@@ -607,7 +404,6 @@
                                 [texts[i], texts[j]] = [texts[j], texts[i]];
                             }
                             q.options = originalOptions.map((opt, idx) => ({ ...opt, text: texts[idx] }));
-                            
                             const originalCorrectText = originalOptions.find(o => o.id === q.correctAnswer)?.text;
                             const newCorrectOption = q.options.find(o => o.text === originalCorrectText);
                             if (newCorrectOption) q.correctAnswer = newCorrectOption.id;
@@ -616,17 +412,23 @@
                     });
                 }
 
+                let durationLimitMs = 60 * 60 * 1000;
+                if (examDate && endTimeStr) {
+                    const endDateTime = new Date(`${examDate}T${endTimeStr}:00`).getTime();
+                    durationLimitMs = Math.max(60000, endDateTime - new Date().getTime());
+                }
+
                 setActiveSession(prev => ({ 
                     ...prev, 
                     status: 'ACTIVE', 
                     startTime: new Date().getTime(), 
-                    durationLimit: finalDurationMs, 
+                    durationLimit: durationLimitMs, 
                     sessionQuestions,
                     examCurrentIndex: 0 
                 }));
                 navigate('/exam');
               } catch (err) { 
-                 alert("Gagal memulai ujian.\nDetail: " + err.message); 
+                 alert("Gagal memulai ujian: " + err.message); 
                  setIsStarting(false); 
               }
             };
@@ -638,27 +440,18 @@
                        <FileText className="text-amber-500 mr-3" size={28} />
                        <h2 className="text-2xl font-bold text-slate-800">Petunjuk Ujian</h2>
                     </div>
-                    
                     <div className="prose prose-slate max-w-none mb-8">
                        <ul className="space-y-4 text-slate-700 font-medium">
-                         <li className="flex items-start">
-                             <CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> 
-                             Batas waktu ujian akan berakhir otomatis pada <strong className="ml-1 text-red-600">{examEndTime}</strong>.
-                         </li>
+                         <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Waktu pengerjaan disesuaikan hingga jam selesai untuk <b>{activeQuestions.length} soal</b>.</li>
                          <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Jawaban akan <b>tersimpan otomatis</b> setiap Anda berpindah nomor.</li>
+                         <li className="flex items-start text-red-600 font-medium bg-red-50 p-4 rounded-lg border border-red-100"><AlertCircle className="text-red-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> Dilarang keras membuka tab/jendela lain. Sistem akan mencatat setiap pelanggaran yang terjadi.</li>
                        </ul>
                     </div>
-
-                    <div className="mt-6 mb-8 text-red-600 font-medium bg-red-50 p-4 rounded-lg border border-red-100 flex items-start">
-                        <AlertCircle className="text-red-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> 
-                        Dilarang keras membuka tab/jendela lain. Sistem akan mencatat setiap pelanggaran yang terjadi.
-                    </div>
-
                     <div className="bg-blue-50 p-5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-blue-100">
                        <div className="text-blue-900 text-center sm:text-left">
                          Peserta: <strong className="text-lg block sm:inline">{activeSession.participant.name}</strong> <br className="sm:hidden"/>({activeSession.participant.school})
                        </div>
-                       <button onClick={startExam} disabled={isStarting} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                       <button onClick={startExam} disabled={isStarting || activeQuestions.length === 0} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50">
                            {isStarting ? 'Memproses...' : 'Mulai Ujian'}
                        </button>
                     </div>
@@ -670,13 +463,12 @@
           const ExamEngine = () => {
             const [timeLeft, setTimeLeft] = useState(0);
             
-            // Pengaturan Anti-Curang (Cheat Detection)
             useEffect(() => {
                 if (!activeSession || activeSession.status !== 'ACTIVE') return;
                 const preventDefaultAction = (e) => e.preventDefault();
                 const handleVisibilityChange = () => {
                     if (document.hidden) {
-                        alert("PERINGATAN PELANGGARAN!\nAnda terdeteksi keluar dari layar ujian. Aktivitas ini telah dicatat oleh sistem!");
+                        alert("PERINGATAN PELANGGARAN!\nAnda terdeteksi keluar dari layar ujian.");
                         setActiveSession(prev => ({ ...prev, cheatWarnings: (prev.cheatWarnings || 0) + 1 }));
                     }
                 };
@@ -710,7 +502,6 @@
             }, [activeSession]);
 
             const examQuestions = activeSession?.sessionQuestions || activeQuestions;
-            
             if (!activeSession || examQuestions.length === 0 || !examQuestions[examCurrentIndex]) return <div className="min-h-screen flex items-center justify-center font-medium text-slate-500">Memuat soal...</div>;
             
             const currentQuestion = examQuestions[examCurrentIndex];
@@ -720,7 +511,6 @@
             const handleAnswerChange = (val) => { setActiveSession(prev => ({ ...prev, answers: { ...prev.answers, [currentQuestion.id]: val } })); };
             const toggleFlag = () => { setActiveSession(prev => ({ ...prev, flagged: isFlagged ? prev.flagged.filter(id => id !== currentQuestion.id) : [...(prev.flagged || []), currentQuestion.id] })); };
 
-            // Auto-next for MCQ (Mempercepat User Experience)
             const handleAnswerChangeMCQ = (val) => {
                 handleAnswerChange(val);
                 if (examCurrentIndex < examQuestions.length - 1) {
@@ -732,13 +522,8 @@
               <div className="space-y-3 mt-6">
                 {(currentQuestion.options||[]).map(opt => (
                   <label key={opt.id} className={`flex items-start p-4 border rounded-xl cursor-pointer transition-all ${currentAnswer === opt.id ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:bg-slate-50'}`}>
-                    <div className="flex items-center h-6 mt-0.5">
-                        <input type="radio" checked={currentAnswer === opt.id} onChange={() => handleAnswerChangeMCQ(opt.id)} className="w-5 h-5 text-emerald-600 focus:ring-emerald-500" />
-                    </div>
-                    <div className="ml-4 flex-1 flex text-slate-800">
-                        <span className="inline-block font-bold text-slate-400 w-6 mt-0.5">{opt.id}.</span> 
-                        <div className="flex-1 rich-text-content" dangerouslySetInnerHTML={{__html: opt.text}}></div>
-                    </div>
+                    <div className="flex items-center h-6 mt-0.5"><input type="radio" checked={currentAnswer === opt.id} onChange={() => handleAnswerChangeMCQ(opt.id)} className="w-5 h-5 text-emerald-600" /></div>
+                    <div className="ml-4 flex-1 flex text-slate-800"><span className="font-bold text-slate-400 w-6 mt-0.5">{opt.id}.</span><div className="flex-1 rich-text-content" dangerouslySetInnerHTML={{__html: opt.text}}></div></div>
                   </label>
                 ))}
               </div>
@@ -748,24 +533,16 @@
                const selectedArr = Array.isArray(currentAnswer) ? currentAnswer : [];
                const handleToggle = (id) => {
                   let newArr = [...selectedArr];
-                  if(newArr.includes(id)) newArr = newArr.filter(x => x !== id);
-                  else newArr.push(id);
+                  if(newArr.includes(id)) newArr = newArr.filter(x => x !== id); else newArr.push(id);
                   handleAnswerChange(newArr.length > 0 ? newArr : null);
                };
                return (
                   <div className="space-y-3 mt-6">
-                     <div className="bg-blue-50 border border-blue-100 text-blue-700 p-3 rounded-lg font-medium text-sm mb-4 flex items-center">
-                         <AlertCircle size={16} className="mr-2"/> Anda dapat memilih lebih dari satu jawaban.
-                     </div>
+                     <div className="bg-blue-50 border border-blue-100 text-blue-700 p-3 rounded-lg font-medium text-sm mb-4 flex items-center"><AlertCircle size={16} className="mr-2"/> Pilih lebih dari satu jawaban.</div>
                      {(currentQuestion.statements||[]).map((stmt, idx) => (
                         <label key={stmt.id} className={`flex items-start p-4 border rounded-xl cursor-pointer transition-all ${selectedArr.includes(stmt.id) ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 hover:bg-slate-50'}`}>
-                           <div className="flex items-center h-6 mt-0.5">
-                               <input type="checkbox" checked={selectedArr.includes(stmt.id)} onChange={() => handleToggle(stmt.id)} className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
-                           </div>
-                           <div className="ml-4 flex-1 flex text-slate-800">
-                               <span className="font-bold text-slate-400 w-6 mt-0.5">{idx + 1}.</span> 
-                               <div className="flex-1 rich-text-content" dangerouslySetInnerHTML={{__html: stmt.text}}></div>
-                           </div>
+                           <div className="flex items-center h-6 mt-0.5"><input type="checkbox" checked={selectedArr.includes(stmt.id)} onChange={() => handleToggle(stmt.id)} className="w-5 h-5 text-blue-600 rounded" /></div>
+                           <div className="ml-4 flex-1 flex text-slate-800"><span className="font-bold text-slate-400 w-6 mt-0.5">{idx + 1}.</span><div className="flex-1 rich-text-content" dangerouslySetInnerHTML={{__html: stmt.text}}></div></div>
                         </label>
                      ))}
                   </div>
@@ -778,29 +555,15 @@
                const cat2Label = currentQuestion.statements?.[0]?.category2 || 'Salah';
                return (
                   <div className="mt-6 overflow-x-auto pb-2">
-                     <div className="bg-indigo-50 border border-indigo-100 text-indigo-700 p-3 rounded-lg font-medium text-sm mb-4 flex items-center">
-                         <AlertCircle size={16} className="mr-2"/> Tentukan kategori untuk SETIAP pernyataan.
-                     </div>
                      <table className="w-full text-left border-collapse min-w-[500px] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <thead>
-                           <tr className="bg-slate-50 border-b border-slate-200">
-                              <th className="py-3 px-4 font-semibold text-slate-600 w-12 text-center">No</th>
-                              <th className="py-3 px-4 font-semibold text-slate-600">Pernyataan</th>
-                              <th className="py-3 px-4 font-semibold text-slate-700 text-center w-28 bg-emerald-50/50 border-l">{cat1Label}</th>
-                              <th className="py-3 px-4 font-semibold text-slate-700 text-center w-28 bg-amber-50/50 border-l">{cat2Label}</th>
-                           </tr>
-                        </thead>
+                        <thead><tr className="bg-slate-50 border-b"><th className="py-3 px-4 text-center w-12">No</th><th className="py-3 px-4">Pernyataan</th><th className="py-3 px-4 text-center w-28 bg-emerald-50/50 border-l">{cat1Label}</th><th className="py-3 px-4 text-center w-28 bg-amber-50/50 border-l">{cat2Label}</th></tr></thead>
                         <tbody>
                            {(currentQuestion.statements||[]).map((stmt, idx) => (
-                              <tr key={stmt.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                              <tr key={stmt.id} className="border-b border-slate-100 hover:bg-slate-50">
                                  <td className="py-4 px-4 text-slate-400 font-medium text-center align-top">{idx + 1}</td>
                                  <td className="py-4 px-4 text-slate-800 align-top"><div className="rich-text-content text-sm" dangerouslySetInnerHTML={{__html: stmt.text}}></div></td>
-                                 <td className="py-4 px-4 text-center align-middle border-l bg-emerald-50/30 cursor-pointer" onClick={() => handleAnswerChange({...catAnswer, [stmt.id]: cat1Label})}>
-                                    <input type="radio" checked={catAnswer[stmt.id] === cat1Label} onChange={() => {}} className="w-5 h-5 text-emerald-600 cursor-pointer" />
-                                 </td>
-                                 <td className="py-4 px-4 text-center align-middle border-l bg-amber-50/30 cursor-pointer" onClick={() => handleAnswerChange({...catAnswer, [stmt.id]: cat2Label})}>
-                                    <input type="radio" checked={catAnswer[stmt.id] === cat2Label} onChange={() => {}} className="w-5 h-5 text-amber-600 cursor-pointer" />
-                                 </td>
+                                 <td className="py-4 px-4 text-center align-middle border-l bg-emerald-50/30 cursor-pointer" onClick={() => handleAnswerChange({...catAnswer, [stmt.id]: cat1Label})}><input type="radio" checked={catAnswer[stmt.id] === cat1Label} onChange={() => {}} className="w-5 h-5 text-emerald-600" /></td>
+                                 <td className="py-4 px-4 text-center align-middle border-l bg-amber-50/30 cursor-pointer" onClick={() => handleAnswerChange({...catAnswer, [stmt.id]: cat2Label})}><input type="radio" checked={catAnswer[stmt.id] === cat2Label} onChange={() => {}} className="w-5 h-5 text-amber-600" /></td>
                               </tr>
                            ))}
                         </tbody>
@@ -812,79 +575,58 @@
             const fmtTime = (s) => `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
 
             return (
-              <div className="min-h-screen bg-slate-50 flex flex-col font-sans prevent-select">
+              <div className="min-h-screen bg-slate-50 flex flex-col prevent-select">
                 <header className="bg-slate-900 shadow px-4 sm:px-6 py-3 flex justify-between items-center sticky top-0 z-20">
                    <div className="flex items-center">
                       <div className="hidden sm:flex w-9 h-9 bg-emerald-500 rounded-lg items-center justify-center text-white mr-3"><Monitor size={18}/></div>
-                      <div>
-                        <h1 className="text-base font-bold text-white leading-tight">CBT Ujian Terpadu</h1>
-                        <p className="text-xs text-slate-400 truncate max-w-[150px] sm:max-w-xs">{activeSession.participant?.name}</p>
-                      </div>
+                      <div><h1 className="text-base font-bold text-white leading-tight">CBT Ujian Terpadu</h1><p className="text-xs text-slate-400">{activeSession.participant?.name}</p></div>
                    </div>
-                   <div className={`flex items-center font-bold text-lg px-4 py-1.5 rounded-lg border shadow-inner transition-colors ${timeLeft < 300 ? 'bg-red-500 text-white border-red-600 animate-pulse' : 'bg-slate-800 text-emerald-400 border-slate-700'}`}>
+                   <div className={`flex items-center font-bold text-lg px-4 py-1.5 rounded-lg border ${timeLeft < 300 ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-800 text-emerald-400'}`}>
                       <Clock size={18} className="mr-2" /> {fmtTime(timeLeft)}
                    </div>
                 </header>
-                
                 <div className="flex-1 flex flex-col lg:flex-row max-w-[1400px] w-full mx-auto p-4 gap-5">
                    <div className="flex-1 flex flex-col min-w-0">
-                      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-8 flex-1 flex flex-col relative">
-                         
-                         <div className="flex flex-wrap gap-2 justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-8 flex-1 flex flex-col">
+                         <div className="flex flex-wrap gap-2 justify-between items-center mb-6 pb-4 border-b">
                             <h2 className="text-xl font-bold text-slate-800">SOAL NO. {examCurrentIndex + 1}</h2>
-                            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200">{currentQuestion.category}</span>
+                            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">{currentQuestion.category}</span>
                          </div>
-                         
                          <div className="flex-1 overflow-y-auto pr-1 pb-8">
                             <div className="text-base sm:text-lg text-slate-800 leading-relaxed font-medium mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: currentQuestion.question || '' }} />
-                            
                             {currentQuestion.type === 'MCQ' && <RenderMCQ />}
                             {currentQuestion.type === 'MCMA' && <RenderMCMA />}
                             {currentQuestion.type === 'CATEGORY' && <RenderCATEGORY />}
                          </div>
-                         
-                         <div className="pt-5 mt-4 border-t border-slate-100 flex flex-wrap justify-between items-center gap-3 bg-white">
-                            <button onClick={() => setExamCurrentIndex(Math.max(0, examCurrentIndex - 1))} disabled={examCurrentIndex === 0} className="flex items-center px-4 py-2.5 bg-slate-50 text-slate-700 rounded-lg disabled:opacity-50 font-medium border border-slate-200 hover:bg-slate-100 transition-colors text-sm sm:text-base"><ChevronLeft size={18} className="mr-1" /> Sebelum</button>
-                            
-                            <label className={`flex items-center px-4 py-2.5 rounded-lg font-medium border cursor-pointer select-none transition-all text-sm sm:text-base ${isFlagged ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-600'}`}>
-                               <input type="checkbox" checked={isFlagged} onChange={toggleFlag} className="mr-2 w-4 h-4 text-amber-500 rounded border-slate-300 focus:ring-amber-500" />
-                               Ragu-ragu
+                         <div className="pt-5 mt-4 border-t flex justify-between items-center gap-3">
+                            <button onClick={() => setExamCurrentIndex(Math.max(0, examCurrentIndex - 1))} disabled={examCurrentIndex === 0} className="px-4 py-2.5 bg-slate-50 text-slate-700 rounded-lg disabled:opacity-50 font-medium border"><ChevronLeft size={18} className="mr-1" /> Sebelum</button>
+                            <label className={`flex items-center px-4 py-2.5 rounded-lg font-medium border cursor-pointer ${isFlagged ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-200 text-slate-600'}`}>
+                               <input type="checkbox" checked={isFlagged} onChange={toggleFlag} className="mr-2 w-4 h-4 text-amber-500 rounded" /> Ragu-ragu
                             </label>
-                            
                             {examCurrentIndex < examQuestions.length - 1 ? (
-                               <button onClick={() => setExamCurrentIndex(examCurrentIndex + 1)} className="flex items-center px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-sm transition-colors text-sm sm:text-base">Lanjut <i className="fas fa-chevron-right ml-2 text-sm"></i></button>
+                               <button onClick={() => setExamCurrentIndex(examCurrentIndex + 1)} className="px-5 py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-sm">Lanjut</button>
                             ) : (
-                               <button onClick={() => navigate('/review')} className="px-5 py-2.5 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 shadow-sm transition-colors text-sm sm:text-base">Selesai <i className="fas fa-check ml-1.5 text-sm"></i></button>
+                               <button onClick={() => navigate('/review')} className="px-5 py-2.5 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 shadow-sm">Selesai</button>
                             )}
                          </div>
                       </div>
                    </div>
-
                    <div className="lg:w-80 w-full flex-shrink-0">
-                      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sticky top-20">
+                      <div className="bg-white rounded-xl shadow-sm border p-5 sticky top-20">
                          <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center border-b pb-3"><LayoutDashboard size={18} className="mr-2 text-slate-400"/> Navigator Soal</h3>
-                         
-                         <div className="grid grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto pr-1 pb-1">
+                         <div className="grid grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto">
                             {examQuestions.map((q, idx) => {
                                const ans = activeSession.answers[q.id];
                                const isAns = ans && (q.type !== 'CATEGORY' || Object.keys(ans).length === (q.statements||[]).length);
                                const isCur = idx === examCurrentIndex;
                                const isFlg = activeSession.flagged?.includes(q.id);
-                               
                                let cls = "h-10 w-full rounded-lg font-semibold text-sm flex items-center justify-center border transition-all cursor-pointer ";
-                               if (isCur) cls += "ring-2 ring-blue-500 ring-offset-1 bg-white text-slate-800 border-slate-300 z-10";
-                               else if (isFlg) cls += "bg-amber-400 text-amber-900 border-amber-500 opacity-90";
-                               else if (isAns) cls += "bg-emerald-500 text-white border-emerald-600 opacity-90";
-                               else cls += "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100";
-                               
+                               if (isCur) cls += "ring-2 ring-blue-500 bg-white text-slate-800 border-slate-300";
+                               else if (isFlg) cls += "bg-amber-400 text-amber-900 border-amber-500";
+                               else if (isAns) cls += "bg-emerald-500 text-white border-emerald-600";
+                               else cls += "bg-slate-50 text-slate-500 border-slate-200";
                                return <button key={q.id} onClick={() => setExamCurrentIndex(idx)} className={cls}>{idx + 1}</button>;
                             })}
-                         </div>
-                         
-                         <div className="mt-6 pt-4 border-t border-slate-100 space-y-2 text-xs font-medium text-slate-600">
-                            <div className="flex items-center"><span className="w-4 h-4 bg-emerald-500 rounded mr-2"></span> Sudah Dijawab</div>
-                            <div className="flex items-center"><span className="w-4 h-4 bg-amber-400 rounded mr-2"></span> Ragu-ragu</div>
-                            <div className="flex items-center"><span className="w-4 h-4 bg-slate-50 border border-slate-200 rounded mr-2"></span> Belum Dijawab</div>
                          </div>
                       </div>
                    </div>
@@ -914,20 +656,16 @@
                   participant_name: activeSession.participant.name, participant_school: activeSession.participant.school,
                   participant_nis: activeSession.participant.nis, participant_grade: activeSession.participant.grade,
                   token: activeSession.token, score: result.finalScore, start_time: activeSession.startTime,
-                  end_time: new Date().getTime(), detailed_results: result.detailedResults
+                  end_time: new Date().getTime(), detailed_results: JSON.stringify(result.detailedResults)
                };
-               
                try {
                  const db = await getSupabase();
-                 const { error: insertErr } = await db.from('results').insert([payload]);
-                 if (insertErr) throw insertErr;
-
+                 await db.from('results').insert([payload]);
                  setActiveSession({ ...activeSession, status: 'SUBMITTED', score: result.finalScore });
                  navigate('/submitted');
                } catch (err) {
-                 alert("Gagal mengirim ujian. Cek koneksi.\nDetail: " + err.message);
-                 setIsSubmitting(false);
-                 setShowConfirm(false);
+                 alert("Gagal mengirim ujian: " + err.message);
+                 setIsSubmitting(false); setShowConfirm(false);
                }
              };
 
@@ -935,34 +673,21 @@
                <div className="min-h-screen bg-slate-50 flex py-10 px-4 justify-center items-center">
                    <div className="bg-white p-8 md:p-10 rounded-2xl shadow-xl max-w-2xl w-full text-center border-t-4 border-blue-600">
                       <h2 className="text-2xl font-bold mb-6 text-slate-800">Konfirmasi Selesai Ujian</h2>
-                      
                       <div className="grid grid-cols-2 gap-4 mb-8">
-                         <div className="p-5 bg-slate-50 border rounded-xl">
-                             <p className="text-slate-500 font-medium text-sm mb-1">Total Soal</p>
-                             <p className="text-4xl font-bold text-slate-800">{totalQ}</p>
-                         </div>
-                         <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-xl">
-                             <p className="text-emerald-700 font-medium text-sm mb-1">Sudah Dijawab</p>
-                             <p className="text-4xl font-bold text-emerald-600">{ansQ}</p>
-                         </div>
+                         <div className="p-5 bg-slate-50 border rounded-xl"><p className="text-slate-500 text-sm mb-1">Total Soal</p><p className="text-4xl font-bold text-slate-800">{totalQ}</p></div>
+                         <div className="p-5 bg-emerald-50 border rounded-xl"><p className="text-emerald-700 text-sm mb-1">Dijawab</p><p className="text-4xl font-bold text-emerald-600">{ansQ}</p></div>
                       </div>
-                      
-                      {totalQ - ansQ > 0 && <div className="mb-6 p-4 bg-rose-50 text-rose-700 rounded-lg text-sm border border-rose-200 font-medium flex items-center justify-center"><AlertCircle size={18} className="mr-2"/> Peringatan: Ada {totalQ - ansQ} soal yang belum dijawab!</div>}
-                      
                       {!showConfirm ? (
-                         <div className="flex flex-col sm:flex-row gap-3">
-                            <button onClick={()=>navigate('/exam')} className="flex-1 py-3 bg-white border border-slate-300 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Kembali ke Soal</button>
-                            <button onClick={()=>setShowConfirm(true)} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-semibold shadow-md hover:bg-blue-700 transition-colors">Kirim Ujian Sekarang</button>
+                         <div className="flex gap-3">
+                            <button onClick={()=>navigate('/exam')} className="flex-1 py-3 border rounded-xl font-semibold text-slate-700">Kembali</button>
+                            <button onClick={()=>setShowConfirm(true)} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-semibold">Kirim Ujian</button>
                          </div>
                       ) : (
-                         <div className="p-6 bg-slate-50 rounded-xl border border-slate-200">
-                            <p className="font-bold text-rose-600 mb-2">Apakah Anda Yakin?</p>
-                            <p className="text-slate-600 text-sm mb-6">Jawaban yang dikirim tidak dapat diubah kembali.</p>
-                            <div className="flex flex-col sm:flex-row gap-3">
-                               <button onClick={()=>setShowConfirm(false)} disabled={isSubmitting} className="flex-1 py-2.5 bg-white border border-slate-300 rounded-lg font-medium text-slate-700 hover:bg-slate-50 transition-colors">Batal</button>
-                               <button onClick={handleFinalSubmit} disabled={isSubmitting} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg font-semibold shadow-sm hover:bg-emerald-700 flex justify-center items-center disabled:opacity-50 transition-colors">
-                                  {isSubmitting ? 'Mengirim...' : 'Ya, Kirim Ujian'}
-                               </button>
+                         <div className="p-6 bg-slate-50 rounded-xl border">
+                            <p className="font-bold text-rose-600 mb-2">Kirim sekarang?</p>
+                            <div className="flex gap-3">
+                               <button onClick={()=>setShowConfirm(false)} className="flex-1 py-2.5 bg-white border rounded-lg font-medium">Batal</button>
+                               <button onClick={handleFinalSubmit} disabled={isSubmitting} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg font-semibold">{isSubmitting ? 'Mengirim...' : 'Ya, Kirim'}</button>
                             </div>
                          </div>
                       )}
@@ -976,29 +701,25 @@
                 <div className="bg-white p-10 rounded-2xl shadow-xl text-center max-w-md w-full border-t-4 border-emerald-500">
                    <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5"><CheckCircle size={40} /></div>
                    <h2 className="text-xl font-bold mb-3 text-slate-800">Ujian Selesai</h2>
-                   <p className="text-slate-500 text-sm mb-8">Jawaban Anda telah berhasil diunggah ke server.</p>
-                   <button onClick={() => { setActiveSession(null); navigate('/'); }} className="w-full px-6 py-3 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-xl transition-colors shadow-sm">Kembali ke Beranda</button>
+                   <p className="text-slate-500 text-sm mb-8">Jawaban berhasil diunggah.</p>
+                   <button onClick={() => { setActiveSession(null); navigate('/'); }} className="w-full px-6 py-3 bg-slate-800 text-white font-semibold rounded-xl">Beranda</button>
                 </div>
             </div>
           );
 
           const AdminLogin = () => {
-            const [u, setU] = useState(''); 
-            const [p, setP] = useState('');
-            const [showP, setShowP] = useState(false);
+            const [u, setU] = useState(''); const [p, setP] = useState(''); const [showP, setShowP] = useState(false);
             return (
               <div className="min-h-screen bg-slate-900 flex justify-center items-center p-4">
                 <form onSubmit={(e)=>{e.preventDefault(); if(u==='admin'&&p==='bismillah'){setIsAdminLoggedIn(true); navigate('/admin/dashboard');}else alert('Salah');}} className="bg-white p-8 rounded-2xl max-w-sm w-full shadow-2xl">
                    <div className="text-center mb-6"><div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3"><Settings size={24}/></div><h1 className="text-xl font-bold text-slate-800">Admin</h1></div>
-                   <input type="text" placeholder="Username" value={u} onChange={e=>setU(e.target.value)} className="w-full p-3 border border-slate-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 text-sm" required/>
+                   <input type="text" placeholder="Username" value={u} onChange={e=>setU(e.target.value)} className="w-full p-3 border rounded-lg mb-3 text-sm" required/>
                    <div className="relative mb-6">
-                       <input type={showP ? "text" : "password"} placeholder="Password" value={p} onChange={e=>setP(e.target.value)} className="w-full p-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm" required/>
-                       <button type="button" onClick={() => setShowP(!showP)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
-                           {showP ? <EyeSlash size={18}/> : <Eye size={18}/>}
-                       </button>
+                       <input type={showP ? "text" : "password"} placeholder="Password" value={p} onChange={e=>setP(e.target.value)} className="w-full p-3 border rounded-lg text-sm pr-10" required/>
+                       <button type="button" onClick={()=>setShowP(!showP)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600">{showP ? <EyeSlash size={18}/> : <Eye size={18}/>}</button>
                    </div>
-                   <button type="submit" className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 shadow-sm transition-colors">Login</button>
-                   <button type="button" onClick={()=>navigate('/')} className="w-full mt-4 text-xs text-slate-500 hover:text-slate-800 font-medium">Kembali ke Web Peserta</button>
+                   <button type="submit" className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg">Login</button>
+                   <button type="button" onClick={()=>navigate('/')} className="w-full mt-4 text-xs text-slate-500 font-medium">Kembali</button>
                 </form>
               </div>
             );
@@ -1007,7 +728,6 @@
           const AdminLayout = ({ children, title }) => {
             const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
             if (!isAdminLoggedIn) { navigate('/admin/login'); return null; }
-            
             const menu = [
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
               { id: 'questions', label: 'Bank Soal', icon: Database, path: '/admin/questions' },
@@ -1016,45 +736,20 @@
               { id: 'analysis', label: 'Analisis Soal', icon: BarChart2, path: '/admin/analysis' },
               { id: 'reports', label: 'Cetak Laporan', icon: Printer, path: '/admin/reports' }
             ];
-
             return (
               <div className="min-h-screen bg-slate-50 flex print:block">
-                {isMobileMenuOpen && <div className="fixed inset-0 bg-slate-900/60 z-40 lg:hidden print:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
-                
-                <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 transition-transform duration-300 ease-in-out print:hidden shadow-xl lg:shadow-none`}>
-                  <div className="p-6 flex items-center justify-between border-b border-slate-800">
-                    <div className="flex items-center"><div className="w-8 h-8 bg-blue-500 text-white rounded flex items-center justify-center mr-3"><Settings size={16}/></div><span className="text-white font-bold tracking-wide">CBT ADMIN</span></div>
-                    <button className="lg:hidden text-slate-400 hover:text-white" onClick={() => setIsMobileMenuOpen(false)}><X size={20} /></button>
-                  </div>
-                  <nav className="flex-1 py-4 space-y-1 overflow-y-auto px-3">
-                    {menu.map(m => (
-                      <button key={m.id} onClick={() => { setIsMobileMenuOpen(false); navigate(m.path); }} className={`w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${currentRoute.startsWith(m.path) ? 'bg-blue-500/10 text-blue-400' : 'hover:bg-slate-800 hover:text-white text-slate-400'}`}>
-                        <m.icon size={18} className="mr-3 w-5 text-center" /> {m.label}
-                      </button>
-                    ))}
-                  </nav>
-                  <div className="p-4 border-t border-slate-800">
-                     <button onClick={() => { setIsAdminLoggedIn(false); navigate('/admin/login'); }} className="w-full flex items-center justify-center px-4 py-2 font-medium text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-                        <LogOut size={16} className="mr-2" /> Keluar
-                     </button>
-                  </div>
+                {isMobileMenuOpen && <div className="fixed inset-0 bg-slate-900/60 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
+                <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 transition-transform`}>
+                  <div className="p-6 flex items-center justify-between border-b border-slate-800"><div className="flex items-center"><div className="w-8 h-8 bg-blue-500 text-white rounded flex items-center justify-center mr-3"><Settings size={16}/></div><span className="text-white font-bold">CBT ADMIN</span></div><button className="lg:hidden text-slate-400" onClick={() => setIsMobileMenuOpen(false)}><X size={20}/></button></div>
+                  <nav className="flex-1 py-4 space-y-1 px-3">{menu.map(m => (<button key={m.id} onClick={() => { setIsMobileMenuOpen(false); navigate(m.path); }} className={`w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium ${currentRoute.startsWith(m.path) ? 'bg-blue-500/10 text-blue-400' : 'text-slate-400 hover:bg-slate-800'}`}><m.icon size={18} className="mr-3"/> {m.label}</button>))}</nav>
+                  <div className="p-4 border-t border-slate-800"><button onClick={() => { setIsAdminLoggedIn(false); navigate('/admin/login'); }} className="w-full flex items-center justify-center px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"><LogOut size={16} className="mr-2"/> Keluar</button></div>
                 </div>
-                
-                <div className="flex-1 flex flex-col h-screen overflow-hidden print:h-auto print:overflow-visible print:block relative">
-                  <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex justify-between items-center z-10 sticky top-0 print:hidden shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <button className="lg:hidden text-slate-600 hover:text-slate-900 bg-slate-50 p-1.5 rounded border" onClick={() => setIsMobileMenuOpen(true)}><Menu size={20} /></button>
-                      <h2 className="text-lg sm:text-xl font-semibold text-slate-800 tracking-tight truncate">{title}</h2>
-                    </div>
-                    {dbStatus === 'error' ? (
-                        <span className="text-[10px] sm:text-xs font-bold px-2.5 py-1 bg-red-50 text-red-600 border border-red-200 rounded-md flex items-center"><AlertCircle size={12} className="mr-1 hidden sm:block"/> Offline</span>
-                    ) : (
-                        <span className="text-[10px] sm:text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-md flex items-center"><Cloud size={12} className="mr-1 hidden sm:block"/> Online</span>
-                    )}
+                <div className="flex-1 flex flex-col h-screen overflow-hidden print:h-auto print:block">
+                  <header className="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 z-10 print:hidden shadow-sm">
+                    <div className="flex items-center gap-3"><button className="lg:hidden p-1.5 border rounded" onClick={() => setIsMobileMenuOpen(true)}><Menu size={20}/></button><h2 className="text-xl font-semibold text-slate-800">{title}</h2></div>
+                    <span className="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-600 border rounded-md flex items-center"><Cloud size={12} className="mr-1"/> Online</span>
                   </header>
-                  <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 print:overflow-visible print:p-0 print:block">
-                    {children}
-                  </main>
+                  <main className="flex-1 overflow-y-auto p-6 lg:p-8 print:p-0">{children}</main>
                 </div>
               </div>
             );
@@ -1062,29 +757,27 @@
 
           const AdminDashboard = () => {
              const [tempOrganizer, setTempOrganizer] = useState(organizerName);
+             const [tempLogo, setTempLogo] = useState(schoolLogo);
+             const [tempDate, setTempDate] = useState(examDate);
+             const [tempStartTime, setTempStartTime] = useState(startTimeStr);
+             const [tempEndTime, setTempEndTime] = useState(endTimeStr);
              const [tempRandomQ, setTempRandomQ] = useState(isRandomQ);
              const [tempRandomOpt, setTempRandomOpt] = useState(isRandomOpt);
-             const [tempLogo, setTempLogo] = useState(appLogo);
-             const [tempDate, setTempDate] = useState(examDate);
-             const [tempStart, setTempStart] = useState(examStartTime);
-             const [tempEnd, setTempEnd] = useState(examEndTime);
-             
-             const [isSavingSettings, setIsSavingSettings] = useState(false);
+             const [isSaving, setIsSaving] = useState(false);
 
              const handleLogoUpload = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => setTempLogo(reader.result);
-                    reader.readAsDataURL(file);
-                }
+                 const file = e.target.files[0];
+                 if (file) {
+                     const reader = new FileReader();
+                     reader.onloadend = () => setTempLogo(reader.result);
+                     reader.readAsDataURL(file);
+                 }
              };
 
              const saveSettings = async () => {
-                setIsSavingSettings(true);
+                setIsSaving(true);
                 try {
                     const db = await getSupabase();
-                    
                     const upsertSetting = async (code, val) => {
                         const { data } = await db.from('tokens').select('code').eq('code', code).maybeSingle();
                         if (data) await db.from('tokens').update({ status: val }).eq('code', code);
@@ -1095,113 +788,54 @@
                         upsertSetting('SYS_SETTING_ORGANIZER', tempOrganizer),
                         upsertSetting('SYS_SETTING_LOGO', tempLogo),
                         upsertSetting('SYS_SETTING_DATE', tempDate),
-                        upsertSetting('SYS_SETTING_START_TIME', tempStart),
-                        upsertSetting('SYS_SETTING_END_TIME', tempEnd),
+                        upsertSetting('SYS_SETTING_START_TIME', tempStartTime),
+                        upsertSetting('SYS_SETTING_END_TIME', tempEndTime),
                         upsertSetting('SYS_SETTING_RANDOM_Q', tempRandomQ ? 'TRUE' : 'FALSE'),
                         upsertSetting('SYS_SETTING_RANDOM_OPT', tempRandomOpt ? 'TRUE' : 'FALSE')
                     ]);
 
                     setOrganizerName(tempOrganizer);
-                    setAppLogo(tempLogo);
+                    setSchoolLogo(tempLogo);
                     setExamDate(tempDate);
-                    setExamStartTime(tempStart);
-                    setExamEndTime(tempEnd);
+                    setStartTimeStr(tempStartTime);
+                    setEndTimeStr(tempEndTime);
                     setIsRandomQ(tempRandomQ);
                     setIsRandomOpt(tempRandomOpt);
-                    alert("Pengaturan ujian berhasil disimpan!");
-                } catch(e) {
-                    alert("Gagal menyimpan pengaturan: " + e.message);
-                }
-                setIsSavingSettings(false);
+                    alert("Pengaturan berhasil disimpan!");
+                } catch(e) { alert("Gagal: " + e.message); }
+                setIsSaving(false);
              };
 
              return (
-                <AdminLayout title="Beranda Admin">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                        <div className="text-slate-500 text-xs font-medium mb-1">Peserta Selesai</div>
-                        <div className="text-2xl font-bold text-slate-800">{results.length}</div>
-                    </div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                        <div className="text-slate-500 text-xs font-medium mb-1">Total Soal (Semua Folder)</div>
-                        <div className="text-2xl font-bold text-slate-800">{questions.length}</div>
-                    </div>
-                    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
-                        <div className="text-slate-500 text-xs font-medium mb-1">Token Tersedia</div>
-                        <div className="text-2xl font-bold text-slate-800">{tokens.filter(t=>t.status==='AVAILABLE').length}</div>
-                    </div>
+                <AdminLayout title="Dashboard">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Peserta Selesai</div><div className="text-2xl font-bold">{results.length}</div></div>
+                    <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Total Soal</div><div className="text-2xl font-bold">{questions.length}</div></div>
+                    <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Token Tersedia</div><div className="text-2xl font-bold">{tokens.filter(t=>t.status==='AVAILABLE').length}</div></div>
                 </div>
 
                 <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 mb-8">
                     <h3 className="text-base font-semibold text-blue-900 mb-4 flex items-center"><Settings size={18} className="mr-2"/> Pengaturan Penerbitan Ujian</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        
+                        <div><label className="block text-sm font-semibold text-blue-800 mb-1">Nama Penyelenggara</label><input type="text" value={tempOrganizer} onChange={e=>setTempOrganizer(e.target.value)} className="w-full p-2.5 rounded-lg border bg-white text-sm"/></div>
                         <div>
-                            <label className="block text-sm font-semibold text-blue-800 mb-1">Nama Penyelenggara</label>
-                            <input type="text" value={tempOrganizer} onChange={e=>setTempOrganizer(e.target.value)} placeholder="Contoh: SD Negeri 1 Jakarta" className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                        
-                        <div>
-                            <label className="block text-sm font-semibold text-blue-800 mb-1">Unggah Logo Sekolah (Opsional)</label>
+                            <label className="block text-sm font-semibold text-blue-800 mb-1">Unggah Logo Sekolah</label>
                             <div className="flex items-center gap-3">
-                                {tempLogo && <img src={tempLogo} alt="Logo" className="h-10 w-auto bg-white p-1 rounded border border-blue-200" />}
-                                <input type="file" accept="image/*" onChange={handleLogoUpload} className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer bg-white border border-blue-200 rounded-lg" />
-                                {tempLogo && <button onClick={()=>setTempLogo('')} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><Trash2 size={16}/></button>}
+                                {tempLogo && <img src={tempLogo} alt="Logo" className="w-10 h-10 object-cover rounded border"/>}
+                                <input type="file" accept="image/*" onChange={handleLogoUpload} className="w-full p-2 text-xs bg-white rounded border"/>
                             </div>
                         </div>
-
-                        <div>
-                            <label className="block text-sm font-semibold text-blue-800 mb-1">Tanggal Ujian Diterbitkan</label>
-                            <input type="date" value={tempDate} onChange={e=>setTempDate(e.target.value)} className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-medium bg-white focus:ring-2 focus:ring-blue-500" />
+                        <div><label className="block text-sm font-semibold text-blue-800 mb-1">Tanggal Ujian</label><input type="date" value={tempDate} onChange={e=>setTempDate(e.target.value)} className="w-full p-2.5 rounded-lg border bg-white text-sm"/></div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div><label className="block text-sm font-semibold text-blue-800 mb-1">Mulai Jam</label><input type="time" value={tempStartTime} onChange={e=>setTempStartTime(e.target.value)} className="w-full p-2.5 rounded-lg border bg-white text-sm"/></div>
+                            <div><label className="block text-sm font-semibold text-blue-800 mb-1">Sampai Jam</label><input type="time" value={tempEndTime} onChange={e=>setTempEndTime(e.target.value)} className="w-full p-2.5 rounded-lg border bg-white text-sm"/></div>
                         </div>
-                        
-                        <div className="flex gap-3">
-                            <div className="flex-1">
-                                <label className="block text-sm font-semibold text-blue-800 mb-1">Mulai Jam</label>
-                                <input type="time" value={tempStart} onChange={e=>setTempStart(e.target.value)} className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-bold bg-white focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <div className="flex-1">
-                                <label className="block text-sm font-semibold text-blue-800 mb-1">Sampai Jam</label>
-                                <input type="time" value={tempEnd} onChange={e=>setTempEnd(e.target.value)} className="w-full p-2.5 rounded-lg border border-blue-200 text-sm font-bold bg-white focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                        </div>
-                        
-                        <div className="md:col-span-2 bg-white/60 p-4 rounded-xl border border-blue-200 flex flex-wrap gap-x-8 gap-y-3 items-center mt-2">
-                            <label className="flex items-center cursor-pointer font-semibold text-blue-800 text-sm hover:text-blue-600 transition-colors">
-                                <input type="checkbox" checked={tempRandomQ} onChange={e=>setTempRandomQ(e.target.checked)} className="w-5 h-5 mr-3 text-blue-600 rounded focus:ring-blue-500 border-slate-300" />
-                                <i className="fas fa-random mr-2 text-blue-500"></i> Acak Urutan Soal (Tiap Peserta Berbeda)
-                            </label>
-                            <label className="flex items-center cursor-pointer font-semibold text-blue-800 text-sm hover:text-blue-600 transition-colors">
-                                <input type="checkbox" checked={tempRandomOpt} onChange={e=>setTempRandomOpt(e.target.checked)} className="w-5 h-5 mr-3 text-blue-600 rounded focus:ring-blue-500 border-slate-300" />
-                                <i className="fas fa-list-ol mr-2 text-blue-500"></i> Acak Opsi Jawaban (A, B, C, D)
-                            </label>
+                        <div className="md:col-span-2 bg-white/60 p-4 rounded-xl border flex flex-wrap gap-x-8 gap-y-3">
+                            <label className="flex items-center cursor-pointer text-sm font-semibold text-blue-900"><input type="checkbox" checked={tempRandomQ} onChange={e=>setTempRandomQ(e.target.checked)} className="w-5 h-5 mr-2"/> Acak Urutan Soal</label>
+                            <label className="flex items-center cursor-pointer text-sm font-semibold text-blue-900"><input type="checkbox" checked={tempRandomOpt} onChange={e=>setTempRandomOpt(e.target.checked)} className="w-5 h-5 mr-2"/> Acak Opsi Jawaban</label>
                         </div>
                     </div>
-                    <div className="mt-5 flex justify-end">
-                        <button onClick={saveSettings} disabled={isSavingSettings} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center">
-                            <Save size={18} className="mr-2"/> {isSavingSettings ? 'Menyimpan...' : 'Simpan Pengaturan'}
-                        </button>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-6 overflow-x-auto">
-                    <h3 className="text-base font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-3">Aktivitas Terbaru</h3>
-                    <table className="w-full text-left text-sm min-w-[500px]">
-                        <thead className="text-slate-500 font-medium border-b border-slate-100 bg-slate-50/50">
-                        <tr><th className="py-3 px-4 font-medium">Nama Peserta</th><th className="py-3 px-4 font-medium">Sekolah</th><th className="py-3 px-4 font-medium text-center">Nilai</th><th className="py-3 px-4 font-medium text-right">Waktu</th></tr>
-                        </thead>
-                        <tbody>
-                        {results.slice(0, 5).map((r, i) => (
-                            <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50">
-                            <td className="py-3 px-4 font-medium text-slate-800">{r.participant?.name}</td>
-                            <td className="py-3 px-4 text-slate-500">{r.participant?.school}</td>
-                            <td className="py-3 px-4 text-center font-bold text-emerald-600">{r.score}</td>
-                            <td className="py-3 px-4 text-right text-slate-400 text-xs">{new Date(r.created_at).toLocaleString('id-ID')}</td>
-                            </tr>
-                        ))}
-                        {results.length === 0 && <tr><td colSpan="4" className="text-center py-8 text-slate-400">Belum ada peserta yang menyelesaikan ujian.</td></tr>}
-                        </tbody>
-                    </table>
+                    <div className="mt-5 flex justify-end"><button onClick={saveSettings} disabled={isSaving} className="bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-blue-700">{isSaving ? 'Menyimpan...' : 'Simpan Pengaturan'}</button></div>
                 </div>
                 </AdminLayout>
              );
@@ -1211,296 +845,76 @@
              const [isSaving, setIsSaving] = useState(false);
              const [showImport, setShowImport] = useState(false);
              const [fileUploadError, setFileUploadError] = useState('');
-             
-             const [isMassEdit, setIsMassEdit] = useState(false);
-             const [massEditTokens, setMassEditTokens] = useState([]);
-             
-             // State untuk fitur Pilih Semua
-             const [selectedTokens, setSelectedTokens] = useState([]);
-             
              const actualTokens = tokens.filter(t => !t.code.startsWith('SYS_SETTING_'));
 
-             // --- Fitur Download Templat ---
              const downloadTemplate = () => {
-                 const csvContent = "Nama Murid,Asal Sekolah\nBudi Santoso,SDN 1 Jakarta\nSiti Aminah,SDN 2 Jakarta\n";
+                 const csvContent = "Nama Murid,Asal Sekolah\nBudi Santoso,SDN 1\nSiti Aminah,SDN 2\n";
                  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                  const link = document.createElement("a");
-                 const url = URL.createObjectURL(blob);
-                 link.setAttribute("href", url);
-                 link.setAttribute("download", "Template_Data_Peserta.csv");
-                 link.style.visibility = 'hidden';
-                 document.body.appendChild(link);
-                 link.click();
-                 document.body.removeChild(link);
+                 link.setAttribute("href", URL.createObjectURL(blob));
+                 link.setAttribute("download", "Template_Peserta.csv");
+                 document.body.appendChild(link); link.click(); document.body.removeChild(link);
              };
 
-             // --- Fitur Unggah File CSV ---
              const handleFileUpload = (e) => {
                  const file = e.target.files[0];
                  if (!file) return;
-                 
-                 setFileUploadError('');
                  const reader = new FileReader();
                  reader.onload = async (event) => {
-                     const text = event.target.result;
-                     const lines = text.split('\n').filter(line => line.trim() !== '');
-                     
-                     // Deteksi baris pertama apakah header atau bukan
-                     const startIndex = lines[0].toLowerCase().includes('nama') ? 1 : 0;
-                     
+                     const lines = event.target.result.split('\n').filter(l => l.trim() !== '');
                      const payloads = [];
-                     for (let i = startIndex; i < lines.length; i++) {
-                         // Mendukung pemisah koma (,) atau titik koma (;) dari Excel
-                         const delimiter = lines[i].includes(';') ? ';' : ',';
-                         const cols = lines[i].split(delimiter);
-                         
-                         if (cols.length >= 1) {
-                              payloads.push({
-                                  code: `TKA-${Math.random().toString(36).substring(2,6).toUpperCase()}`,
-                                  status: 'AVAILABLE',
-                                  participant_name: cols[0]?.replace(/["\r]/g, '').trim() || '',
-                                  participant_school: cols[1]?.replace(/["\r]/g, '').trim() || '',
-                                  generatedAt: new Date().toISOString()
-                              });
-                         }
+                     for (let i = (lines[0].toLowerCase().includes('nama') ? 1 : 0); i < lines.length; i++) {
+                         const cols = lines[i].split(lines[i].includes(';') ? ';' : ',');
+                         if (cols[0]) payloads.push({ code: `TKA-${Math.random().toString(36).substring(2,6).toUpperCase()}`, status: 'AVAILABLE', participant_name: cols[0].replace(/["\r]/g, '').trim(), participant_school: cols[1]?.replace(/["\r]/g, '').trim() || '', generatedAt: new Date().toISOString() });
                      }
-                     
-                     if (payloads.length === 0) {
-                          setFileUploadError('Tidak ada data valid di dalam file.');
-                          e.target.value = null; // Reset input
-                          return;
-                     }
-                     
+                     if (payloads.length === 0) { setFileUploadError('Data kosong.'); return; }
                      setIsSaving(true);
                      try {
                           const db = await getSupabase();
-                          const { error } = await db.from('tokens').insert(payloads);
-                          if (error) throw error;
-                          
-                          setShowImport(false);
-                          await fetchSupabaseData();
-                          alert(`Berhasil mengimpor & generate token untuk ${payloads.length} siswa!`);
-                     } catch (err) { alert("Gagal Impor: " + err.message); }
-                     finally { setIsSaving(false); e.target.value = null; }
+                          await db.from('tokens').insert(payloads);
+                          setShowImport(false); fetchSupabaseData(); alert('Berhasil mengimpor token!');
+                     } catch(err) { alert(err.message); }
+                     finally { setIsSaving(false); }
                  };
                  reader.readAsText(file);
              };
 
-             // --- Fitur Aksi Massal (Pilih Semua & Hapus) ---
-             const toggleSelectAll = (e) => {
-                 if (e.target.checked) setSelectedTokens(actualTokens.map(t => t.code));
-                 else setSelectedTokens([]);
-             };
-
-             const toggleSelect = (code) => {
-                 if (selectedTokens.includes(code)) setSelectedTokens(selectedTokens.filter(c => c !== code));
-                 else setSelectedTokens([...selectedTokens, code]);
-             };
-
-             const deleteSelected = async () => {
-                 if (selectedTokens.length === 0) return;
-                 if (!confirm(`Yakin ingin menghapus ${selectedTokens.length} data terpilih secara permanen?`)) return;
-                 
-                 setIsSaving(true);
-                 try {
-                     const db = await getSupabase();
-                     // Hapus data yang ada di dalam array selectedTokens
-                     const { error } = await db.from('tokens').delete().in('code', selectedTokens);
-                     if (error) throw error;
-                     
-                     setSelectedTokens([]);
-                     await fetchSupabaseData();
-                     alert(`${selectedTokens.length} data berhasil dihapus.`);
-                 } catch(err) { alert("Gagal Menghapus: " + err.message); }
-                 finally { setIsSaving(false); }
-             };
-
-             // --- Fitur Edit Semua Peserta ---
-             const startMassEdit = () => {
-                 setMassEditTokens(JSON.parse(JSON.stringify(actualTokens)));
-                 setIsMassEdit(true);
-                 setSelectedTokens([]); // Kosongkan pilihan saat masuk mode edit
-             };
-
-             const handleMassEditChange = (index, field, value) => {
-                 const newTokens = [...massEditTokens];
-                 newTokens[index][field] = value;
-                 setMassEditTokens(newTokens);
-             };
-
-             const saveMassEdit = async () => {
-                 setIsSaving(true);
-                 try {
-                     const db = await getSupabase();
-                     const { error } = await db.from('tokens').upsert(
-                         massEditTokens.map(t => ({
-                             code: t.code,
-                             status: t.status,
-                             participant_name: t.participant_name || '',
-                             participant_school: t.participant_school || ''
-                         }))
-                     );
-                     if (error) throw error;
-                     await fetchSupabaseData();
-                     setIsMassEdit(false);
-                     alert("Semua data peserta berhasil diperbarui!");
-                 } catch (err) { alert(err.message); }
-                 finally { setIsSaving(false); }
-             };
-
-             const clearAll = async () => {
-                if(!confirm("PERINGATAN: Anda yakin ingin menghapus SEMUA token?")) return;
-                setIsSaving(true);
-                try {
-                   const db = await getSupabase();
-                   const { error } = await db.from('tokens').delete().not('code', 'ilike', 'SYS_SETTING_%'); 
-                   if (error) throw error;
-                   await fetchSupabaseData();
-                } catch(err) { alert(err.message); }
-                finally { setIsSaving(false); }
-             };
-
              const deleteToken = async (code) => {
-                 if(!confirm(`Yakin ingin menghapus token ${code}?`)) return;
+                 if(!confirm(`Hapus token ${code}?`)) return;
                  setIsSaving(true);
-                 try {
-                     const db = await getSupabase();
-                     await db.from('tokens').delete().eq('code', code);
-                     await fetchSupabaseData();
-                 } catch(err) { alert(err.message); }
-                 finally { setIsSaving(false); }
+                 try { const db = await getSupabase(); await db.from('tokens').delete().eq('code', code); fetchSupabaseData(); } catch(e) { alert(e.message); }
+                 setIsSaving(false);
              };
 
              return (
-               <AdminLayout title="Data Peserta & Token Ujian">
-                 
-                 <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm mb-6 flex flex-wrap gap-4 items-center justify-between">
-                    <div className="flex gap-2 w-full sm:w-auto">
-                       <button onClick={() => setShowImport(true)} disabled={isSaving || isMassEdit} className="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50 flex items-center shadow-sm">
-                           <FileText size={16} className="mr-2"/> Unggah Data (Impor)
-                       </button>
-                       {!isMassEdit ? (
-                           <button onClick={startMassEdit} disabled={isSaving || actualTokens.length === 0} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center shadow-sm">
-                               <Edit size={16} className="mr-2"/> Edit Semua Peserta
-                           </button>
-                       ) : (
-                           <div className="flex gap-2">
-                               <button onClick={saveMassEdit} disabled={isSaving} className="bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50 flex items-center shadow-sm">
-                                   <Save size={16} className="mr-2"/> Simpan Perubahan
-                               </button>
-                               <button onClick={() => setIsMassEdit(false)} disabled={isSaving} className="bg-slate-100 text-slate-700 border px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-200 disabled:opacity-50">
-                                   Batal
-                               </button>
-                           </div>
-                       )}
-                    </div>
-                    {!isMassEdit && (
-                       <button onClick={clearAll} disabled={isSaving} className="w-full sm:w-auto bg-rose-50 text-rose-600 px-4 py-2.5 rounded-lg text-sm font-semibold border border-rose-200 hover:bg-rose-100 disabled:opacity-50 transition-colors flex items-center justify-center">
-                           <Trash2 size={16} className="mr-2"/> Bersihkan Semua
-                       </button>
-                    )}
+               <AdminLayout title="Token Ujian">
+                 <div className="bg-white p-4 rounded-xl border mb-6 flex gap-3">
+                    <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Upload size={16} className="mr-2"/> Unggah Peserta</button>
                  </div>
-
-                 {/* Tombol Aksi Massal (Muncul Jika Ada yang Dipilih) */}
-                 {selectedTokens.length > 0 && !isMassEdit && (
-                    <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl mb-4 flex items-center justify-between animate-pulse">
-                        <span className="font-semibold text-blue-800 text-sm">{selectedTokens.length} Data Terpilih</span>
-                        <button onClick={deleteSelected} disabled={isSaving} className="bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm hover:bg-rose-700 transition-colors flex items-center">
-                            <Trash2 size={14} className="mr-1.5"/> Hapus Terpilih
-                        </button>
-                    </div>
-                 )}
-
-                 {/* Modal Impor File */}
                  {showImport && (
                      <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
-                            <div className="bg-slate-50 border-b px-5 py-3 flex justify-between items-center">
-                                <h3 className="font-semibold text-slate-800 flex items-center"><Cloud size={18} className="mr-2 text-emerald-600"/> Unggah Data Peserta (CSV)</h3>
-                                <button type="button" onClick={()=>setShowImport(false)} className="text-slate-400 hover:text-slate-700"><X size={18}/></button>
-                            </div>
-                            <div className="p-5 flex-1">
-                                <div className="bg-blue-50 text-blue-800 text-sm p-4 rounded-lg border border-blue-100 mb-5">
-                                    <strong>Langkah 1:</strong> Unduh format templat resmi di bawah ini. <br/>
-                                    <button type="button" onClick={downloadTemplate} className="mt-3 bg-white border border-blue-300 text-blue-700 px-4 py-2 rounded-lg shadow-sm font-bold hover:bg-blue-100 transition-colors flex items-center">
-                                        <FileText size={16} className="mr-2"/> Download Templat (CSV)
-                                    </button>
-                                </div>
-                                
-                                <div className="border-2 border-dashed border-slate-300 p-8 rounded-xl text-center bg-slate-50 hover:bg-slate-100 transition-colors relative group">
-                                    <input type="file" id="fileUpload" accept=".csv" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                    <div className="flex flex-col items-center pointer-events-none">
-                                        <Cloud size={40} className="text-slate-400 mb-3 group-hover:text-emerald-500 transition-colors"/>
-                                        <span className="font-bold text-slate-700 text-base">Klik atau Tarik File CSV ke sini</span>
-                                        <span className="text-sm text-slate-500 mt-1">Hanya menerima format .csv</span>
-                                    </div>
-                                </div>
-                                {fileUploadError && <p className="text-rose-500 text-sm mt-3 font-bold text-center bg-rose-50 p-2 rounded-lg border border-rose-100">{fileUploadError}</p>}
-                                {isSaving && <p className="text-emerald-600 text-sm mt-3 font-bold text-center animate-pulse">Sedang mengunggah dan membuat token...</p>}
-                            </div>
-                            <div className="p-4 border-t bg-slate-50 flex justify-end">
-                                <button type="button" onClick={()=>setShowImport(false)} className="px-5 py-2.5 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100">Batal / Tutup</button>
-                            </div>
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
+                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Impor Peserta</h3><button onClick={()=>setShowImport(false)}><X size={18}/></button></div>
+                            <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText size={16} className="mr-2"/> Download Templat</button>
+                            <input type="file" accept=".csv" onChange={handleFileUpload} className="w-full p-4 border-2 border-dashed rounded-xl"/>
+                            {fileUploadError && <p className="text-rose-500 text-xs mt-2">{fileUploadError}</p>}
                         </div>
                      </div>
                  )}
-
-                 {/* Tabel Data Peserta */}
-                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
-                    <table className="w-full text-left text-sm min-w-[800px]">
-                        <thead className="bg-slate-50 text-slate-600 font-semibold border-b">
-                            <tr>
-                                {!isMassEdit && (
-                                    <th className="p-4 w-12 text-center border-r">
-                                        <input type="checkbox" onChange={toggleSelectAll} checked={actualTokens.length > 0 && selectedTokens.length === actualTokens.length} className="w-4 h-4 text-emerald-600 rounded cursor-pointer" />
-                                    </th>
-                                )}
-                                <th className="p-4 w-12 text-center">No</th>
-                                <th className="p-4">Nama Murid</th>
-                                <th className="p-4">Asal Sekolah</th>
-                                <th className="p-4 w-32 font-mono">Kode Token</th>
-                                <th className="p-4 w-32 text-center">Status</th>
-                                {!isMassEdit && <th className="p-4 w-20 text-center">Aksi</th>}
-                            </tr>
-                        </thead>
+                 <div className="bg-white rounded-xl border overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50 border-b"><tr><th className="p-4">No</th><th className="p-4">Nama</th><th className="p-4">Sekolah</th><th className="p-4">Token</th><th className="p-4 text-center">Status</th><th className="p-4 text-center">Aksi</th></tr></thead>
                         <tbody>
-                            {isMassEdit ? (
-                                massEditTokens.map((t, i) => (
-                                    <tr key={t.code} className="border-b border-slate-100 bg-blue-50/20 hover:bg-blue-50/50">
-                                        <td className="p-3 text-center font-medium text-slate-500">{i+1}</td>
-                                        <td className="p-2"><input type="text" value={t.participant_name} onChange={(e) => handleMassEditChange(i, 'participant_name', e.target.value)} className="w-full p-2.5 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white font-semibold"/></td>
-                                        <td className="p-2"><input type="text" value={t.participant_school} onChange={(e) => handleMassEditChange(i, 'participant_school', e.target.value)} className="w-full p-2.5 text-sm border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white font-semibold"/></td>
-                                        <td className="p-3 font-mono font-bold text-slate-500">{t.code}</td>
-                                        <td className="p-2">
-                                            <select value={t.status} onChange={(e) => handleMassEditChange(i, 'status', e.target.value)} className="w-full p-2.5 text-xs font-bold border border-blue-200 rounded-lg bg-white">
-                                                <option value="AVAILABLE">AVAILABLE</option>
-                                                <option value="USED">USED</option>
-                                                <option value="EXPIRED">EXPIRED</option>
-                                                <option value="BLOCKED">BLOCKED</option>
-                                            </select>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                actualTokens.map((t, i) => (
-                                    <tr key={t.code} className={`border-b hover:bg-slate-50 transition-colors ${selectedTokens.includes(t.code) ? 'bg-emerald-50/40 border-emerald-100' : 'border-slate-50'}`}>
-                                        <td className="p-4 text-center border-r">
-                                            <input type="checkbox" checked={selectedTokens.includes(t.code)} onChange={() => toggleSelect(t.code)} className="w-4 h-4 text-emerald-600 rounded cursor-pointer" />
-                                        </td>
-                                        <td className="p-4 text-center font-medium text-slate-400">{i+1}</td>
-                                        <td className="p-4 font-semibold text-slate-800">{t.participant_name || <span className="text-slate-400 italic text-xs">Belum diisi</span>}</td>
-                                        <td className="p-4 text-slate-600">{t.participant_school || <span className="text-slate-400 italic text-xs">-</span>}</td>
-                                        <td className="p-4 font-mono font-bold text-indigo-600 tracking-wider bg-indigo-50/30">{t.code}</td>
-                                        <td className="p-4 text-center">
-                                            <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase ${t.status === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : t.status === 'USED' ? 'bg-amber-50 text-amber-600 border border-amber-200' : 'bg-slate-100 text-slate-500 border'}`}>{t.status}</span>
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <button onClick={()=>deleteToken(t.code)} className="text-rose-500 hover:text-rose-700 p-2 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors border border-rose-100" title="Hapus Data"><Trash2 size={16}/></button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                            {actualTokens.length === 0 && <tr><td colSpan={isMassEdit ? "5" : "7"} className="text-center py-10 text-slate-400 font-medium">Belum ada data peserta. Gunakan fitur "Unggah Data (Impor)" untuk memulai.</td></tr>}
+                            {actualTokens.map((t, i) => (
+                                <tr key={t.code} className="border-b">
+                                    <td className="p-4">{i+1}</td>
+                                    <td className="p-4 font-semibold">{t.participant_name || '-'}</td>
+                                    <td className="p-4">{t.participant_school || '-'}</td>
+                                    <td className="p-4 font-mono font-bold text-indigo-600">{t.code}</td>
+                                    <td className="p-4 text-center"><span className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded">{t.status}</span></td>
+                                    <td className="p-4 text-center"><button onClick={()=>deleteToken(t.code)} className="text-rose-500 p-2"><Trash2 size={16}/></button></td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                  </div>
@@ -1509,72 +923,26 @@
           };
 
           const AdminResults = () => {
-             const [isSaving, setIsSaving] = useState(false);
              const [selectedAnalysis, setSelectedAnalysis] = useState(null);
-
-             const clearAll = async () => {
-                if(!confirm("Yakin menghapus SEMUA riwayat nilai secara permanen?")) return;
-                setIsSaving(true);
-                try {
-                   const db = await getSupabase();
-                   const { error } = await db.from('results').delete().not('id', 'is', null); 
-                   if (error) throw error;
-                   await fetchSupabaseData();
-                   alert("Semua riwayat nilai berhasil dihapus.");
-                } catch(err) { alert("Gagal menghapus riwayat: " + err.message); }
-                finally { setIsSaving(false); }
-             };
-
              return (
                <AdminLayout title="Hasil Ujian">
-                 <div className="mb-5 flex justify-end">
-                    <button onClick={clearAll} disabled={isSaving} className="bg-rose-50 text-rose-600 px-4 py-2 rounded-lg text-sm font-semibold border border-rose-200 hover:bg-rose-100 disabled:opacity-50 transition-colors"><Trash2 size={16} className="inline mr-1"/> Hapus Riwayat</button>
-                 </div>
-
-                 {/* Modal Analisis Siswa */}
                  {selectedAnalysis && (
                     <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
-                            <div className="bg-slate-50 border-b px-5 py-4 flex justify-between items-center rounded-t-xl">
-                                <div>
-                                   <h3 className="font-bold text-slate-800 text-lg">Analisis Jawaban: {selectedAnalysis.participant?.name}</h3>
-                                   <p className="text-xs text-slate-500 font-medium">Asal Sekolah: {selectedAnalysis.participant?.school} | Nilai Akhir: <span className="font-bold text-blue-600">{selectedAnalysis.score}</span></p>
-                                </div>
-                                <button onClick={() => setSelectedAnalysis(null)} className="text-slate-400 hover:text-slate-700 bg-slate-200 hover:bg-slate-300 p-1.5 rounded-full transition-colors"><X size={18}/></button>
-                            </div>
-                            <div className="p-0 overflow-y-auto flex-1">
-                                <table className="w-full text-left text-sm border-collapse">
-                                    <thead className="bg-slate-100 border-b sticky top-0 z-10">
-                                        <tr>
-                                            <th className="p-4 w-12 text-center font-bold text-slate-600 border-r border-slate-200">No</th>
-                                            <th className="p-4 w-28 font-bold text-slate-600 border-r border-slate-200 text-center">Tipe Soal</th>
-                                            <th className="p-4 font-bold text-slate-600 border-r border-slate-200">Kutipan Pertanyaan</th>
-                                            <th className="p-4 w-24 text-center font-bold text-slate-600 border-r border-slate-200">Bobot</th>
-                                            <th className="p-4 text-center w-32 font-bold text-slate-600">Status Jawaban</th>
-                                        </tr>
-                                    </thead>
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                            <div className="bg-slate-50 border-b px-5 py-4 flex justify-between items-center"><h3 className="font-bold">Analisis: {selectedAnalysis.participant?.name}</h3><button onClick={() => setSelectedAnalysis(null)}><X size={18}/></button></div>
+                            <div className="p-5 overflow-y-auto flex-1">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-slate-100 border-b"><tr><th className="p-3">No</th><th className="p-3">Pertanyaan</th><th className="p-3 text-center">Status</th></tr></thead>
                                     <tbody>
                                         {questions.map((q, i) => {
-                                            let detailArray = selectedAnalysis.detail?.detailedResults;
-                                            if (typeof detailArray === 'string') {
-                                                try { detailArray = JSON.parse(detailArray); } 
-                                                catch (e) { detailArray = []; }
-                                            }
-                                            const d = (detailArray || []).find(x => x.qId === q.id);
+                                            const details = Array.isArray(selectedAnalysis.detail?.detailedResults) ? selectedAnalysis.detail.detailedResults : [];
+                                            const d = details.find(x => x.qId === q.id);
                                             return (
-                                                <tr key={q.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                                                    <td className="p-4 text-center font-bold text-slate-500 border-r border-slate-100">{i + 1}</td>
-                                                    <td className="p-4 text-center border-r border-slate-100">
-                                                       <span className="text-[10px] font-bold px-2 py-1 bg-slate-200 text-slate-600 rounded uppercase tracking-wider">{q.type}</span>
-                                                    </td>
-                                                    <td className="p-4 text-slate-700 border-r border-slate-100">
-                                                        <div className="line-clamp-2 rich-text-content text-xs font-medium" dangerouslySetInnerHTML={{__html: q.question}}></div>
-                                                    </td>
-                                                    <td className="p-4 text-center font-semibold text-slate-600 border-r border-slate-100">{q.points} Poin</td>
-                                                    <td className="p-4 text-center">
-                                                        {d?.isEmpty ? <span className="text-amber-600 font-bold bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 flex items-center justify-center text-xs"><AlertCircle size={14} className="mr-1"/> KOSONG</span> :
-                                                         d?.isCorrect ? <span className="text-emerald-600 font-bold bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 flex items-center justify-center text-xs"><CheckCircle size={14} className="mr-1"/> BENAR</span> :
-                                                         <span className="text-red-600 font-bold bg-red-50 px-3 py-1.5 rounded-lg border border-red-200 flex items-center justify-center text-xs"><X size={14} className="mr-1"/> SALAH</span>}
+                                                <tr key={q.id} className="border-b">
+                                                    <td className="p-3">{i + 1}</td>
+                                                    <td className="p-3 truncate max-w-xs">{q.question?.replace(/<[^>]+>/g, '')}</td>
+                                                    <td className="p-3 text-center font-bold">
+                                                        {d?.isEmpty ? <span className="text-amber-500">KOSONG</span> : d?.isCorrect ? <span className="text-emerald-600">BENAR</span> : <span className="text-rose-600">SALAH</span>}
                                                     </td>
                                                 </tr>
                                             );
@@ -1585,24 +953,16 @@
                         </div>
                     </div>
                  )}
-
-                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
-                    <table className="w-full text-left text-sm min-w-[600px]">
-                        <thead className="bg-slate-50 text-slate-600 font-semibold border-b">
-                            <tr><th className="p-4">Nama Peserta</th><th className="p-4">Sekolah</th><th className="p-4 text-center">Token</th><th className="p-4 text-center">Nilai</th><th className="p-4 text-center">Analisis</th><th className="p-4 text-right">Selesai</th></tr>
-                        </thead>
+                 <div className="bg-white rounded-xl border overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50 border-b"><tr><th className="p-4">Nama</th><th className="p-4">Sekolah</th><th className="p-4 text-center">Nilai</th><th className="p-4 text-center">Analisis</th></tr></thead>
                         <tbody>
-                            {results.map((r,i)=><tr key={r.id} className="border-b border-slate-50 hover:bg-slate-50/50">
-                                <td className="p-4 font-medium text-slate-800">{r.participant?.name}</td>
-                                <td className="p-4 text-slate-500">{r.participant?.school}</td>
-                                <td className="p-4 text-center"><span className="px-2 py-1 bg-slate-100 text-slate-600 font-mono text-xs rounded border">{r.token}</span></td>
-                                <td className="p-4 text-center font-bold text-emerald-600 text-lg">{r.score}</td>
-                                <td className="p-4 text-center">
-                                    <button onClick={() => setSelectedAnalysis(r)} className="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">Lihat Detail</button>
-                                </td>
-                                <td className="p-4 text-right text-slate-400 text-xs font-medium">{new Date(r.created_at).toLocaleString('id-ID')}</td>
+                            {results.map((r)=><tr key={r.id} className="border-b">
+                                <td className="p-4 font-medium">{r.participant?.name}</td>
+                                <td className="p-4">{r.participant?.school}</td>
+                                <td className="p-4 text-center font-bold text-emerald-600">{r.score}</td>
+                                <td className="p-4 text-center"><button onClick={() => setSelectedAnalysis(r)} className="text-blue-600 bg-blue-50 px-3 py-1 rounded text-xs font-semibold">Lihat Detail</button></td>
                             </tr>)}
-                            {results.length===0 && <tr><td colSpan="6" className="text-center py-12 text-slate-400">Belum ada data nilai.</td></tr>}
                         </tbody>
                     </table>
                  </div>
@@ -1615,293 +975,105 @@
             const [view, setView] = useState('folders'); 
             const [filterFolder, setFilterFolder] = useState('Utama');
             const [showImport, setShowImport] = useState(false);
-            const [fileUploadError, setFileUploadError] = useState('');
+            const [fileError, setFileError] = useState('');
 
-            const defaultMCQ = { id: '', type: 'MCQ', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
-            const defaultMCMA = { id: '', type: 'MCMA', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}, {id:3, text:''}], correctAnswers: [] };
-            const defaultCAT = { id: '', type: 'CATEGORY', folder: 'Utama', category: 'Bahasa Indonesia', points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'},{id:2, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
-            
+            const defaultMCQ = { id: '', type: 'MCQ', folder: filterFolder, category: 'Bahasa Indonesia', points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
             const [formData, setFormData] = useState(defaultMCQ);
 
-            useEffect(() => { triggerMathRender(); }, [view, questions, formData.type]);
-
-            const saveQuestion = async (e) => {
-               e.preventDefault();
-               if(dbStatus === 'error') return alert("Gagal: Koneksi Cloud Offline.");
-               setIsSaving(true);
-               try {
-                 const db = await getSupabase();
-                 let payload = { ...formData };
-                 if(!payload.id) { 
-                    payload.id = `q${Date.now()}`;
-                    payload.number = questions.length + 1;
-                    const { error } = await db.from('questions').insert([payload]);
-                    if(error) throw error;
-                 } else { 
-                    const { error } = await db.from('questions').update(payload).eq('id', payload.id);
-                    if(error) throw error;
-                 }
-                 await fetchSupabaseData(); 
-                 setView('list');
-               } catch (err) { alert(err.message); }
-               finally { setIsSaving(false); }
-            };
-
-            const clearAllQuestions = async () => {
-                if(!confirm("HAPUS SEMUA BANK SOAL? Aksi ini permanen!")) return;
-                setIsSaving(true);
-                try {
-                   const db = await getSupabase();
-                   const { error } = await db.from('questions').delete().not('id', 'is', null); 
-                   if (error) throw error;
-                   await fetchSupabaseData();
-                   alert("Semua soal berhasil dikosongkan.");
-                } catch(err) { alert("Gagal mengosongkan soal: " + err.message); }
-                finally { setIsSaving(false); }
-             };
-             
-             const deleteQuestion = async (id) => {
-                if(!confirm("Hapus soal ini?")) return;
-                setIsSaving(true);
-                try {
-                   const db = await getSupabase();
-                   const { error } = await db.from('questions').delete().eq('id', id); 
-                   if (error) throw error;
-                   await fetchSupabaseData();
-                } catch(err) { alert("Gagal menghapus soal: " + err.message); }
-                finally { setIsSaving(false); }
-             };
-
-             const duplicateQuestion = async (q) => {
-                setIsSaving(true);
-                try {
-                   const db = await getSupabase();
-                   const newQ = { ...q, id: `q${Date.now()}`, number: questions.length + 1 };
-                   const { error } = await db.from('questions').insert([newQ]);
-                   if (error) throw error;
-                   await fetchSupabaseData();
-                   alert("Soal berhasil diduplikat.");
-                } catch(err) { alert("Gagal menyalin soal: " + err.message); }
-                finally { setIsSaving(false); }
-             };
-
-             const downloadQuestionTemplate = () => {
-                const csvContent = "Mata Pelajaran,Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci Jawaban (A/B/C/D),Bobot Nilai\nBahasa Indonesia,Siapa penemu lampu?,Thomas Edison,Albert Einstein,Isaac Newton,Galileo,A,1\nMatematika,Berapa 5 x 5?,10,20,25,30,C,1";
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const downloadTemplate = () => {
+                const csvContent = "Mapel,Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci\nBahasa Indonesia,Ibu kota Indonesia adalah?,Jakarta,Bandung,Surabaya,Medan,A\n";
                 const link = document.createElement("a");
-                const url = URL.createObjectURL(blob);
-                link.setAttribute("href", url);
-                link.setAttribute("download", "Template_Impor_Soal.csv");
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                link.setAttribute("href", URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })));
+                link.setAttribute("download", "Template_Bank_Soal.csv");
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
             };
 
-            const handleQuestionUpload = (e) => {
+            const handleUploadSoal = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                
-                setFileUploadError('');
                 const reader = new FileReader();
                 reader.onload = async (event) => {
-                    const text = event.target.result;
-                    const lines = text.split('\n').filter(line => line.trim() !== '');
-                    const startIndex = lines[0].toLowerCase().includes('mata pelajaran') ? 1 : 0;
-                    
+                    const lines = event.target.result.split('\n').filter(l => l.trim() !== '');
                     const payloads = [];
-                    for (let i = startIndex; i < lines.length; i++) {
-                        const delimiter = lines[i].includes(';') ? ';' : ',';
-                        const cols = lines[i].split(new RegExp(`(?:^|${delimiter})("(?:[^"]|"")*"|[^${delimiter}]*)`)).filter(val => val !== undefined && val !== "").map(val => val.replace(/^"|"$/g, '').replace(/""/g, '"').trim());
-                        
+                    for (let i = (lines[0].toLowerCase().includes('mapel') ? 1 : 0); i < lines.length; i++) {
+                        const cols = lines[i].split(',');
                         if (cols.length >= 7) {
-                             let qId = `q${Date.now()}${i}`;
-                             payloads.push({
-                                 id: qId,
-                                 type: 'MCQ',
-                                 folder: filterFolder,
-                                 category: cols[0] || 'Umum',
-                                 question: cols[1] || '',
-                                 options: [
-                                     { id: 'A', text: cols[2] || '' },
-                                     { id: 'B', text: cols[3] || '' },
-                                     { id: 'C', text: cols[4] || '' },
-                                     { id: 'D', text: cols[5] || '' }
-                                 ],
-                                 correctAnswer: (cols[6] || 'A').toUpperCase().replace(/[^ABCD]/g, '').charAt(0) || 'A',
-                                 points: parseInt(cols[7]) || 1
-                             });
+                            payloads.push({
+                                id: `q${Date.now()}_${i}`,
+                                type: 'MCQ',
+                                folder: filterFolder,
+                                category: cols[0].replace(/["\r]/g, '').trim(),
+                                points: 1,
+                                question: cols[1].replace(/["\r]/g, '').trim(),
+                                options: [
+                                    { id: 'A', text: cols[2].replace(/["\r]/g, '').trim() },
+                                    { id: 'B', text: cols[3].replace(/["\r]/g, '').trim() },
+                                    { id: 'C', text: cols[4].replace(/["\r]/g, '').trim() },
+                                    { id: 'D', text: cols[5].replace(/["\r]/g, '').trim() }
+                                ],
+                                correctAnswer: cols[6].replace(/["\r]/g, '').trim().toUpperCase()
+                            });
                         }
                     }
-                    
-                    if (payloads.length === 0) {
-                         setFileUploadError('Format tidak valid atau data kosong.');
-                         e.target.value = null;
-                         return;
-                    }
-                    
+                    if (payloads.length === 0) { setFileError('Format salah.'); return; }
                     setIsSaving(true);
                     try {
-                         const db = await getSupabase();
-                         const { error } = await db.from('questions').insert(payloads);
-                         if (error) throw error;
-                         
-                         setShowImport(false);
-                         await fetchSupabaseData();
-                         alert(`Berhasil mengimpor ${payloads.length} soal ke folder "${filterFolder}"!`);
-                    } catch (err) { alert("Gagal Impor Soal: " + err.message); }
-                    finally { setIsSaving(false); e.target.value = null; }
+                        const db = await getSupabase();
+                        await db.from('questions').insert(payloads);
+                        setShowImport(false); fetchSupabaseData(); alert('Soal berhasil diimpor!');
+                    } catch(err) { alert(err.message); }
+                    finally { setIsSaving(false); }
                 };
                 reader.readAsText(file);
             };
 
-            const renderOptionsEditor = () => {
-                if (formData.type === 'MCQ') {
-                    return (
-                        <div className="space-y-4 mt-6 border-t pt-4">
-                            <h3 className="font-semibold text-slate-800 text-sm">Opsi Jawaban (A-D)</h3>
-                            {formData.options.map((opt, idx) => (
-                                <div key={opt.id} className="flex gap-3 items-start bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                    <div className="pt-2 font-bold text-slate-400 w-6 text-center">{opt.id}.</div>
-                                    <div className="flex-1">
-                                        <RichTextEditor minHeight="60px" placeholder={`Ketik opsi ${opt.id}...`} value={opt.text} onChange={(v) => { const newOpts = [...formData.options]; newOpts[idx].text = v; setFormData({...formData, options: newOpts}); }} />
-                                    </div>
-                                </div>
-                            ))}
-                            <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 flex items-center justify-between">
-                                <span className="font-medium text-emerald-800 text-sm">Kunci Jawaban Benar:</span>
-                                <select value={formData.correctAnswer} onChange={e => setFormData({...formData, correctAnswer: e.target.value})} className="p-2 border border-emerald-200 rounded font-bold text-emerald-700 bg-white focus:border-emerald-500 text-sm w-24 text-center">
-                                    {['A', 'B', 'C', 'D'].map(v => <option key={v} value={v}>{v}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                    );
-                } else if (formData.type === 'MCMA') {
-                    return (
-                        <div className="space-y-4 mt-6 border-t pt-4">
-                            <h3 className="font-semibold text-slate-800 text-sm flex justify-between">
-                                <span>Pernyataan Kompleks (Jawaban &gt; 1)</span>
-                                <span className="text-xs font-normal text-slate-500">Centang kotak untuk mengatur sebagai kunci benar</span>
-                            </h3>
-                            {formData.statements.map((stmt, idx) => (
-                                <div key={stmt.id} className={`flex gap-3 items-start p-3 rounded-lg border transition-colors ${formData.correctAnswers.includes(stmt.id) ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                                    <div className="pt-2 flex flex-col items-center gap-2">
-                                        <input type="checkbox" checked={formData.correctAnswers.includes(stmt.id)} onChange={() => {
-                                            let newAns = [...formData.correctAnswers];
-                                            if(newAns.includes(stmt.id)) newAns = newAns.filter(x => x !== stmt.id); else newAns.push(stmt.id);
-                                            setFormData({...formData, correctAnswers: newAns});
-                                        }} className="w-5 h-5 text-emerald-600 rounded cursor-pointer" />
-                                        <span className="font-bold text-slate-400 text-xs">{stmt.id}.</span>
-                                    </div>
-                                    <div className="flex-1">
-                                        <RichTextEditor minHeight="60px" placeholder={`Ketik pernyataan ${stmt.id}...`} value={stmt.text} onChange={(v) => { const newStmts = [...formData.statements]; newStmts[idx].text = v; setFormData({...formData, statements: newStmts}); }} />
-                                    </div>
-                                </div>
-                            ))}
-                            <button type="button" onClick={() => setFormData({...formData, statements: [...formData.statements, {id: formData.statements.length + 1, text:''}]})} className="text-blue-600 font-semibold text-sm hover:underline flex items-center bg-blue-50 px-3 py-2 rounded-lg border border-blue-100"><Plus size={16} className="mr-1"/> Tambah Baris Pernyataan</button>
-                        </div>
-                    );
-                } else if (formData.type === 'CATEGORY') {
-                    return (
-                        <div className="space-y-4 mt-6 border-t pt-4">
-                            <h3 className="font-semibold text-slate-800 text-sm">Pengaturan Tabel Kategori</h3>
-                            
-                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                <label className="block text-slate-600 font-semibold text-xs mb-2">Format Label Kategori Kolom (Otomatis):</label>
-                                <select className="w-full p-2.5 rounded-lg border border-slate-300 bg-white font-medium text-slate-700 text-sm focus:ring-2 focus:ring-blue-500" onChange={(e) => {
-                                    const [cat1, cat2] = e.target.value.split('|');
-                                    const newStmts = formData.statements.map(s => ({...s, category1: cat1, category2: cat2, correctCategory: cat1}));
-                                    setFormData({...formData, statements: newStmts});
-                                }}>
-                                    <option value="Benar|Salah">Benar / Salah</option>
-                                    <option value="Sesuai|Tidak Sesuai">Sesuai / Tidak Sesuai</option>
-                                    <option value="Setuju|Tidak Setuju">Setuju / Tidak Setuju</option>
-                                </select>
-                            </div>
+            const saveQuestion = async (e) => {
+               e.preventDefault();
+               setIsSaving(true);
+               try {
+                 const db = await getSupabase();
+                 let payload = { ...formData, folder: filterFolder };
+                 if(!payload.id) { 
+                    payload.id = `q${Date.now()}`;
+                    await db.from('questions').insert([payload]);
+                 } else { 
+                    await db.from('questions').update(payload).eq('id', payload.id);
+                 }
+                 fetchSupabaseData(); setView('list');
+               } catch (err) { alert(err.message); }
+               finally { setIsSaving(false); }
+            };
 
-                            {formData.statements.map((stmt, idx) => (
-                                <div key={stmt.id} className="bg-white border border-slate-200 p-4 rounded-xl flex flex-col gap-3 shadow-sm hover:border-blue-300 transition-colors">
-                                    <div className="flex gap-3 items-start">
-                                        <div className="pt-2 font-bold text-slate-400 w-5 text-center">{idx+1}.</div>
-                                        <div className="flex-1">
-                                            <RichTextEditor minHeight="60px" placeholder={`Pernyataan tabel ke-${idx+1}...`} value={stmt.text} onChange={(v) => { const newStmts = [...formData.statements]; newStmts[idx].text = v; setFormData({...formData, statements: newStmts}); }} />
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-lg border ml-8 text-sm">
-                                        <span className="font-semibold text-slate-500">Kunci Benar:</span>
-                                        <label className="flex items-center cursor-pointer font-semibold text-emerald-700">
-                                            <input type="radio" checked={stmt.correctCategory === stmt.category1} onChange={() => { const newStmts = [...formData.statements]; newStmts[idx].correctCategory = stmt.category1; setFormData({...formData, statements: newStmts}); }} className="w-4 h-4 mr-1.5 text-emerald-600" /> 
-                                            {stmt.category1}
-                                        </label>
-                                        <label className="flex items-center cursor-pointer font-semibold text-amber-700 ml-3">
-                                            <input type="radio" checked={stmt.correctCategory === stmt.category2} onChange={() => { const newStmts = [...formData.statements]; newStmts[idx].correctCategory = stmt.category2; setFormData({...formData, statements: newStmts}); }} className="w-4 h-4 mr-1.5 text-amber-600" /> 
-                                            {stmt.category2}
-                                        </label>
-                                    </div>
-                                </div>
-                            ))}
-                            <button type="button" onClick={() => setFormData({...formData, statements: [...formData.statements, {id: formData.statements.length + 1, text:'', category1: formData.statements[0].category1, category2: formData.statements[0].category2, correctCategory: formData.statements[0].category1}]})} className="text-blue-600 font-semibold text-sm hover:underline flex items-center bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 w-fit"><Plus size={16} className="mr-1"/> Tambah Baris Tabel</button>
-                        </div>
-                    );
-                }
+            const deleteQuestion = async (id) => {
+                if(!confirm("Hapus soal?")) return;
+                try { const db = await getSupabase(); await db.from('questions').delete().eq('id', id); fetchSupabaseData(); } catch(e) { alert(e.message); }
+            };
+
+            const publishFolder = async (fname) => {
+                try {
+                    const db = await getSupabase();
+                    const { data } = await db.from('tokens').select('code').eq('code', 'SYS_SETTING_FOLDER').maybeSingle();
+                    if (data) await db.from('tokens').update({ status: fname }).eq('code', 'SYS_SETTING_FOLDER');
+                    else await db.from('tokens').insert([{ code: 'SYS_SETTING_FOLDER', status: fname, generatedAt: new Date().toISOString() }]);
+                    setActiveFolder(fname);
+                    alert(`Folder "${fname}" berhasil diterbitkan ke peserta!`);
+                } catch(e) { alert("Gagal terbit: " + e.message); }
             };
 
             if (view === 'create' || view === 'edit') {
                return (
-                 <AdminLayout title={view === 'create' ? "Buat Soal Baru" : "Edit Soal"}>
-                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden max-w-4xl mx-auto mb-10">
-                        <div className="bg-slate-50 border-b px-6 py-4 flex justify-between items-center">
-                            <h2 className="font-semibold text-slate-800 text-sm flex items-center"><Edit className="mr-2 w-4 text-blue-600"/> Editor Soal</h2>
-                            <button type="button" onClick={() => setView('list')} className="text-slate-400 hover:text-slate-700 bg-white border p-1 rounded-md"><X size={16}/></button>
-                        </div>
-                        
-                        <form onSubmit={saveQuestion} className="p-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Tipe Soal</label>
-                                    <select value={formData.type} onChange={e => {
-                                        const type = e.target.value;
-                                        if (type === 'MCQ') setFormData({...defaultMCQ, id: formData.id, type, category: formData.category, folder: formData.folder, points: formData.points, question: formData.question});
-                                        else if (type === 'MCMA') setFormData({...defaultMCMA, id: formData.id, type, category: formData.category, folder: formData.folder, points: formData.points, question: formData.question});
-                                        else setFormData({...defaultCAT, id: formData.id, type, category: formData.category, folder: formData.folder, points: formData.points, question: formData.question});
-                                    }} className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm font-medium focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                                        <option value="MCQ">Pilihan Ganda (A-D)</option>
-                                        <option value="MCMA">Ganda Kompleks (&gt;1)</option>
-                                        <option value="CATEGORY">Matriks Kategori</option>
-                                    </select>
+                 <AdminLayout title="Editor Soal">
+                    <div className="bg-white rounded-xl shadow-sm border max-w-4xl mx-auto p-6">
+                        <form onSubmit={saveQuestion} className="space-y-4">
+                            <div><label className="block text-sm font-semibold mb-1">Pertanyaan</label><RichTextEditor value={formData.question} onChange={val => setFormData({...formData, question: val})} /></div>
+                            {formData.options.map((opt, idx) => (
+                                <div key={opt.id} className="flex gap-3 items-center">
+                                    <span className="font-bold w-6">{opt.id}.</span>
+                                    <input type="text" value={opt.text} onChange={e => { const o = [...formData.options]; o[idx].text = e.target.value; setFormData({...formData, options: o}); }} className="w-full p-2 border rounded" placeholder={`Opsi ${opt.id}`} required/>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Folder / Paket</label>
-                                    <input type="text" value={formData.folder || 'Utama'} disabled className="w-full p-2.5 border border-slate-300 rounded-lg bg-slate-100 text-sm font-bold text-slate-500 cursor-not-allowed focus:outline-none" title="Folder ditetapkan dari menu sebelumnya"/>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Mata Pelajaran</label>
-                                    <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm font-medium focus:ring-2 focus:ring-blue-500">
-                                        <option value="Bahasa Indonesia">Bahasa Indonesia</option>
-                                        <option value="Matematika">Matematika</option>
-                                        <option value="IPA">IPA</option>
-                                        <option value="Umum">Umum</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Bobot Nilai</label>
-                                    <input type="number" min="1" value={formData.points} required onChange={e => setFormData({...formData, points: parseInt(e.target.value)})} className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm font-medium focus:ring-2 focus:ring-blue-500"/>
-                                </div>
-                            </div>
-
-                            <div className="mb-2">
-                                <label className="block text-sm font-semibold text-slate-800 mb-2">Pertanyaan Utama</label>
-                                <RichTextEditor value={formData.question} onChange={val => setFormData({...formData, question: val})} placeholder="Ketik pertanyaan di sini..." minHeight="120px" />
-                            </div>
-
-                            {renderOptionsEditor()}
-
-                            <div className="pt-6 mt-6 border-t border-slate-200 flex justify-end gap-3">
-                                <button type="button" onClick={() => setView('list')} className="px-5 py-2.5 rounded-lg font-medium text-slate-600 border border-slate-300 hover:bg-slate-50 text-sm transition-colors">Batal</button>
-                                <button type="submit" disabled={isSaving} className="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 flex items-center text-sm disabled:opacity-50 shadow-sm transition-colors">
-                                    <Save size={16} className="mr-2"/> {isSaving ? 'Menyimpan...' : 'Simpan Soal'}
-                                </button>
-                            </div>
+                            ))}
+                            <div><label className="block text-sm font-semibold mb-1">Kunci Jawaban</label><select value={formData.correctAnswer} onChange={e => setFormData({...formData, correctAnswer: e.target.value})} className="p-2 border rounded font-bold"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></div>
+                            <div className="flex justify-end gap-2 pt-4"><button type="button" onClick={() => setView('list')} className="px-4 py-2 border rounded">Batal</button><button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded font-semibold">Simpan</button></div>
                         </form>
                     </div>
                  </AdminLayout>
@@ -1909,411 +1081,82 @@
             }
 
             if (view === 'list') {
-              const folderQuestions = questions.filter(q => (q.folder || 'Utama') === filterFolder);
-              
+              const folderQuestions = questions.filter(q => String(q.folder || 'Utama').trim().toLowerCase() === filterFolder.toLowerCase());
               return (
-                <AdminLayout title={`Folder Soal: ${filterFolder}`}>
-                  <div className="mb-6 flex flex-wrap gap-3 items-center justify-between">
-                     <button onClick={() => setView('folders')} className="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors">
-                       <ChevronLeft size={16} className="mr-1.5" /> Kembali ke Folder
-                     </button>
-                     <div className="flex gap-2">
-                         <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 flex items-center shadow-sm transition-colors">
-                             <FileText size={16} className="mr-1.5" /> Unggah Soal (CSV)
-                         </button>
-                         <button onClick={clearAllQuestions} disabled={isSaving} className="bg-white text-rose-600 border border-rose-200 hover:bg-rose-50 px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors disabled:opacity-50">
-                           <Trash2 size={16} className="mr-1.5" /> Kosongkan Bank Soal
-                         </button>
-                     </div>
+                <AdminLayout title={`Folder: ${filterFolder}`}>
+                  <div className="mb-6 flex gap-3">
+                     <button onClick={() => setView('folders')} className="border px-4 py-2 rounded-lg text-sm font-semibold">Kembali</button>
+                     <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><Upload size={16} className="mr-2"/> Unggah Soal (CSV)</button>
                   </div>
-
                   {showImport && (
                      <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col">
-                            <div className="bg-slate-50 border-b px-5 py-3 flex justify-between items-center">
-                                <h3 className="font-semibold text-slate-800 flex items-center"><Cloud size={18} className="mr-2 text-emerald-600"/> Unggah Soal Pilihan Ganda (CSV)</h3>
-                                <button type="button" onClick={()=>setShowImport(false)} className="text-slate-400 hover:text-slate-700"><X size={18}/></button>
-                            </div>
-                            <div className="p-5 flex-1">
-                                <div className="bg-blue-50 text-blue-800 text-sm p-4 rounded-lg border border-blue-100 mb-5">
-                                    <strong>Penting:</strong> Fitur ini hanya mendukung soal <strong>Pilihan Ganda</strong>. Soal akan otomatis masuk ke folder <strong>"{filterFolder}"</strong>. Unduh templat di bawah ini.<br/>
-                                    <button type="button" onClick={downloadQuestionTemplate} className="mt-3 bg-white border border-blue-300 text-blue-700 px-4 py-2 rounded-lg shadow-sm font-bold hover:bg-blue-100 transition-colors flex items-center">
-                                        <FileText size={16} className="mr-2"/> Download Templat Soal (CSV)
-                                    </button>
-                                </div>
-                                
-                                <div className="border-2 border-dashed border-slate-300 p-8 rounded-xl text-center bg-slate-50 hover:bg-slate-100 transition-colors relative group">
-                                    <input type="file" accept=".csv" onChange={handleQuestionUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                    <div className="flex flex-col items-center pointer-events-none">
-                                        <Cloud size={40} className="text-slate-400 mb-3 group-hover:text-emerald-500 transition-colors"/>
-                                        <span className="font-bold text-slate-700 text-base">Klik atau Tarik File CSV ke sini</span>
-                                        <span className="text-sm text-slate-500 mt-1">Hanya menerima format .csv</span>
-                                    </div>
-                                </div>
-                                {fileUploadError && <p className="text-rose-500 text-sm mt-3 font-bold text-center bg-rose-50 p-2 rounded-lg border border-rose-100">{fileUploadError}</p>}
-                                {isSaving && <p className="text-emerald-600 text-sm mt-3 font-bold text-center animate-pulse">Sedang mengunggah soal ke database...</p>}
-                            </div>
-                            <div className="p-4 border-t bg-slate-50 flex justify-end">
-                                <button type="button" onClick={()=>setShowImport(false)} className="px-5 py-2.5 text-sm font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100">Batal / Tutup</button>
-                            </div>
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
+                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Impor Soal CSV</h3><button onClick={()=>setShowImport(false)}><X size={18}/></button></div>
+                            <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText size={16} className="mr-2"/> Download Templat Soal</button>
+                            <input type="file" accept=".csv" onChange={handleUploadSoal} className="w-full p-4 border-2 border-dashed rounded-xl"/>
+                            {fileError && <p className="text-rose-500 text-xs mt-2">{fileError}</p>}
                         </div>
                      </div>
                   )}
-
                   <div className="space-y-4">
                     {folderQuestions.map((q, idx) => (
-                       <div key={q.id} className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 hover:border-blue-300 transition-colors">
-                         <div className="w-10 h-10 flex-shrink-0 bg-slate-50 rounded-lg flex items-center justify-center font-bold text-slate-500 border border-slate-200 text-sm">
-                            {idx + 1}
-                         </div>
-                         <div className="flex-1 overflow-hidden min-w-0">
-                            <div className="flex flex-wrap gap-2 mb-3 items-center">
-                              <span className="text-[10px] font-bold px-2 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded uppercase tracking-wider">{q.type}</span>
-                              <span className="text-[10px] font-semibold text-slate-600 bg-slate-50 px-2 py-1 rounded border">{q.category}</span>
-                            </div>
-                            
-                            <div className="font-medium text-slate-800 text-sm sm:text-base mb-3 rich-text-content" dangerouslySetInnerHTML={{__html: q.question}}></div>
-                            
-                            <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded border inline-block font-medium">
-                              <span className="mr-1">Kunci:</span> 
-                              {q.type === 'MCQ' ? <span className="font-bold text-emerald-600">{q.correctAnswer}</span> : 
-                               q.type === 'MCMA' ? <span className="font-bold text-blue-600">{JSON.stringify(q.correctAnswers)}</span> : 
-                               <span className="font-bold text-indigo-600">Matriks Tabel</span>}
-                            </div>
-                         </div>
-                         <div className="flex sm:flex-col gap-2 justify-end sm:justify-start pt-3 sm:pt-0 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-100 sm:pl-4 mt-2 sm:mt-0">
-                            <button onClick={() => duplicateQuestion(q)} className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 p-2 rounded-lg flex items-center justify-center transition-colors text-xs font-semibold flex-1 sm:flex-none border border-emerald-100" title="Salin Soal">
-                               <Copy size={14} className="sm:mr-1.5"/> <span className="hidden sm:inline">Duplikat</span>
-                            </button>
-                            <button onClick={() => {setFormData(q); setView('edit');}} className="bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 p-2 rounded-lg flex items-center justify-center transition-colors text-xs font-semibold flex-1 sm:flex-none border border-blue-100">
-                               <Edit size={14} className="sm:mr-1.5"/> <span className="hidden sm:inline">Edit</span>
-                            </button>
-                            <button onClick={() => deleteQuestion(q.id)} className="bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-700 p-2 rounded-lg flex items-center justify-center transition-colors text-xs font-semibold flex-1 sm:flex-none border border-rose-100">
-                               <Trash2 size={14} className="sm:mr-1.5"/> <span className="hidden sm:inline">Hapus</span>
-                            </button>
-                         </div>
+                       <div key={q.id} className="bg-white p-4 rounded-xl border flex justify-between items-start">
+                         <div><span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded">No. {idx+1}</span><div className="mt-2 text-slate-800" dangerouslySetInnerHTML={{__html: q.question}}></div></div>
+                         <button onClick={() => deleteQuestion(q.id)} className="text-rose-500 p-2"><Trash2 size={16}/></button>
                        </div>
                     ))}
-                    {folderQuestions.length === 0 && (
-                       <div className="text-center py-16 bg-white rounded-xl border border-dashed border-slate-300">
-                         <Database size={40} className="mx-auto text-slate-300 mb-4"/>
-                         <p className="text-slate-500 font-medium text-sm">Belum ada soal tersimpan di folder ini.</p>
-                       </div>
-                    )}
                   </div>
-
-                  <button onClick={() => {setFormData({...defaultMCQ, folder: filterFolder}); setView('create');}} className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 z-40 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-2xl hover:bg-blue-700 hover:scale-105 transition-all focus:ring-4 focus:ring-blue-300" title="Tambah Soal Baru">
-                      <Plus size={28} />
-                  </button>
+                  <button onClick={() => {setFormData(defaultMCQ); setView('create');}} className="fixed bottom-6 right-6 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl"><Plus size={24}/></button>
                 </AdminLayout>
               );
             }
 
-            const folderStats = questions.reduce((acc, q) => {
-                const fname = q.folder || 'Utama';
-                acc[fname] = (acc[fname] || 0) + 1;
-                return acc;
-            }, {});
-            
-            if (!folderStats['Utama'] && questions.length === 0) {
-                folderStats['Utama'] = 0;
-            }
+            const folderStats = questions.reduce((acc, q) => { const f = q.folder || 'Utama'; acc[f] = (acc[f] || 0) + 1; return acc; }, {});
+            if (!folderStats['Utama']) folderStats['Utama'] = 0;
 
-            const handleCreateNewFolder = () => {
-                const fname = prompt("Masukkan Nama Folder Baru:\n(Contoh: Paket A, Tryout 1, STS Ganjil)");
-                if (fname && fname.trim() !== '') {
-                    setFilterFolder(fname.trim());
-                    setView('list');
-                }
-            };
-
-            const publishFolder = async (e, folderName) => {
-                e.stopPropagation();
-                if (!confirm(`Terbitkan semua soal di folder "${folderName}" ke web peserta?`)) return;
-                setIsSaving(true);
-                try {
-                    const db = await getSupabase();
-                    const code = 'SYS_SETTING_FOLDER';
-                    const { data } = await db.from('tokens').select('code').eq('code', code).maybeSingle();
-                    
-                    if (data) {
-                        const { error } = await db.from('tokens').update({ status: folderName }).eq('code', code);
-                        if (error) throw error;
-                    } else {
-                        const { error } = await db.from('tokens').insert([{ code, status: folderName, generatedAt: new Date().toISOString() }]);
-                        if (error) throw error;
-                    }
-                    
-                    setActiveFolder(folderName);
-                    alert(`Soal di folder "${folderName}" berhasil diterbitkan ke peserta!`);
-                } catch(err) {
-                    alert("Gagal menerbitkan soal: " + err.message);
-                }
-                setIsSaving(false);
+            const createFolder = () => {
+                const fname = prompt("Nama Folder Baru:");
+                if (fname) { setFilterFolder(fname.trim()); setView('list'); }
             };
 
             return (
-              <AdminLayout title="Manajemen Folder Bank Soal">
-                 <div className="mb-6">
-                    <p className="text-slate-500 text-sm">Pilih folder untuk melihat dan mengelola soal di dalamnya, atau buat folder baru.</p>
-                 </div>
-
-                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-                    <div onClick={handleCreateNewFolder} className="bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-6 flex flex-col items-center justify-center text-emerald-600 cursor-pointer hover:bg-emerald-100 hover:border-emerald-400 transition-all min-h-[180px] shadow-sm">
-                        <div className="w-12 h-12 bg-emerald-200 text-emerald-700 rounded-full flex items-center justify-center mb-3">
-                           <Plus size={24}/>
-                        </div>
-                        <span className="font-bold text-sm">Buat Folder Baru</span>
+              <AdminLayout title="Manajemen Bank Soal">
+                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                    <div onClick={createFolder} className="bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer min-h-[160px]">
+                        <Plus size={24} className="text-emerald-600 mb-2"/><span className="font-bold text-sm text-emerald-700">Buat Folder Baru</span>
                     </div>
-
-                    {Object.entries(folderStats).map(([fname, count]) => {
-                        const isPublished = activeFolder === fname;
-                        return (
-                        <div key={fname} onClick={() => { setFilterFolder(fname); setView('list'); }} className="bg-white border border-slate-200 shadow-sm rounded-2xl p-6 flex flex-col items-center justify-center text-slate-700 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all min-h-[180px] group relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-1 bg-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            
-                            {isPublished && (
-                                <div className="absolute top-3 right-3 flex items-center bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">
-                                    <CheckCircle size={10} className="mr-1"/> Aktif
-                                </div>
-                            )}
-
-                            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-inner">
-                                <i className="fas fa-folder-open text-3xl"></i>
+                    {Object.entries(folderStats).map(([fname, count]) => (
+                        <div key={fname} className="bg-white border rounded-2xl p-6 flex flex-col justify-between shadow-sm min-h-[160px]">
+                            <div onClick={() => { setFilterFolder(fname); setView('list'); }} className="cursor-pointer">
+                                <h4 className="font-bold text-lg text-slate-800">{fname}</h4>
+                                <p className="text-xs text-slate-500 mt-1">{count} Soal</p>
                             </div>
-                            <span className="font-bold text-slate-800 text-center text-base line-clamp-1">{fname}</span>
-                            <span className="text-xs font-semibold text-slate-500 mt-1.5 bg-slate-50 px-2.5 py-1 rounded-md border">{count} Butir Soal</span>
-                            
-                            <button onClick={(e) => publishFolder(e, fname)} disabled={isSaving || count === 0} className="mt-4 w-full bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-600 text-xs font-bold py-2 rounded-lg transition-colors border border-slate-200 hover:border-blue-600 flex items-center justify-center disabled:opacity-50 disabled:hover:bg-slate-100 disabled:hover:text-slate-600">
-                                <Cloud size={14} className="mr-1.5"/> Terbitkan Folder Ini
+                            <button onClick={() => publishFolder(fname)} className={`mt-4 w-full py-2 rounded-lg text-xs font-bold ${activeFolder.toLowerCase() === fname.toLowerCase() ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                                {activeFolder.toLowerCase() === fname.toLowerCase() ? 'Sedang Diterbitkan' : 'Terbitkan Folder Ini'}
                             </button>
                         </div>
-                    )})}
+                    ))}
                  </div>
               </AdminLayout>
             );
           };
 
           const AdminItemAnalysis = () => {
-            const analysisData = questions.map(q => {
-              let correct = 0, wrong = 0, empty = 0;
-              results.forEach(r => {
-                let detailArray = r.detail?.detailedResults;
-                if (typeof detailArray === 'string') {
-                    try { detailArray = JSON.parse(detailArray); } 
-                    catch (e) { detailArray = []; }
-                }
-                const d = (detailArray || []).find(x => x.qId === q.id);
-                
-                if (!d || d.isEmpty) empty++;
-                else if (d.isCorrect) correct++;
-                else wrong++;
-              });
-              const total = results.length;
-              const percentage = total > 0 ? ((correct / total) * 100).toFixed(1) : 0;
-              
-              let difficulty = "N/A";
-              if (total > 0) {
-                 const p = parseFloat(percentage);
-                 if (p > 85) difficulty = "Sangat Mudah";
-                 else if (p >= 70) difficulty = "Mudah";
-                 else if (p >= 50) difficulty = "Sedang";
-                 else if (p >= 30) difficulty = "Sulit";
-                 else difficulty = "Sangat Sulit";
-              }
-              return { ...q, correct, wrong, empty, total, percentage, difficulty };
-            });
-
             return (
-              <AdminLayout title="Analisis Butir Soal & Rekapan Matriks">
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6 flex justify-between items-center">
-                   <div>
-                     <h3 className="font-semibold text-slate-800 text-lg">Total Responden Ujian</h3>
-                     <p className="text-slate-500 text-sm font-medium">Data diolah berdasarkan hasil ujian yang tersubmit.</p>
-                   </div>
-                   <div className="text-4xl font-bold text-emerald-600">{results.length} <span className="text-lg font-medium text-slate-500">Peserta</span></div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto mb-8">
-                  <table className="w-full text-sm text-left whitespace-nowrap">
-                    <thead className="bg-slate-50 text-slate-700 font-semibold border-b">
-                      <tr>
-                        <th className="py-4 px-4 text-center">No</th>
-                        <th className="py-4 px-4">Kategori / Tipe</th>
-                        <th className="py-4 px-4">Pertanyaan</th>
-                        <th className="py-4 px-4 text-center text-emerald-600">Benar</th>
-                        <th className="py-4 px-4 text-center text-red-600">Salah</th>
-                        <th className="py-4 px-4 text-center text-amber-600">Kosong</th>
-                        <th className="py-4 px-4 text-center">% Benar</th>
-                        <th className="py-4 px-4">Tingkat Kesulitan</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {analysisData.map((d, idx) => (
-                        <tr key={d.id} className="border-b last:border-0 hover:bg-slate-50">
-                          <td className="py-3 px-4 text-center font-medium text-slate-500">{idx + 1}</td>
-                          <td className="py-3 px-4">
-                             <div className="text-xs font-bold">{d.type}</div>
-                             <div className="text-xs text-slate-500 font-medium">{d.category}</div>
-                          </td>
-                          <td className="py-3 px-4 text-slate-800 max-w-xs truncate">
-                            <div dangerouslySetInnerHTML={{ __html: d.question }} className="line-clamp-1 rich-text-content text-xs" />
-                          </td>
-                          <td className="py-3 px-4 text-center font-bold text-emerald-600">{d.correct}</td>
-                          <td className="py-3 px-4 text-center font-bold text-red-600">{d.wrong}</td>
-                          <td className="py-3 px-4 text-center font-bold text-amber-600">{d.empty}</td>
-                          <td className="py-3 px-4 text-center font-bold text-slate-700">{d.percentage}%</td>
-                          <td className="py-3 px-4">
-                             <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide
-                                ${d.difficulty === 'Sangat Mudah' || d.difficulty === 'Mudah' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 
-                                  d.difficulty === 'Sedang' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 
-                                  d.difficulty === 'N/A' ? 'bg-slate-100 text-slate-500 border' : 'bg-red-50 text-red-600 border border-red-100'}`}>
-                               {d.difficulty}
-                             </span>
-                          </td>
-                        </tr>
-                      ))}
-                      {analysisData.length === 0 && <tr><td colSpan="8" className="text-center py-8 text-slate-500">Belum ada data soal.</td></tr>}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Matriks Rekapan Jawaban Per Siswa */}
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 overflow-x-auto relative">
-                    <h3 className="font-semibold text-slate-800 text-lg mb-4">Matriks Peta Jawaban per Siswa</h3>
-                    <table className="w-full text-sm text-left border-collapse min-w-max">
-                        <thead className="bg-slate-50 text-slate-700 border-b">
-                            <tr>
-                                <th className="p-3 border-r font-semibold sticky left-0 z-10 bg-slate-50 border-b">Nama Siswa</th>
-                                {questions.map((q, i) => <th key={q.id} className="p-3 text-center border-r font-semibold w-12 text-slate-500" title={q.question.replace(/<[^>]+>/g, '')}>Q{i+1}</th>)}
-                                <th className="p-3 text-center font-bold text-blue-600 bg-blue-50/50">Skor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {results.map((r, i) => (
-                                <tr key={r.id} className="border-b hover:bg-slate-50">
-                                    <td className="p-3 border-r font-medium text-slate-800 sticky left-0 z-10 bg-white border-b">{r.participant?.name}</td>
-                                    {questions.map((q) => {
-                                        let detailArray = r.detail?.detailedResults;
-                                        if (typeof detailArray === 'string') {
-                                            try { detailArray = JSON.parse(detailArray); } 
-                                            catch (e) { detailArray = []; }
-                                        }
-                                        const d = (detailArray || []).find(x => x.qId === q.id);
-                                        
-                                        let icon = <span className="text-slate-300">-</span>;
-                                        if (d) {
-                                            if (d.isEmpty) icon = <span className="text-amber-500 font-bold">O</span>;
-                                            else if (d.isCorrect) icon = <span className="text-emerald-500 font-bold">✓</span>;
-                                            else icon = <span className="text-red-500 font-bold">✗</span>;
-                                        }
-                                        return <td key={q.id} className="p-3 text-center border-r bg-white">{icon}</td>;
-                                    })}
-                                    <td className="p-3 text-center font-bold text-blue-600 bg-blue-50/30">{r.score}</td>
-                                </tr>
-                            ))}
-                            {results.length === 0 && <tr><td colSpan={questions.length + 2} className="text-center py-6 text-slate-500 font-medium">Belum ada peserta.</td></tr>}
-                        </tbody>
-                    </table>
-                    <div className="mt-4 flex gap-4 text-xs font-medium text-slate-500">
-                        <span><b className="text-emerald-500 text-sm">✓</b> : Benar</span>
-                        <span><b className="text-red-500 text-sm">✗</b> : Salah</span>
-                        <span><b className="text-amber-500 text-sm">O</b> : Kosong</span>
-                    </div>
+              <AdminLayout title="Analisis Soal">
+                <div className="bg-white rounded-xl border p-6">
+                   <h3 className="font-bold text-slate-800 text-lg mb-4">Statistik Responden</h3>
+                   <p className="text-slate-600 text-sm">Total peserta ujian selesai: <strong className="text-emerald-600">{results.length} Siswa</strong></p>
                 </div>
               </AdminLayout>
             );
           };
 
           const AdminReports = () => {
-             const [filterSchool, setFilterSchool] = useState('Semua');
-             const [activeTab, setActiveTab] = useState('NILAI'); // 'NILAI' atau 'PELANGGARAN'
-             
-             const schoolList = ['Semua', ...new Set(results.map(r => r.participant?.school).filter(Boolean))];
-             const filteredResults = filterSchool === 'Semua' ? results : results.filter(r => r.participant?.school === filterSchool);
-
              return (
-                <AdminLayout title="Cetak Laporan Dokumen (F4)">
-                   <div className="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm print:hidden">
-                      <div className="flex gap-2 bg-slate-100 p-1.5 rounded-lg w-full sm:w-auto">
-                          <button onClick={() => setActiveTab('NILAI')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'NILAI' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Rekap Nilai</button>
-                          <button onClick={() => setActiveTab('PELANGGARAN')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'PELANGGARAN' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Laporan Pelanggaran</button>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-                          <div className="flex items-center w-full sm:w-auto">
-                             <label className="text-sm font-semibold text-slate-600 mr-2 flex items-center"><BarChart2 size={16} className="text-blue-500 mr-1.5"/> Filter Sekolah:</label>
-                             <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="border border-slate-300 bg-white rounded-lg p-2 text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 flex-1 cursor-pointer outline-none min-w-[150px]">
-                                {schoolList.map(s => <option key={s} value={s}>{s}</option>)}
-                             </select>
-                          </div>
-                          <button onClick={() => window.print()} className="w-full sm:w-auto bg-slate-800 text-white px-5 py-2 rounded-lg font-semibold shadow-md hover:bg-slate-900 transition-colors text-sm flex items-center justify-center">
-                             <Printer size={16} className="mr-2"/> Cetak PDF
-                          </button>
-                      </div>
-                   </div>
-
-                   <div className="bg-white border border-slate-200 shadow-md mx-auto w-full max-w-[21.5cm] min-h-[33cm] p-8 sm:p-12 print-container print:border-none print:shadow-none print:p-0 print:m-0">
-                      <div className="text-center border-b-2 border-slate-800 pb-4 mb-6">
-                         <h1 className="text-xl sm:text-2xl font-bold uppercase tracking-widest text-slate-900 mb-1">
-                             {activeTab === 'NILAI' ? 'Laporan Hasil Ujian' : 'Laporan Deteksi Pelanggaran Sistem'}
-                         </h1>
-                         <p className="text-slate-600 font-medium text-sm sm:text-base">Simulasi Sukses TKA - Komputerisasi</p>
-                      </div>
-                      
-                      <div className="mb-6 flex flex-col sm:flex-row justify-between text-sm sm:text-base font-medium text-slate-800 bg-slate-50 p-4 rounded border border-slate-200">
-                         <div>Filter Asal Sekolah: <span className="font-bold underline text-blue-700">{filterSchool}</span></div>
-                         <div>Total Peserta: <span className="font-bold">{filteredResults.length}</span> Siswa</div>
-                      </div>
-
-                      <table className="w-full text-left border-collapse border border-slate-800 text-sm">
-                         <thead className="bg-slate-100 text-slate-900 uppercase font-bold text-xs"><tr className="border-b border-slate-800">
-                            <th className="border-r border-slate-800 py-2.5 px-3 text-center w-12">No</th>
-                            <th className="border-r border-slate-800 py-2.5 px-3">Nama Peserta</th>
-                            <th className="border-r border-slate-800 py-2.5 px-3">Asal Sekolah</th>
-                            {activeTab === 'NILAI' ? (
-                                <>
-                                    <th className="border-r border-slate-800 py-2.5 px-3 text-center w-28">Durasi</th>
-                                    <th className="py-2.5 px-3 text-center w-20">Nilai</th>
-                                </>
-                            ) : (
-                                <>
-                                    <th className="border-r border-slate-800 py-2.5 px-3 text-center w-28">Status Keamanan</th>
-                                    <th className="py-2.5 px-3 text-center w-36">Buka Tab / Keluar</th>
-                                </>
-                            )}
-                         </tr></thead>
-                         <tbody>
-                            {filteredResults.map((r, i) => {
-                               const durSecs = Math.floor((r.endTime - r.startTime) / 1000);
-                               const cheats = r.detailed_results?.find(x => x.qId === 'SYS_CHEATS')?.cheatCount || 0;
-                               return (
-                               <tr key={i} className="border-b border-slate-800 text-slate-800 font-medium break-inside-avoid">
-                                  <td className="border-r border-slate-800 py-2.5 px-3 text-center">{i+1}</td>
-                                  <td className="border-r border-slate-800 py-2.5 px-3">{r.participant?.name}</td>
-                                  <td className="border-r border-slate-800 py-2.5 px-3">{r.participant?.school}</td>
-                                  
-                                  {activeTab === 'NILAI' ? (
-                                      <>
-                                          <td className="border-r border-slate-800 py-2.5 px-3 text-center text-xs">{`${Math.floor(durSecs/60)}m ${durSecs%60}s`}</td>
-                                          <td className="py-2.5 px-3 text-center font-bold text-blue-700 bg-blue-50/30">{r.score}</td>
-                                      </>
-                                  ) : (
-                                      <>
-                                          <td className="border-r border-slate-800 py-2.5 px-3 text-center">
-                                              {cheats === 0 ? <span className="text-emerald-600 font-bold">AMAN</span> : <span className="text-red-600 font-bold">TERDETEKSI</span>}
-                                          </td>
-                                          <td className="py-2.5 px-3 text-center font-bold">
-                                              {cheats === 0 ? '-' : <span className="text-red-600">{cheats}x Keluar Layar</span>}
-                                          </td>
-                                      </>
-                                  )}
-                               </tr>
-                            )})}
-                            {filteredResults.length === 0 && <tr><td colSpan="5" className="text-center py-8 text-slate-500 font-medium">Tidak ada data untuk filter sekolah ini.</td></tr>}
-                         </tbody>
-                      </table>
-                      <div className="mt-16 flex justify-end text-center text-slate-800 font-medium text-sm break-inside-avoid"><div><p className="mb-16">Mengetahui,<br/>Administrator Sistem</p><p className="font-bold underline">_____________________</p></div></div>
+                <AdminLayout title="Cetak Laporan">
+                   <div className="bg-white border rounded-xl p-6 text-center">
+                      <button onClick={() => window.print()} className="bg-slate-800 text-white px-6 py-2.5 rounded-lg font-semibold"><Printer size={16} className="inline mr-2"/> Cetak Halaman</button>
                    </div>
                 </AdminLayout>
              );
@@ -2337,8 +1180,7 @@
           }
         }
 
-        const ReactDOMRoot = ReactDOM.createRoot(document.getElementById('root'));
-        ReactDOMRoot.render(<App />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
 </html>
