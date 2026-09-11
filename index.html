@@ -5,23 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CBT TKA Terpadu - Sekolah Dasar</title>
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css)">
     
     <!-- KaTeX untuk Rumus Matematika -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <link rel="stylesheet" href="[https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css](https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css)">
+    <script defer src="[https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js](https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js)"></script>
+    <script defer src="[https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js](https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js)"></script>
 
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="[https://unpkg.com/react@18/umd/react.production.min.js](https://unpkg.com/react@18/umd/react.production.min.js)" crossorigin></script>
+    <script src="[https://unpkg.com/react-dom@18/umd/react-dom.production.min.js](https://unpkg.com/react-dom@18/umd/react-dom.production.min.js)" crossorigin></script>
+    <script src="[https://unpkg.com/@babel/standalone/babel.min.js](https://unpkg.com/@babel/standalone/babel.min.js)"></script>
 
-    <!-- Fallback Import Supabase JS untuk mengatasi blokir AdBlock -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="[https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2](https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2)"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('[https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap)');
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; -webkit-font-smoothing: antialiased; }
         .rich-text-content { white-space: pre-wrap; word-wrap: break-word; line-height: 1.6; }
         .rich-text-content p { min-height: 1.5rem; margin-bottom: 0.5rem; }
@@ -47,7 +46,7 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        const SUPABASE_URL = 'https://xltrmoeabasrconlhijv.supabase.co';
+        const SUPABASE_URL = '[https://xltrmoeabasrconlhijv.supabase.co](https://xltrmoeabasrconlhijv.supabase.co)';
         const SUPABASE_ANON_KEY = 'sb_publishable_kzMgSC5JniUeJZGBGW1RIA_7aKyk0vh';
         let supabase = null;
 
@@ -79,6 +78,8 @@
         const EyeSlash = ({size=24, className=""}) => <i className={`fas fa-eye-slash ${className}`} style={{fontSize: size}}></i>;
         const Upload = ({size=24, className=""}) => <i className={`fas fa-upload ${className}`} style={{fontSize: size}}></i>;
         const CheckSquare = ({size=24, className=""}) => <i className={`fas fa-check-square ${className}`} style={{fontSize: size}}></i>;
+        const FolderIcon = ({size=24, className=""}) => <i className={`fas fa-folder ${className}`} style={{fontSize: size}}></i>;
+        const FolderOpenIcon = ({size=24, className=""}) => <i className={`fas fa-folder-open ${className}`} style={{fontSize: size}}></i>;
 
         const getSupabase = async () => {
             if (supabase) return supabase;
@@ -87,11 +88,11 @@
                 return supabase;
             } else {
                 try {
-                    const module = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+                    const module = await import('[https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm](https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm)');
                     supabase = module.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     return supabase;
                 } catch (e) {
-                    throw new Error("Library Supabase gagal dimuat. Matikan AdBlock atau periksa internet.");
+                    throw new Error("Library Supabase gagal dimuat. Periksa koneksi internet.");
                 }
             }
         };
@@ -101,18 +102,30 @@
             const fileInputRef = useRef(null);
 
             useEffect(() => {
-                if (editorRef.current && value !== editorRef.current.innerHTML) editorRef.current.innerHTML = value || '';
-            }, []); 
+                if (editorRef.current && value !== editorRef.current.innerHTML) {
+                    editorRef.current.innerHTML = value || '';
+                }
+            }, [value]);
 
-            const handleInput = () => { if (editorRef.current) onChange(editorRef.current.innerHTML); };
-            const execCmd = (cmd, e, val=null) => { e.preventDefault(); document.execCommand(cmd, false, val); editorRef.current.focus(); handleInput(); };
+            const handleInput = () => {
+                if (editorRef.current) onChange(editorRef.current.innerHTML);
+            };
+
+            const execCmd = (cmd, e, val=null) => {
+                e.preventDefault();
+                document.execCommand(cmd, false, val);
+                if (editorRef.current) {
+                    editorRef.current.focus();
+                    handleInput();
+                }
+            };
 
             const handleImageUpload = (e) => {
                 const file = e.target.files[0];
                 if (file) {
                     const reader = new FileReader();
                     reader.onloadend = () => {
-                        const imgHTML = `<img src="${reader.result}" alt="Gambar Sisipan" style="max-width: 100%; border-radius: 8px; margin: 8px 0;" /><br/>`;
+                        const imgHTML = `<img src="${reader.result}" alt="Gambar" style="max-width: 100%; border-radius: 8px; margin: 8px 0;" /><br/>`;
                         document.execCommand('insertHTML', false, imgHTML);
                         handleInput();
                     };
@@ -131,14 +144,14 @@
             };
 
             return (
-                <div className="border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:border-emerald-500 focus-within:ring-1 transition-all">
+                <div className="border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:border-blue-500 focus-within:ring-1 transition-all">
                     <div className="bg-slate-50 border-b border-slate-200 p-1.5 flex flex-wrap gap-1 items-center">
                         <button onMouseDown={(e)=>execCmd('bold', e)} type="button" className="w-8 h-8 font-bold text-slate-700 hover:bg-slate-200 rounded">B</button>
                         <button onMouseDown={(e)=>execCmd('italic', e)} type="button" className="w-8 h-8 italic text-slate-700 hover:bg-slate-200 rounded">I</button>
                         <button onMouseDown={(e)=>execCmd('underline', e)} type="button" className="w-8 h-8 underline text-slate-700 hover:bg-slate-200 rounded">U</button>
                         <div className="w-px h-5 bg-slate-300 mx-1"></div>
-                        <button onMouseDown={(e)=>{e.preventDefault(); fileInputRef.current.click();}} type="button" className="h-8 px-2.5 text-slate-700 hover:bg-slate-200 rounded flex items-center text-xs font-semibold"><ImageIcon size={14} className="mr-1 text-emerald-600"/> Gambar</button>
-                        <button onMouseDown={insertMath} type="button" className="h-8 px-2.5 text-slate-700 hover:bg-slate-200 rounded flex items-center text-xs font-semibold"><Calculator size={14} className="mr-1 text-blue-600"/> Rumus</button>
+                        <button onMouseDown={(e)=>{e.preventDefault(); if(fileInputRef.current) fileInputRef.current.click();}} type="button" className="h-8 px-2.5 text-slate-700 hover:bg-slate-200 rounded flex items-center text-xs font-semibold"><ImageIcon className="mr-1 text-emerald-600" size="{14}"/> Gambar</button>
+                        <button onMouseDown={insertMath} type="button" className="h-8 px-2.5 text-slate-700 hover:bg-slate-200 rounded flex items-center text-xs font-semibold"><Calculator className="mr-1 text-blue-600" size="{14}"/> Rumus</button>
                         <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
                     </div>
                     <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} className="p-3 outline-none rich-text-content editor-ignore-math text-slate-700 text-sm" style={{minHeight: minHeight}} placeholder={placeholder} />
@@ -161,7 +174,7 @@
                     window.renderMathInElement(document.body, {
                         ignoredClasses: ["editor-ignore-math"],
                         delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}, {left: '\\(', right: '\\)', display: false}, {left: '\\[', right: '\\]', display: true}],
-                        throwOnError : false
+                        throwOnError: false
                     });
                 }, 300);
             }
@@ -186,7 +199,7 @@
               const allAnswered = statementKeys.every(id => userAnswer[id]);
               if (allAnswered) isCorrect = (q.statements||[]).every(s => userAnswer[s.id] === s.correctCategory);
             }
-            if (isCorrect) totalPoints += q.points;
+            if (isCorrect) totalPoints += (q.points || 1);
             return { qId: q.id, type: q.type, isCorrect, isEmpty: false };
           });
           const finalScore = maxPoints > 0 ? Math.round((totalPoints / maxPoints) * 100) : 0;
@@ -231,8 +244,7 @@
                 
                 if(qRes.data) setQuestions(qRes.data);
                 if(tRes.data) {
-                    const actualTokens = tRes.data.filter(t => !t.code.startsWith('SYS_SETTING_') && !t.code.startsWith('SYS_FOLDER_'));
-                    setTokens(tRes.data); // Menyimpan semua token termasuk setting dan folder untuk keperluan AdminDashboard
+                    setTokens(tRes.data);
                     
                     const fToken = tRes.data.find(t => t.code === 'SYS_SETTING_FOLDER');
                     if (fToken) setActiveFolder(fToken.status);
@@ -305,37 +317,28 @@
               setIsChecking(true); setError('');
               try {
                 const db = await getSupabase();
-                // Tarik data token spesifik
                 const { data: tokenObj, error: fetchErr } = await db.from('tokens').select('*').eq('code', inputToken.trim().toUpperCase()).single();
                 
-                if (fetchErr || !tokenObj || tokenObj.code.startsWith('SYS_SETTING_') || tokenObj.code.startsWith('SYS_FOLDER_')) { setError('Token tidak valid atau tidak ditemukan.'); setIsChecking(false); return; }
+                if (fetchErr || !tokenObj || tokenObj.code.startsWith('SYS_SETTING_') || tokenObj.code.startsWith('SYS_FOLDER_')) { 
+                    setError('Token tidak valid atau tidak ditemukan.'); 
+                    setIsChecking(false); 
+                    return; 
+                }
                 if (tokenObj.status === 'USED') { setError('Token sudah digunakan.'); setIsChecking(false); return; }
                 if (tokenObj.status === 'EXPIRED') { setError('Token kedaluwarsa.'); setIsChecking(false); return; }
                 if (tokenObj.status === 'BLOCKED') { setError('Token diblokir. Hubungi administrator.'); setIsChecking(false); return; }
 
-                // Sinkronisasi paksa Pengaturan (Tanggal & Waktu) saat Login
-                const { data: settingsData } = await db.from('tokens').select('code, status').like('code', 'SYS_SETTING_%');
-                if (settingsData) {
-                    const dtToken = settingsData.find(t => t.code === 'SYS_SETTING_DATE');
-                    const stToken = settingsData.find(t => t.code === 'SYS_SETTING_START_TIME');
-                    const etToken = settingsData.find(t => t.code === 'SYS_SETTING_END_TIME');
-                    
-                    const curDate = dtToken ? dtToken.status : examDate;
-                    const curStart = stToken ? stToken.status : startTimeStr;
-                    const curEnd = etToken ? etToken.status : endTimeStr;
-
-                    if (curDate && curStart && curEnd) {
-                        const now = new Date();
-                        const startDateTime = new Date(`${curDate}T${curStart}:00`);
-                        const endDateTime = new Date(`${curDate}T${curEnd}:00`);
-                        if (now < startDateTime) {
-                            setError(`Ujian belum dapat dimulai. Jadwal aktif pada: ${curDate} pukul ${curStart}`);
-                            setIsChecking(false); return;
-                        }
-                        if (now > endDateTime) {
-                            setError(`Waktu ujian telah berakhir pada ${curDate} pukul ${curEnd}`);
-                            setIsChecking(false); return;
-                        }
+                if (examDate && startTimeStr && endTimeStr) {
+                    const now = new Date();
+                    const startDateTime = new Date(`${examDate}T${startTimeStr}:00`);
+                    const endDateTime = new Date(`${examDate}T${endTimeStr}:00`);
+                    if (now < startDateTime) {
+                        setError(`Ujian belum dimulai. Jadwal: ${examDate} pukul ${startTimeStr}`);
+                        setIsChecking(false); return;
+                    }
+                    if (now > endDateTime) {
+                        setError(`Waktu ujian telah berakhir pada ${examDate} pukul ${endTimeStr}`);
+                        setIsChecking(false); return;
                     }
                 }
 
@@ -344,7 +347,7 @@
                     participant: { name: tokenObj.participant_name || 'Peserta', school: tokenObj.participant_school || organizerName, nis: '', grade: '6' }, 
                     answers: {}, flagged: [], status: 'SETUP' 
                 });
-                navigate('/identity');
+                navigate('/instruction');
               } catch (err) { setError(err.message || 'Gagal terhubung ke server.'); }
               setIsChecking(false);
             };
@@ -354,7 +357,7 @@
                 <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border-t-4 border-blue-600">
                   <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm overflow-hidden">
-                        {schoolLogo ? <img src={schoolLogo} alt="Logo" className="w-full h-full object-cover"/> : <Monitor size={32} />}
+                        {schoolLogo ? <img src={schoolLogo} alt="Logo" className="w-full h-full object-cover"/> : <Monitor size="{32}"/>}
                     </div>
                     <h1 className="text-2xl font-black text-slate-800 tracking-tight">CBT Sukses TKA</h1>
                     <p className="text-slate-500 font-medium mt-1">{organizerName}</p>
@@ -362,7 +365,7 @@
                   
                   {initErrorMsg && (
                       <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-200 font-medium flex items-start">
-                          <AlertCircle size={18} className="mr-2 mt-0.5 flex-shrink-0"/>
+                          <AlertCircle className="mr-2 mt-0.5 flex-shrink-0" size="{18}"/>
                           <div><p className="font-bold mb-1">Gagal Terhubung ke Database</p><p>{initErrorMsg}</p></div>
                       </div>
                   )}
@@ -371,10 +374,10 @@
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2">Masukkan Token Ujian</label>
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Key className="h-5 w-5 text-slate-400" /></div>
-                        <input type="text" className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 uppercase tracking-widest font-bold text-slate-800 placeholder-slate-300 bg-slate-50 focus:bg-white transition-colors" placeholder="Ketik Token..." value={inputToken} onChange={(e) => setInputToken(e.target.value.toUpperCase())} required disabled={isChecking || dbStatus === 'error'}/>
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Key className="h-5 w-5 text-slate-400" size="{18}"/></div>
+                        <input type="text" className="block w-full pl-11 pr-4 py-3.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 uppercase tracking-widest font-bold text-slate-800 placeholder-slate-300 bg-slate-50 focus:bg-white" placeholder="Ketik Token..." value={inputToken} onChange={(e) => setInputToken(e.target.value.toUpperCase())} required disabled={isChecking || dbStatus === 'error'}/>
                       </div>
-                      {error && <p className="mt-2 text-sm text-rose-500 font-medium flex items-center"><AlertCircle size={14} className="mr-1.5"/> {error}</p>}
+                      {error && <p className="mt-2 text-sm text-rose-500 font-medium flex items-center"><AlertCircle className="mr-1.5" size="{14}"/> {error}</p>}
                     </div>
                     <button type="submit" disabled={isChecking || dbStatus === 'error'} className="w-full flex justify-center py-3.5 px-4 rounded-xl text-base font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-md disabled:opacity-50">
                       {isChecking ? 'Memeriksa Token...' : 'Masuk Ujian'}
@@ -382,58 +385,11 @@
                   </form>
                   <div className="mt-8 pt-6 border-t border-slate-100 flex justify-between items-center">
                      <span className={`text-xs font-bold px-3 py-1.5 rounded-md flex items-center ${dbStatus === 'connected' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
-                         <Cloud size={14} className="mr-1.5"/> {dbStatus === 'connected' ? 'Server Online' : 'Server Offline'}
+                         <Cloud className="mr-1.5" size="{14}"/> {dbStatus === 'connected' ? 'Server Online' : 'Server Offline'}
                      </span>
-                     <button onClick={() => navigate('/admin/login')} className="text-xs font-semibold text-slate-400 hover:text-slate-800 transition-colors flex items-center"><Settings size={14} className="mr-1"/> Admin</button>
+                     <button onClick={() => navigate('/admin/login')} className="text-xs font-semibold text-slate-400 hover:text-slate-800 transition-colors flex items-center"><Settings className="mr-1" size="{14}"/> Admin</button>
                   </div>
                 </div>
-              </div>
-            );
-          };
-
-          const ParticipantIdentity = () => {
-            if (!activeSession || activeSession.status !== 'SETUP') { navigate('/login'); return null; }
-            const [formData, setFormData] = useState({ name: activeSession.participant?.name || '', school: activeSession.participant?.school || '', nis: '', grade: '6' });
-            
-            const handleSubmit = (e) => {
-              e.preventDefault();
-              setActiveSession(prev => ({ ...prev, participant: formData }));
-              navigate('/instruction');
-            };
-            
-            return (
-              <div className="min-h-screen bg-slate-50 py-10 px-4 flex justify-center items-center">
-                 <div className="max-w-xl w-full bg-white rounded-2xl shadow-xl p-8 border-t-4 border-blue-600">
-                    <div className="flex items-center mb-6 pb-4 border-b border-slate-100">
-                      <User className="text-blue-600 mr-3" size={24} />
-                      <h2 className="text-xl font-bold text-slate-800">Identitas Diri</h2>
-                    </div>
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                         <div className="sm:col-span-2">
-                           <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap (Dari Token)</label>
-                           <input type="text" readOnly value={formData.name} className="w-full p-3 border border-slate-300 rounded-lg bg-slate-100 text-slate-500 font-semibold cursor-not-allowed"/>
-                         </div>
-                         <div className="sm:col-span-2">
-                           <label className="block text-sm font-medium text-slate-700 mb-1">Asal Sekolah (Dari Token)</label>
-                           <input type="text" readOnly value={formData.school} className="w-full p-3 border border-slate-300 rounded-lg bg-slate-100 text-slate-500 font-semibold cursor-not-allowed"/>
-                         </div>
-                         <div>
-                           <label className="block text-sm font-medium text-slate-700 mb-1">NIS/NISN</label>
-                           <input type="text" value={formData.nis} onChange={e=>setFormData({...formData, nis:e.target.value})} className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"/>
-                         </div>
-                         <div>
-                           <label className="block text-sm font-medium text-slate-700 mb-1">Kelas</label>
-                           <select value={formData.grade} onChange={e=>setFormData({...formData, grade:e.target.value})} className="w-full p-3 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500">
-                             {[1,2,3,4,5,6].map(g => <option key={g} value={g}>Kelas {g}</option>)}
-                           </select>
-                         </div>
-                       </div>
-                       <div className="pt-4 mt-6 border-t border-slate-100">
-                         <button type="submit" className="w-full py-3.5 bg-blue-600 text-white font-semibold text-lg rounded-xl shadow-md hover:bg-blue-700 transition-colors">Lanjutkan ke Petunjuk</button>
-                       </div>
-                    </form>
-                 </div>
               </div>
             );
           };
@@ -446,35 +402,9 @@
               setIsStarting(true);
               try {
                 const db = await getSupabase();
-                // Tarik folder & durasi AKTIF saat ini untuk memastikan sinkronisasi sempurna
-                const { data: settingsData } = await db.from('tokens').select('code, status').like('code', 'SYS_SETTING_%');
-                let forceActiveFolder = activeFolder;
-                let forceDate = examDate;
-                let forceEndTime = endTimeStr;
-
-                if (settingsData) {
-                    const fToken = settingsData.find(t => t.code === 'SYS_SETTING_FOLDER');
-                    if (fToken) forceActiveFolder = fToken.status;
-
-                    const dToken = settingsData.find(t => t.code === 'SYS_SETTING_DATE');
-                    if (dToken) forceDate = dToken.status;
-
-                    const etToken = settingsData.find(t => t.code === 'SYS_SETTING_END_TIME');
-                    if (etToken) forceEndTime = etToken.status;
-                }
-
-                // Ambil ulang soal berdasarkan folder yang paling baru
-                const { data: freshQuestions } = await db.from('questions').select('*');
-                const syncedQuestions = freshQuestions ? freshQuestions.filter(q => String(q.folder || 'Utama').trim().toLowerCase() === String(forceActiveFolder || 'Utama').trim().toLowerCase()) : activeQuestions;
-
-                if (syncedQuestions.length === 0) {
-                    alert("Gagal Memulai: Tidak ada soal di dalam folder ujian yang aktif. Hubungi Pengawas!");
-                    setIsStarting(false); return;
-                }
-
                 await db.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
 
-                let sessionQuestions = JSON.parse(JSON.stringify(syncedQuestions));
+                let sessionQuestions = JSON.parse(JSON.stringify(activeQuestions));
                 if (isRandomQ) {
                     for (let i = sessionQuestions.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
@@ -499,15 +429,16 @@
                     });
                 }
 
-                // Hitung batas waktu berdasarkan jam selesai dikurangi jam sekarang
-                const now = new Date().getTime();
-                const endDateTime = new Date(`${forceDate}T${forceEndTime}:00`).getTime();
-                const durationLimitMs = Math.max(60000, endDateTime - now); // Minimal 1 menit agar tidak minus
+                let durationLimitMs = 60 * 60 * 1000;
+                if (examDate && endTimeStr) {
+                    const endDateTime = new Date(`${examDate}T${endTimeStr}:00`).getTime();
+                    durationLimitMs = Math.max(60000, endDateTime - new Date().getTime());
+                }
 
                 setActiveSession(prev => ({ 
                     ...prev, 
                     status: 'ACTIVE', 
-                    startTime: now, 
+                    startTime: new Date().getTime(), 
                     durationLimit: durationLimitMs, 
                     sessionQuestions,
                     examCurrentIndex: 0 
@@ -523,31 +454,22 @@
               <div className="min-h-screen bg-slate-50 py-10 px-4 flex justify-center items-center">
                  <div className="max-w-3xl w-full bg-white rounded-2xl shadow-xl p-8 md:p-10 border-t-4 border-amber-500">
                     <div className="flex items-center mb-6 pb-4 border-b border-slate-100">
-                       <FileText className="text-amber-500 mr-3" size={28} />
+                       <FileText className="text-amber-500 mr-3" size="{28}"/>
                        <h2 className="text-2xl font-bold text-slate-800">Petunjuk Ujian</h2>
                     </div>
                     <div className="prose prose-slate max-w-none mb-8">
-                       <ul className="space-y-4 text-slate-700 font-medium list-none p-0">
-                         <li className="flex items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <CheckCircle className="text-emerald-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> 
-                            <div>Waktu pengerjaan disesuaikan dengan tenggat waktu jam selesai yang ditentukan pengawas. Sistem akan otomatis menutup ujian saat waktu habis.</div>
-                         </li>
-                         <li className="flex items-start bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <CheckCircle className="text-emerald-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> 
-                            <div>Jawaban Anda akan <b>tersimpan secara otomatis</b> setiap kali Anda memencet pilihan jawaban atau berpindah nomor soal.</div>
-                         </li>
-                         <li className="flex items-start text-red-600 font-medium bg-red-50 p-4 rounded-lg border border-red-100 mt-5">
-                            <AlertCircle className="text-red-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> 
-                            <div>Sistem Ujian Terkunci (Anti-Curang): Dilarang keras membuka tab/jendela lain, memperkecil jendela browser, atau keluar dari aplikasi. Sistem akan mendeteksi dan mencatat setiap pelanggaran yang terjadi sebagai indikasi kecurangan!</div>
-                         </li>
+                       <ul className="space-y-4 text-slate-700 font-medium">
+                         <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size="{18}"/> Waktu pengerjaan disesuaikan hingga jam selesai untuk <b>{activeQuestions.length} butir soal</b>.</li>
+                         <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size="{18}"/> Jawaban akan <b>tersimpan otomatis</b> setiap Anda berpindah nomor.</li>
+                         <li className="flex items-start text-red-600 font-medium bg-red-50 p-4 rounded-lg border border-red-100"><AlertCircle className="text-red-500 mr-3 mt-0.5 flex-shrink-0" size="{18}"/> Dilarang keras membuka tab/jendela lain. Sistem akan mencatat setiap pelanggaran yang terjadi.</li>
                        </ul>
                     </div>
                     <div className="bg-blue-50 p-5 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-blue-100">
                        <div className="text-blue-900 text-center sm:text-left">
                          Peserta: <strong className="text-lg block sm:inline">{activeSession.participant.name}</strong> <br className="sm:hidden"/>({activeSession.participant.school})
                        </div>
-                       <button onClick={startExam} disabled={isStarting} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50">
-                           {isStarting ? 'Mempersiapkan Soal...' : 'Mulai Ujian'}
+                       <button onClick={startExam} disabled={isStarting || activeQuestions.length === 0} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50">
+                           {isStarting ? 'Memproses...' : 'Mulai Ujian'}
                        </button>
                     </div>
                  </div>
@@ -596,7 +518,7 @@
               return () => clearInterval(timer);
             }, [activeSession]);
 
-            const examQuestions = activeSession?.sessionQuestions || [];
+            const examQuestions = activeSession?.sessionQuestions || activeQuestions;
             if (!activeSession || examQuestions.length === 0 || !examQuestions[examCurrentIndex]) return <div className="min-h-screen flex items-center justify-center font-medium text-slate-500">Memuat soal...</div>;
             
             const currentQuestion = examQuestions[examCurrentIndex];
@@ -609,7 +531,7 @@
             const handleAnswerChangeMCQ = (val) => {
                 handleAnswerChange(val);
                 if (examCurrentIndex < examQuestions.length - 1) {
-                    setTimeout(() => setExamCurrentIndex(examCurrentIndex + 1), 400); 
+                    setTimeout(() => setExamCurrentIndex(examCurrentIndex + 1), 350); 
                 }
             };
 
@@ -617,7 +539,7 @@
               <div className="space-y-3 mt-6">
                 {(currentQuestion.options||[]).map(opt => (
                   <label key={opt.id} className={`flex items-start p-4 border rounded-xl cursor-pointer transition-all ${currentAnswer === opt.id ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:bg-slate-50'}`}>
-                    <div className="flex items-center h-6 mt-0.5"><input type="radio" checked={currentAnswer === opt.id} onChange={() => handleAnswerChangeMCQ(opt.id)} className="w-5 h-5 text-emerald-600" /></div>
+                    <div className="flex items-center h-6 mt-0.5"><input type="radio" name={`q_${currentQuestion.id}`} checked={currentAnswer === opt.id} onChange={() => handleAnswerChangeMCQ(opt.id)} className="w-5 h-5 text-emerald-600" /></div>
                     <div className="ml-4 flex-1 flex text-slate-800"><span className="font-bold text-slate-400 w-6 mt-0.5">{opt.id}.</span><div className="flex-1 rich-text-content" dangerouslySetInnerHTML={{__html: opt.text}}></div></div>
                   </label>
                 ))}
@@ -633,7 +555,7 @@
                };
                return (
                   <div className="space-y-3 mt-6">
-                     <div className="bg-blue-50 border border-blue-100 text-blue-700 p-3 rounded-lg font-medium text-sm mb-4 flex items-center"><AlertCircle size={16} className="mr-2"/> Pilih lebih dari satu jawaban.</div>
+                     <div className="bg-blue-50 border border-blue-100 text-blue-700 p-3 rounded-lg font-medium text-sm mb-4 flex items-center"><AlertCircle className="mr-2" size="{16}"/> Pilih lebih dari satu jawaban yang benar.</div>
                      {(currentQuestion.statements||[]).map((stmt, idx) => (
                         <label key={stmt.id} className={`flex items-start p-4 border rounded-xl cursor-pointer transition-all ${selectedArr.includes(stmt.id) ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 hover:bg-slate-50'}`}>
                            <div className="flex items-center h-6 mt-0.5"><input type="checkbox" checked={selectedArr.includes(stmt.id)} onChange={() => handleToggle(stmt.id)} className="w-5 h-5 text-blue-600 rounded" /></div>
@@ -657,8 +579,8 @@
                               <tr key={stmt.id} className="border-b border-slate-100 hover:bg-slate-50">
                                  <td className="py-4 px-4 text-slate-400 font-medium text-center align-top">{idx + 1}</td>
                                  <td className="py-4 px-4 text-slate-800 align-top"><div className="rich-text-content text-sm" dangerouslySetInnerHTML={{__html: stmt.text}}></div></td>
-                                 <td className="py-4 px-4 text-center align-middle border-l bg-emerald-50/30 cursor-pointer" onClick={() => handleAnswerChange({...catAnswer, [stmt.id]: cat1Label})}><input type="radio" checked={catAnswer[stmt.id] === cat1Label} onChange={() => {}} className="w-5 h-5 text-emerald-600" /></td>
-                                 <td className="py-4 px-4 text-center align-middle border-l bg-amber-50/30 cursor-pointer" onClick={() => handleAnswerChange({...catAnswer, [stmt.id]: cat2Label})}><input type="radio" checked={catAnswer[stmt.id] === cat2Label} onChange={() => {}} className="w-5 h-5 text-amber-600" /></td>
+                                 <td className="py-4 px-4 text-center align-middle border-l bg-emerald-50/30 cursor-pointer" onClick={() => handleAnswerChange({...catAnswer, [stmt.id]: cat1Label})}><input type="radio" name={`cat_${stmt.id}`} checked={catAnswer[stmt.id] === cat1Label} onChange={() => {}} className="w-5 h-5 text-emerald-600" /></td>
+                                 <td className="py-4 px-4 text-center align-middle border-l bg-amber-50/30 cursor-pointer" onClick={() => handleAnswerChange({...catAnswer, [stmt.id]: cat2Label})}><input type="radio" name={`cat_${stmt.id}`} checked={catAnswer[stmt.id] === cat2Label} onChange={() => {}} className="w-5 h-5 text-amber-600" /></td>
                               </tr>
                            ))}
                         </tbody>
@@ -673,11 +595,11 @@
               <div className="min-h-screen bg-slate-50 flex flex-col prevent-select">
                 <header className="bg-slate-900 shadow px-4 sm:px-6 py-3 flex justify-between items-center sticky top-0 z-20">
                    <div className="flex items-center">
-                      <div className="hidden sm:flex w-9 h-9 bg-emerald-500 rounded-lg items-center justify-center text-white mr-3"><Monitor size={18}/></div>
+                      <div className="hidden sm:flex w-9 h-9 bg-emerald-500 rounded-lg items-center justify-center text-white mr-3"><Monitor size="{18}"/></div>
                       <div><h1 className="text-base font-bold text-white leading-tight">CBT Ujian Terpadu</h1><p className="text-xs text-slate-400">{activeSession.participant?.name}</p></div>
                    </div>
                    <div className={`flex items-center font-bold text-lg px-4 py-1.5 rounded-lg border ${timeLeft < 300 ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-800 text-emerald-400'}`}>
-                      <Clock size={18} className="mr-2" /> {fmtTime(timeLeft)}
+                      <Clock className="mr-2" size="{18}"/> {fmtTime(timeLeft)}
                    </div>
                 </header>
                 <div className="flex-1 flex flex-col lg:flex-row max-w-[1400px] w-full mx-auto p-4 gap-5">
@@ -685,16 +607,16 @@
                       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-8 flex-1 flex flex-col">
                          <div className="flex flex-wrap gap-2 justify-between items-center mb-6 pb-4 border-b">
                             <h2 className="text-xl font-bold text-slate-800">SOAL NO. {examCurrentIndex + 1}</h2>
-                            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">{currentQuestion.category}</span>
+                            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-100">{currentQuestion.category || currentQuestion.folder}</span>
                          </div>
                          <div className="flex-1 overflow-y-auto pr-1 pb-8">
                             <div className="text-base sm:text-lg text-slate-800 leading-relaxed font-medium mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: currentQuestion.question || '' }} />
-                            {currentQuestion.type === 'MCQ' && <RenderMCQ />}
-                            {currentQuestion.type === 'MCMA' && <RenderMCMA />}
-                            {currentQuestion.type === 'CATEGORY' && <RenderCATEGORY />}
+                            {currentQuestion.type === 'MCQ' && <RenderMCQ/>}
+                            {currentQuestion.type === 'MCMA' && <RenderMCMA/>}
+                            {currentQuestion.type === 'CATEGORY' && <RenderCATEGORY/>}
                          </div>
                          <div className="pt-5 mt-4 border-t flex justify-between items-center gap-3">
-                            <button onClick={() => setExamCurrentIndex(Math.max(0, examCurrentIndex - 1))} disabled={examCurrentIndex === 0} className="px-4 py-2.5 bg-slate-50 text-slate-700 rounded-lg disabled:opacity-50 font-medium border"><ChevronLeft size={18} className="mr-1" /> Sebelum</button>
+                            <button onClick={() => setExamCurrentIndex(Math.max(0, examCurrentIndex - 1))} disabled={examCurrentIndex === 0} className="px-4 py-2.5 bg-slate-50 text-slate-700 rounded-lg disabled:opacity-50 font-medium border flex items-center"><ChevronLeft className="mr-1" size="{18}"/> Sebelum</button>
                             <label className={`flex items-center px-4 py-2.5 rounded-lg font-medium border cursor-pointer ${isFlagged ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-white border-slate-200 text-slate-600'}`}>
                                <input type="checkbox" checked={isFlagged} onChange={toggleFlag} className="mr-2 w-4 h-4 text-amber-500 rounded" /> Ragu-ragu
                             </label>
@@ -708,7 +630,7 @@
                    </div>
                    <div className="lg:w-80 w-full flex-shrink-0">
                       <div className="bg-white rounded-xl shadow-sm border p-5 sticky top-20">
-                         <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center border-b pb-3"><LayoutDashboard size={18} className="mr-2 text-slate-400"/> Navigator Soal</h3>
+                         <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center border-b pb-3"><LayoutDashboard className="mr-2 text-slate-400" size="{18}"/> Navigator Soal</h3>
                          <div className="grid grid-cols-5 gap-2 max-h-[50vh] overflow-y-auto">
                             {examQuestions.map((q, idx) => {
                                const ans = activeSession.answers[q.id];
@@ -794,9 +716,9 @@
           const ExamSubmitted = () => (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
                 <div className="bg-white p-10 rounded-2xl shadow-xl text-center max-w-md w-full border-t-4 border-emerald-500">
-                   <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5"><CheckCircle size={40} /></div>
+                   <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5"><CheckCircle size="{40}"/></div>
                    <h2 className="text-xl font-bold mb-3 text-slate-800">Ujian Selesai</h2>
-                   <p className="text-slate-500 text-sm mb-8">Jawaban berhasil diunggah.</p>
+                   <p className="text-slate-500 text-sm mb-8">Jawaban berhasil diunggah ke sistem.</p>
                    <button onClick={() => { setActiveSession(null); navigate('/'); }} className="w-full px-6 py-3 bg-slate-800 text-white font-semibold rounded-xl">Beranda</button>
                 </div>
             </div>
@@ -806,12 +728,12 @@
             const [u, setU] = useState(''); const [p, setP] = useState(''); const [showP, setShowP] = useState(false);
             return (
               <div className="min-h-screen bg-slate-900 flex justify-center items-center p-4">
-                <form onSubmit={(e)=>{e.preventDefault(); if(u==='admin'&&p==='bismillah'){setIsAdminLoggedIn(true); navigate('/admin/dashboard');}else alert('Salah');}} className="bg-white p-8 rounded-2xl max-w-sm w-full shadow-2xl">
-                   <div className="text-center mb-6"><div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3"><Settings size={24}/></div><h1 className="text-xl font-bold text-slate-800">Admin</h1></div>
+                <form onSubmit={(e)=>{e.preventDefault(); if(u==='admin'&&p==='bismillah'){setIsAdminLoggedIn(true); navigate('/admin/dashboard');}else alert('Username atau Password salah');}} className="bg-white p-8 rounded-2xl max-w-sm w-full shadow-2xl">
+                   <div className="text-center mb-6"><div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3"><Settings size="{24}"/></div><h1 className="text-xl font-bold text-slate-800">Admin</h1></div>
                    <input type="text" placeholder="Username" value={u} onChange={e=>setU(e.target.value)} className="w-full p-3 border rounded-lg mb-3 text-sm" required/>
                    <div className="relative mb-6">
                        <input type={showP ? "text" : "password"} placeholder="Password" value={p} onChange={e=>setP(e.target.value)} className="w-full p-3 border rounded-lg text-sm pr-10" required/>
-                       <button type="button" onClick={()=>setShowP(!showP)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600">{showP ? <EyeSlash size={18}/> : <Eye size={18}/>}</button>
+                       <button type="button" onClick={()=>setShowP(!showP)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-600">{showP ? <EyeSlash size="{18}"/> : <Eye size="{18}"/>}</button>
                    </div>
                    <button type="submit" className="w-full py-3 bg-blue-600 text-white font-semibold rounded-lg">Login</button>
                    <button type="button" onClick={()=>navigate('/')} className="w-full mt-4 text-xs text-slate-500 font-medium">Kembali</button>
@@ -835,14 +757,14 @@
               <div className="min-h-screen bg-slate-50 flex print:block">
                 {isMobileMenuOpen && <div className="fixed inset-0 bg-slate-900/60 z-40 lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />}
                 <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-slate-300 flex flex-col transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 transition-transform`}>
-                  <div className="p-6 flex items-center justify-between border-b border-slate-800"><div className="flex items-center"><div className="w-8 h-8 bg-blue-500 text-white rounded flex items-center justify-center mr-3"><Settings size={16}/></div><span className="text-white font-bold">CBT ADMIN</span></div><button className="lg:hidden text-slate-400" onClick={() => setIsMobileMenuOpen(false)}><X size={20}/></button></div>
+                  <div className="p-6 flex items-center justify-between border-b border-slate-800"><div className="flex items-center"><div className="w-8 h-8 bg-blue-500 text-white rounded flex items-center justify-center mr-3"><Settings size="{16}"/></div><span className="text-white font-bold">CBT ADMIN</span></div><button className="lg:hidden text-slate-400" onClick={() => setIsMobileMenuOpen(false)}><X size="{20}"/></button></div>
                   <nav className="flex-1 py-4 space-y-1 px-3">{menu.map(m => (<button key={m.id} onClick={() => { setIsMobileMenuOpen(false); navigate(m.path); }} className={`w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-medium ${currentRoute.startsWith(m.path) ? 'bg-blue-500/10 text-blue-400' : 'text-slate-400 hover:bg-slate-800'}`}><m.icon size={18} className="mr-3"/> {m.label}</button>))}</nav>
-                  <div className="p-4 border-t border-slate-800"><button onClick={() => { setIsAdminLoggedIn(false); navigate('/admin/login'); }} className="w-full flex items-center justify-center px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"><LogOut size={16} className="mr-2"/> Keluar</button></div>
+                  <div className="p-4 border-t border-slate-800"><button onClick={() => { setIsAdminLoggedIn(false); navigate('/admin/login'); }} className="w-full flex items-center justify-center px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg"><LogOut className="mr-2" size="{16}"/> Keluar</button></div>
                 </div>
                 <div className="flex-1 flex flex-col h-screen overflow-hidden print:h-auto print:block">
                   <header className="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 z-10 print:hidden shadow-sm">
-                    <div className="flex items-center gap-3"><button className="lg:hidden p-1.5 border rounded" onClick={() => setIsMobileMenuOpen(true)}><Menu size={20}/></button><h2 className="text-xl font-semibold text-slate-800">{title}</h2></div>
-                    <span className="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-600 border rounded-md flex items-center"><Cloud size={12} className="mr-1"/> Online</span>
+                    <div className="flex items-center gap-3"><button className="lg:hidden p-1.5 border rounded" onClick={() => setIsMobileMenuOpen(true)}><Menu size="{20}"/></button><h2 className="text-xl font-semibold text-slate-800">{title}</h2></div>
+                    <span className="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-600 border rounded-md flex items-center"><Cloud className="mr-1" size="{12}"/> Online</span>
                   </header>
                   <main className="flex-1 overflow-y-auto p-6 lg:p-8 print:p-0">{children}</main>
                 </div>
@@ -897,7 +819,7 @@
                     setIsRandomQ(tempRandomQ);
                     setIsRandomOpt(tempRandomOpt);
                     alert("Pengaturan berhasil disimpan!");
-                } catch(e) { alert("Gagal: " + e.message); }
+                } catch(e) { alert("Gagal menyimpan pengaturan: " + e.message); }
                 setIsSaving(false);
              };
 
@@ -906,11 +828,11 @@
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                     <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Peserta Selesai</div><div className="text-2xl font-bold">{results.length}</div></div>
                     <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Total Soal</div><div className="text-2xl font-bold">{questions.length}</div></div>
-                    <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Token Tersedia</div><div className="text-2xl font-bold">{tokens.filter(t=>t.status==='AVAILABLE' && !t.code.startsWith('SYS_')).length}</div></div>
+                    <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Token Tersedia</div><div className="text-2xl font-bold">{tokens.filter(t=>t.status==='AVAILABLE' && !t.code.startsWith('SYS_FOLDER_') && !t.code.startsWith('SYS_SETTING_')).length}</div></div>
                 </div>
 
                 <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 mb-8">
-                    <h3 className="text-base font-semibold text-blue-900 mb-4 flex items-center"><Settings size={18} className="mr-2"/> Pengaturan Penerbitan Ujian</h3>
+                    <h3 className="text-base font-semibold text-blue-900 mb-4 flex items-center"><Settings className="mr-2" size="{18}"/> Pengaturan Penerbitan Ujian</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div><label className="block text-sm font-semibold text-blue-800 mb-1">Nama Penyelenggara</label><input type="text" value={tempOrganizer} onChange={e=>setTempOrganizer(e.target.value)} className="w-full p-2.5 rounded-lg border bg-white text-sm"/></div>
                         <div>
@@ -939,12 +861,12 @@
           const AdminTokens = () => {
              const [isSaving, setIsSaving] = useState(false);
              const [showImport, setShowImport] = useState(false);
-             const [showManual, setShowManual] = useState(false);
-             const [manualData, setManualData] = useState({ name: '', school: '' });
-             const [editingToken, setEditingToken] = useState(null);
+             const [showForm, setShowForm] = useState(false);
              const [fileUploadError, setFileUploadError] = useState('');
+             const [editToken, setEditToken] = useState(null);
              
              const actualTokens = tokens.filter(t => !t.code.startsWith('SYS_SETTING_') && !t.code.startsWith('SYS_FOLDER_'));
+             const [formData, setFormData] = useState({ code: '', participant_name: '', participant_school: '', status: 'AVAILABLE' });
 
              const downloadTemplate = () => {
                  const csvContent = "Nama Murid,Asal Sekolah\nBudi Santoso,SDN 1\nSiti Aminah,SDN 2\n";
@@ -979,19 +901,21 @@
              };
 
              const saveManualToken = async (e) => {
-                 e.preventDefault();
-                 setIsSaving(true);
-                 try {
-                     const db = await getSupabase();
-                     if (editingToken) {
-                         await db.from('tokens').update({ participant_name: manualData.name, participant_school: manualData.school }).eq('code', editingToken);
-                     } else {
-                         const newCode = `TKA-${Math.random().toString(36).substring(2,6).toUpperCase()}`;
-                         await db.from('tokens').insert([{ code: newCode, status: 'AVAILABLE', participant_name: manualData.name, participant_school: manualData.school, generatedAt: new Date().toISOString() }]);
-                     }
-                     setShowManual(false); setEditingToken(null); setManualData({name:'', school:''}); fetchSupabaseData();
-                 } catch(err) { alert(err.message); }
-                 finally { setIsSaving(false); }
+                e.preventDefault();
+                setIsSaving(true);
+                try {
+                    const db = await getSupabase();
+                    let payload = { ...formData };
+                    if (!payload.code) payload.code = `TKA-${Math.random().toString(36).substring(2,6).toUpperCase()}`;
+                    if (!editToken) {
+                        payload.generatedAt = new Date().toISOString();
+                        await db.from('tokens').insert([payload]);
+                    } else {
+                        await db.from('tokens').update(payload).eq('code', editToken.code);
+                    }
+                    setShowForm(false); fetchSupabaseData();
+                } catch(err) { alert(err.message); }
+                finally { setIsSaving(false); }
              };
 
              const deleteToken = async (code) => {
@@ -1003,35 +927,33 @@
 
              return (
                <AdminLayout title="Token Ujian">
-                 <div className="bg-white p-4 rounded-xl border mb-6 flex flex-wrap gap-3">
-                    <button onClick={() => { setEditingToken(null); setManualData({name:'', school:''}); setShowManual(true); }} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Plus size={16} className="mr-2"/> Tambah Manual</button>
-                    <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Upload size={16} className="mr-2"/> Impor CSV</button>
+                 <div className="bg-white p-4 rounded-xl border mb-6 flex gap-3">
+                    <button onClick={() => {setEditToken(null); setFormData({code:'', participant_name:'', participant_school:'', status:'AVAILABLE'}); setShowForm(true);}} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center shadow-sm"><Plus className="mr-2" size="{16}"/> Tambah Manual</button>
+                    <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center shadow-sm"><Upload className="mr-2" size="{16}"/> Unggah Peserta CSV</button>
                  </div>
-                 
+                 {showForm && (
+                     <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
+                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">{editToken ? 'Edit' : 'Tambah'} Peserta</h3><button onClick={()=>setShowForm(false)}><X size="{18}"/></button></div>
+                            <form onSubmit={saveManualToken} className="space-y-4">
+                                <div><label className="text-sm font-semibold block mb-1">Nama Peserta</label><input type="text" value={formData.participant_name} onChange={e=>setFormData({...formData, participant_name: e.target.value})} className="w-full p-2 border rounded" required/></div>
+                                <div><label className="text-sm font-semibold block mb-1">Asal Sekolah</label><input type="text" value={formData.participant_school} onChange={e=>setFormData({...formData, participant_school: e.target.value})} className="w-full p-2 border rounded"/></div>
+                                {editToken && <div><label className="text-sm font-semibold block mb-1">Status</label><select value={formData.status} onChange={e=>setFormData({...formData, status: e.target.value})} className="w-full p-2 border rounded"><option value="AVAILABLE">AVAILABLE</option><option value="USED">USED</option></select></div>}
+                                <div className="flex justify-end gap-2 mt-4"><button type="button" onClick={()=>setShowForm(false)} className="px-4 py-2 border rounded">Batal</button><button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded">{isSaving ? 'Menyimpan...' : 'Simpan'}</button></div>
+                            </form>
+                        </div>
+                     </div>
+                 )}
                  {showImport && (
                      <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
-                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Impor Peserta</h3><button onClick={()=>setShowImport(false)}><X size={18}/></button></div>
-                            <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText size={16} className="mr-2"/> Download Templat</button>
+                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Impor Peserta</h3><button onClick={()=>setShowImport(false)}><X size="{18}"/></button></div>
+                            <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText className="mr-2" size="{16}"/> Download Templat</button>
                             <input type="file" accept=".csv" onChange={handleFileUpload} className="w-full p-4 border-2 border-dashed rounded-xl"/>
                             {fileUploadError && <p className="text-rose-500 text-xs mt-2">{fileUploadError}</p>}
                         </div>
                      </div>
                  )}
-
-                 {showManual && (
-                     <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
-                        <form onSubmit={saveManualToken} className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">{editingToken ? 'Edit Peserta' : 'Tambah Peserta'}</h3><button type="button" onClick={()=>{setShowManual(false); setEditingToken(null);}}><X size={18}/></button></div>
-                            <div className="space-y-4">
-                                <div><label className="block text-sm font-semibold mb-1">Nama Peserta</label><input type="text" required value={manualData.name} onChange={e=>setManualData({...manualData, name: e.target.value})} className="w-full p-2 border rounded-lg"/></div>
-                                <div><label className="block text-sm font-semibold mb-1">Asal Sekolah</label><input type="text" value={manualData.school} onChange={e=>setManualData({...manualData, school: e.target.value})} className="w-full p-2 border rounded-lg"/></div>
-                            </div>
-                            <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={()=>{setShowManual(false); setEditingToken(null);}} className="px-4 py-2 border rounded-lg">Batal</button><button type="submit" disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg">{isSaving ? 'Menyimpan...' : 'Simpan'}</button></div>
-                        </form>
-                     </div>
-                 )}
-
                  <div className="bg-white rounded-xl border overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 border-b"><tr><th className="p-4">No</th><th className="p-4">Nama</th><th className="p-4">Sekolah</th><th className="p-4">Token</th><th className="p-4 text-center">Status</th><th className="p-4 text-center">Aksi</th></tr></thead>
@@ -1043,9 +965,9 @@
                                     <td className="p-4">{t.participant_school || '-'}</td>
                                     <td className="p-4 font-mono font-bold text-indigo-600">{t.code}</td>
                                     <td className="p-4 text-center"><span className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded">{t.status}</span></td>
-                                    <td className="p-4 text-center flex justify-center gap-2">
-                                        <button onClick={()=>{setManualData({name: t.participant_name, school: t.participant_school}); setEditingToken(t.code); setShowManual(true);}} className="text-blue-500 bg-blue-50 p-2 rounded-lg"><Edit size={16}/></button>
-                                        <button onClick={()=>deleteToken(t.code)} className="text-rose-500 bg-rose-50 p-2 rounded-lg"><Trash2 size={16}/></button>
+                                    <td className="p-4 text-center">
+                                        <button onClick={() => {setEditToken(t); setFormData(t); setShowForm(true);}} className="text-blue-500 p-2 mr-1 hover:bg-blue-50 rounded"><Edit size="{16}"/></button>
+                                        <button onClick={()=>deleteToken(t.code)} className="text-rose-500 p-2 hover:bg-rose-50 rounded"><Trash2 size="{16}"/></button>
                                     </td>
                                 </tr>
                             ))}
@@ -1063,7 +985,7 @@
                  {selectedAnalysis && (
                     <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-                            <div className="bg-slate-50 border-b px-5 py-4 flex justify-between items-center"><h3 className="font-bold">Analisis: {selectedAnalysis.participant?.name}</h3><button onClick={() => setSelectedAnalysis(null)}><X size={18}/></button></div>
+                            <div className="bg-slate-50 border-b px-5 py-4 flex justify-between items-center"><h3 className="font-bold">Analisis: {selectedAnalysis.participant?.name}</h3><button onClick={() => setSelectedAnalysis(null)}><X size="{18}"/></button></div>
                             <div className="p-5 overflow-y-auto flex-1">
                                 <table className="w-full text-left text-sm">
                                     <thead className="bg-slate-100 border-b"><tr><th className="p-3">No</th><th className="p-3">Pertanyaan</th><th className="p-3 text-center">Status</th></tr></thead>
@@ -1113,17 +1035,118 @@
 
             const defaultMCQ = { id: '', type: 'MCQ', folder: filterFolder, category: 'Umum', points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
             const defaultMCMA = { id: '', type: 'MCMA', folder: filterFolder, category: 'Umum', points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}, {id:3, text:''}], correctAnswers: [] };
-            const defaultCAT = { id: '', type: 'CATEGORY', folder: filterFolder, category: 'Umum', points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'},{id:2, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
+            const defaultCAT = { id: '', type: 'CATEGORY', folder: filterFolder, category: 'Umum', points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'},{id:2, text:'', category1:'Benar', category2:'Salah', correctCategory:'Salah'}] };
             
             const [formData, setFormData] = useState(defaultMCQ);
 
-            useEffect(() => { triggerMathRender(); }, [view, questions, formData.type]);
+            const folderStats = questions.reduce((acc, q) => { 
+                const f = q.folder || 'Utama'; 
+                acc[f] = (acc[f] || 0) + 1; 
+                return acc; 
+            }, {});
+            
+            tokens.forEach(t => {
+                if (t.code && t.code.startsWith('SYS_FOLDER_') && folderStats[t.status] === undefined) {
+                    folderStats[t.status] = 0;
+                }
+            });
+            if (folderStats['Utama'] === undefined) folderStats['Utama'] = 0;
+
+            const availableFolders = Object.keys(folderStats);
+            if (!availableFolders.includes('Utama')) availableFolders.unshift('Utama');
+
+            const createFolder = async () => {
+                const fname = prompt("Masukkan Nama Folder Baru:\n(Contoh: STS Semester 1, Tryout Matematika)");
+                if (fname && fname.trim() !== "") {
+                    const trimmed = fname.trim();
+                    if (folderStats[trimmed] !== undefined) {
+                        alert(`Folder "${trimmed}" sudah ada!`);
+                        return;
+                    }
+                    setIsSaving(true);
+                    try {
+                        const db = await getSupabase();
+                        await db.from('tokens').insert([{
+                            code: `SYS_FOLDER_${Date.now()}`,
+                            status: trimmed,
+                            generatedAt: new Date().toISOString(),
+                            participant_name: 'SYSTEM_FOLDER'
+                        }]);
+                        await fetchSupabaseData(); 
+                        setFilterFolder(trimmed);
+                        setView('list'); 
+                    } catch(e) { 
+                        alert("Gagal menyimpan folder: " + e.message); 
+                    } finally {
+                        setIsSaving(false);
+                    }
+                }
+            };
+
+            const renameFolder = async (e, oldName) => {
+                e.stopPropagation();
+                const newName = prompt(`Ubah nama folder "${oldName}" menjadi:`, oldName);
+                if (newName && newName.trim() !== "" && newName.trim() !== oldName) {
+                    const trimmed = newName.trim();
+                    if (folderStats[trimmed] !== undefined) {
+                        alert(`Folder "${trimmed}" sudah ada!`);
+                        return;
+                    }
+                    setIsSaving(true);
+                    try {
+                        const db = await getSupabase();
+                        await db.from('tokens').update({ status: trimmed }).eq('status', oldName).like('code', 'SYS_FOLDER_%');
+                        await db.from('questions').update({ folder: trimmed }).eq('folder', oldName);
+                        if (activeFolder === oldName) {
+                            await db.from('tokens').update({ status: trimmed }).eq('code', 'SYS_SETTING_FOLDER');
+                            setActiveFolder(trimmed);
+                        }
+                        await fetchSupabaseData();
+                        if (filterFolder === oldName) setFilterFolder(trimmed);
+                        alert(`Folder "${oldName}" berhasil diubah menjadi "${trimmed}"`);
+                    } catch(err) {
+                        alert("Gagal mengubah nama folder: " + err.message);
+                    } finally {
+                        setIsSaving(false);
+                    }
+                }
+            };
+
+            const deleteFolder = async (e, fname) => {
+                e.stopPropagation();
+                if (fname === 'Utama') {
+                    alert("Folder 'Utama' adalah folder default sistem dan tidak dapat dihapus.");
+                    return;
+                }
+                const count = folderStats[fname] || 0;
+                const msg = count > 0 
+                    ? `Folder "${fname}" memiliki ${count} butir soal.\nMenghapus folder ini juga akan MENGHAPUS SEMUA ${count} soal di dalamnya dari database.\n\nLanjutkan penghapusan?`
+                    : `Hapus folder "${fname}"?`;
+                if (!confirm(msg)) return;
+
+                setIsSaving(true);
+                try {
+                    const db = await getSupabase();
+                    await db.from('tokens').delete().eq('status', fname).like('code', 'SYS_FOLDER_%');
+                    await db.from('questions').delete().eq('folder', fname);
+                    if (activeFolder === fname) {
+                        await db.from('tokens').update({ status: 'Utama' }).eq('code', 'SYS_SETTING_FOLDER');
+                        setActiveFolder('Utama');
+                    }
+                    await fetchSupabaseData();
+                    alert(`Folder "${fname}" berhasil dihapus.`);
+                } catch(err) {
+                    alert("Gagal menghapus folder: " + err.message);
+                } finally {
+                    setIsSaving(false);
+                }
+            };
 
             const downloadTemplate = () => {
-                const csvContent = "Topik,Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci\nUmum,Ibu kota Indonesia adalah?,Jakarta,Bandung,Surabaya,Medan,A\n";
+                const csvContent = "Mapel,Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci\nBahasa Indonesia,Ibu kota Indonesia adalah?,Jakarta,Bandung,Surabaya,Medan,A\n";
                 const link = document.createElement("a");
                 link.setAttribute("href", URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })));
-                link.setAttribute("download", "Template_Bank_Soal.csv");
+                link.setAttribute("download", `Template_Soal_${filterFolder}.csv`);
                 document.body.appendChild(link); link.click(); document.body.removeChild(link);
             };
 
@@ -1134,9 +1157,7 @@
                 reader.onload = async (event) => {
                     const lines = event.target.result.split('\n').filter(l => l.trim() !== '');
                     const payloads = [];
-                    const startIndex = lines[0].toLowerCase().includes('topik') || lines[0].toLowerCase().includes('mapel') ? 1 : 0;
-                    
-                    for (let i = startIndex; i < lines.length; i++) {
+                    for (let i = (lines[0].toLowerCase().includes('mapel') ? 1 : 0); i < lines.length; i++) {
                         const cols = lines[i].split(',');
                         if (cols.length >= 7) {
                             payloads.push({
@@ -1156,12 +1177,14 @@
                             });
                         }
                     }
-                    if (payloads.length === 0) { setFileError('Format salah.'); return; }
+                    if (payloads.length === 0) { setFileError('Format data CSV tidak sesuai.'); return; }
                     setIsSaving(true);
                     try {
                         const db = await getSupabase();
                         await db.from('questions').insert(payloads);
-                        setShowImport(false); fetchSupabaseData(); alert('Soal berhasil diimpor!');
+                        setShowImport(false); 
+                        await fetchSupabaseData(); 
+                        alert('Soal berhasil diunggah ke folder ' + filterFolder);
                     } catch(err) { alert(err.message); }
                     finally { setIsSaving(false); }
                 };
@@ -1173,25 +1196,38 @@
                setIsSaving(true);
                try {
                  const db = await getSupabase();
-                 let payload = { ...formData };
+                 const targetFolder = formData.folder || filterFolder || 'Utama';
+                 let payload = { ...formData, folder: targetFolder };
+                 delete payload.status;
+                 delete payload.number;
+
                  if(!payload.id) { 
                     payload.id = `q${Date.now()}`;
-                    await db.from('questions').insert([payload]);
+                    const { error } = await db.from('questions').insert([payload]);
+                    if (error) throw error;
                  } else { 
-                    await db.from('questions').update(payload).eq('id', payload.id);
+                    const { error } = await db.from('questions').update(payload).eq('id', payload.id);
+                    if (error) throw error;
                  }
                  await fetchSupabaseData();
-                 
-                 // Pindah view dan ganti filterFolder agar menyesuaikan dengan yang barusan dipilih
-                 setFilterFolder(payload.folder);
+                 setFilterFolder(targetFolder);
                  setView('list');
-               } catch (err) { alert(err.message); }
-               finally { setIsSaving(false); }
+               } catch (err) { 
+                   alert("Gagal menyimpan soal: " + err.message); 
+               } finally { 
+                   setIsSaving(false); 
+               }
             };
 
             const deleteQuestion = async (id) => {
-                if(!confirm("Hapus soal?")) return;
-                try { const db = await getSupabase(); await db.from('questions').delete().eq('id', id); fetchSupabaseData(); } catch(e) { alert(e.message); }
+                if(!confirm("Hapus soal ini dari database?")) return;
+                try { 
+                    const db = await getSupabase(); 
+                    await db.from('questions').delete().eq('id', id); 
+                    await fetchSupabaseData(); 
+                } catch(e) { 
+                    alert(e.message); 
+                }
             };
 
             const publishFolder = async (fname) => {
@@ -1201,194 +1237,92 @@
                     if (data) await db.from('tokens').update({ status: fname }).eq('code', 'SYS_SETTING_FOLDER');
                     else await db.from('tokens').insert([{ code: 'SYS_SETTING_FOLDER', status: fname, generatedAt: new Date().toISOString() }]);
                     setActiveFolder(fname);
-                    alert(`Folder "${fname}" berhasil diterbitkan ke peserta!`);
-                } catch(e) { alert("Gagal terbit: " + e.message); }
-            };
-
-            const folderStats = questions.reduce((acc, q) => { 
-                const f = q.folder || 'Utama'; 
-                acc[f] = (acc[f] || 0) + 1; 
-                return acc; 
-            }, {});
-            
-            // Tambahkan folder kosong dari database (tokens)
-            tokens.forEach(t => {
-                if (t.code && t.code.startsWith('SYS_FOLDER_') && folderStats[t.status] === undefined) {
-                    folderStats[t.status] = 0;
-                }
-            });
-
-            if (folderStats['Utama'] === undefined) {
-                folderStats['Utama'] = 0;
-            }
-
-            const handleCreateNewFolder = async () => {
-                const fname = prompt("Masukkan Nama Folder Baru:\n(Contoh: Tryout 1, STS Ganjil)");
-                if (fname && fname.trim() !== '') {
-                    const folderName = fname.trim();
-                    setIsSaving(true);
-                    try {
-                        const db = await getSupabase();
-                        // Simpan nama folder ke tabel tokens sebagai data permanen
-                        await db.from('tokens').insert([{ 
-                            code: `SYS_FOLDER_${Date.now()}`, 
-                            status: folderName, 
-                            generatedAt: new Date().toISOString(),
-                            participant_name: 'SYSTEM_FOLDER' 
-                        }]);
-                        
-                        await fetchSupabaseData(); // Refresh data untuk mendapatkan folder baru
-                        setFilterFolder(folderName);
-                        setView('list');
-                    } catch (e) {
-                        alert("Gagal menyimpan folder: " + e.message);
-                    }
-                    setIsSaving(false);
-                }
+                    alert(`Folder "${fname}" berhasil diterbitkan untuk peserta!`);
+                } catch(e) { alert("Gagal menerbitkan: " + e.message); }
             };
 
             const renderOptionsEditor = () => {
                 if (formData.type === 'MCQ') {
                     return (
-                        <div className="space-y-4 mt-6 border-t pt-4">
-                            <h3 className="font-semibold text-slate-800 text-sm">Opsi Jawaban (A-D)</h3>
+                        <div className="space-y-3 pt-4 border-t">
+                            <h4 className="font-semibold text-sm">Opsi Jawaban (A-D)</h4>
                             {formData.options.map((opt, idx) => (
-                                <div key={opt.id} className="flex gap-3 items-start bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                    <div className="pt-2 font-bold text-slate-400 w-6 text-center">{opt.id}.</div>
-                                    <div className="flex-1">
-                                        <RichTextEditor minHeight="60px" placeholder={`Ketik opsi ${opt.id}...`} value={opt.text} onChange={(v) => { const newOpts = [...formData.options]; newOpts[idx].text = v; setFormData({...formData, options: newOpts}); }} />
-                                    </div>
+                                <div key={opt.id} className="flex gap-3 items-center">
+                                    <span className="font-bold w-6">{opt.id}.</span>
+                                    <input type="text" value={opt.text} onChange={e => { const o = [...formData.options]; o[idx].text = e.target.value; setFormData({...formData, options: o}); }} className="w-full p-2 border rounded" placeholder={`Teks Opsi ${opt.id}`} required/>
                                 </div>
                             ))}
-                            <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 flex items-center justify-between">
-                                <span className="font-medium text-emerald-800 text-sm">Kunci Jawaban Benar:</span>
-                                <select value={formData.correctAnswer} onChange={e => setFormData({...formData, correctAnswer: e.target.value})} className="p-2 border border-emerald-200 rounded font-bold text-emerald-700 bg-white focus:border-emerald-500 text-sm w-24 text-center">
-                                    {['A', 'B', 'C', 'D'].map(v => <option key={v} value={v}>{v}</option>)}
-                                </select>
-                            </div>
+                            <div className="mt-4"><label className="block text-sm font-semibold mb-1 text-emerald-700">Kunci Jawaban Benar</label><select value={formData.correctAnswer} onChange={e => setFormData({...formData, correctAnswer: e.target.value})} className="p-2 border border-emerald-300 rounded font-bold bg-emerald-50"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></div>
                         </div>
                     );
-                } else if (formData.type === 'MCMA') {
+                }
+                if (formData.type === 'MCMA') {
                     return (
-                        <div className="space-y-4 mt-6 border-t pt-4">
-                            <h3 className="font-semibold text-slate-800 text-sm flex justify-between">
-                                <span>Pernyataan Kompleks (Jawaban &gt; 1)</span>
-                                <span className="text-xs font-normal text-slate-500">Centang kotak untuk mengatur sebagai kunci benar</span>
-                            </h3>
+                        <div className="space-y-3 pt-4 border-t">
+                            <h4 className="font-semibold text-sm mb-2">Pernyataan Jawaban Ganda</h4>
                             {formData.statements.map((stmt, idx) => (
-                                <div key={stmt.id} className={`flex gap-3 items-start p-3 rounded-lg border transition-colors ${formData.correctAnswers.includes(stmt.id) ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                                    <div className="pt-2 flex flex-col items-center gap-2">
-                                        <input type="checkbox" checked={formData.correctAnswers.includes(stmt.id)} onChange={() => {
-                                            let newAns = [...formData.correctAnswers];
-                                            if(newAns.includes(stmt.id)) newAns = newAns.filter(x => x !== stmt.id); else newAns.push(stmt.id);
-                                            setFormData({...formData, correctAnswers: newAns});
-                                        }} className="w-5 h-5 text-emerald-600 rounded cursor-pointer" />
-                                        <span className="font-bold text-slate-400 text-xs">{stmt.id}.</span>
-                                    </div>
-                                    <div className="flex-1">
-                                        <RichTextEditor minHeight="60px" placeholder={`Ketik pernyataan ${stmt.id}...`} value={stmt.text} onChange={(v) => { const newStmts = [...formData.statements]; newStmts[idx].text = v; setFormData({...formData, statements: newStmts}); }} />
-                                    </div>
+                                <div key={stmt.id} className="flex gap-3 items-start mb-2">
+                                    <input type="checkbox" checked={formData.correctAnswers?.includes(stmt.id)} onChange={e => {
+                                        const c = new Set(formData.correctAnswers || []);
+                                        if (e.target.checked) c.add(stmt.id); else c.delete(stmt.id);
+                                        setFormData({...formData, correctAnswers: Array.from(c)});
+                                    }} className="w-5 h-5 mt-2 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"/>
+                                    <div className="flex-1"><RichTextEditor onChange="{val" value="{stmt.text}"> { const s = [...formData.statements]; s[idx].text = val; setFormData({...formData, statements: s}); }} minHeight="60px" placeholder="Teks pernyataan..."/></div>
+                                    <button type="button" onClick={() => setFormData({...formData, statements: formData.statements.filter(s => s.id !== stmt.id)})} className="text-rose-500 p-2 hover:bg-rose-50 rounded"><Trash2 size="{16}"/></button>
                                 </div>
                             ))}
-                            <button type="button" onClick={() => setFormData({...formData, statements: [...formData.statements, {id: formData.statements.length + 1, text:''}]})} className="text-blue-600 font-semibold text-sm hover:underline flex items-center bg-blue-50 px-3 py-2 rounded-lg border border-blue-100"><Plus size={16} className="mr-1"/> Tambah Baris Pernyataan</button>
+                            <button type="button" onClick={() => setFormData({...formData, statements: [...formData.statements, {id: formData.statements.length + 1, text:''}]})} className="text-blue-600 font-semibold text-sm bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100"><Plus className="inline mr-1" size="{14}"/> Tambah Pernyataan</button>
                         </div>
                     );
-                } else if (formData.type === 'CATEGORY') {
+                }
+                if (formData.type === 'CATEGORY') {
                     return (
-                        <div className="space-y-4 mt-6 border-t pt-4">
-                            <h3 className="font-semibold text-slate-800 text-sm">Pengaturan Tabel Kategori</h3>
-                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                <label className="block text-slate-600 font-semibold text-xs mb-2">Format Label Kategori Kolom (Otomatis):</label>
-                                <select className="w-full p-2.5 rounded-lg border border-slate-300 bg-white font-medium text-slate-700 text-sm focus:ring-2 focus:ring-blue-500" onChange={(e) => {
-                                    const [cat1, cat2] = e.target.value.split('|');
-                                    const newStmts = formData.statements.map(s => ({...s, category1: cat1, category2: cat2, correctCategory: cat1}));
-                                    setFormData({...formData, statements: newStmts});
-                                }}>
-                                    <option value="Benar|Salah">Benar / Salah</option>
-                                    <option value="Sesuai|Tidak Sesuai">Sesuai / Tidak Sesuai</option>
-                                    <option value="Setuju|Tidak Setuju">Setuju / Tidak Setuju</option>
-                                </select>
+                        <div className="space-y-4 pt-4 border-t overflow-x-auto">
+                            <h4 className="font-semibold text-sm mb-2">Tabel Matriks Jawaban</h4>
+                            <div className="flex gap-4 mb-4 bg-slate-50 p-3 rounded-lg border">
+                                <div><label className="text-xs font-bold text-slate-500 block mb-1">Label Kategori 1 (Kiri)</label><input type="text" value={formData.statements[0]?.category1 || 'Benar'} onChange={e => {const s = [...formData.statements]; s.forEach(x => x.category1 = e.target.value); setFormData({...formData, statements: s});}} className="p-1.5 border rounded text-sm"/></div>
+                                <div><label className="text-xs font-bold text-slate-500 block mb-1">Label Kategori 2 (Kanan)</label><input type="text" value={formData.statements[0]?.category2 || 'Salah'} onChange={e => {const s = [...formData.statements]; s.forEach(x => x.category2 = e.target.value); setFormData({...formData, statements: s});}} className="p-1.5 border rounded text-sm"/></div>
                             </div>
-                            {formData.statements.map((stmt, idx) => (
-                                <div key={stmt.id} className="bg-white border border-slate-200 p-4 rounded-xl flex flex-col gap-3 shadow-sm hover:border-blue-300 transition-colors">
-                                    <div className="flex gap-3 items-start">
-                                        <div className="pt-2 font-bold text-slate-400 w-5 text-center">{idx+1}.</div>
-                                        <div className="flex-1">
-                                            <RichTextEditor minHeight="60px" placeholder={`Pernyataan tabel ke-${idx+1}...`} value={stmt.text} onChange={(v) => { const newStmts = [...formData.statements]; newStmts[idx].text = v; setFormData({...formData, statements: newStmts}); }} />
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-lg border ml-8 text-sm">
-                                        <span className="font-semibold text-slate-500">Kunci Benar:</span>
-                                        <label className="flex items-center cursor-pointer font-semibold text-emerald-700">
-                                            <input type="radio" checked={stmt.correctCategory === stmt.category1} onChange={() => { const newStmts = [...formData.statements]; newStmts[idx].correctCategory = stmt.category1; setFormData({...formData, statements: newStmts}); }} className="w-4 h-4 mr-1.5 text-emerald-600" /> 
-                                            {stmt.category1}
-                                        </label>
-                                        <label className="flex items-center cursor-pointer font-semibold text-amber-700 ml-3">
-                                            <input type="radio" checked={stmt.correctCategory === stmt.category2} onChange={() => { const newStmts = [...formData.statements]; newStmts[idx].correctCategory = stmt.category2; setFormData({...formData, statements: newStmts}); }} className="w-4 h-4 mr-1.5 text-amber-600" /> 
-                                            {stmt.category2}
-                                        </label>
-                                    </div>
-                                </div>
-                            ))}
-                            <button type="button" onClick={() => setFormData({...formData, statements: [...formData.statements, {id: formData.statements.length + 1, text:'', category1: formData.statements[0].category1, category2: formData.statements[0].category2, correctCategory: formData.statements[0].category1}]})} className="text-blue-600 font-semibold text-sm hover:underline flex items-center bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 w-fit"><Plus size={16} className="mr-1"/> Tambah Baris Tabel</button>
+                            <table className="w-full text-left min-w-[600px]">
+                                <thead><tr className="bg-slate-100 border-b text-sm"><th className="p-2 w-10 text-center">Hapus</th><th className="p-2">Teks Baris Pernyataan</th><th className="p-2 text-center bg-emerald-50 w-32">Kunci ke Kat. 1</th><th className="p-2 text-center bg-amber-50 w-32">Kunci ke Kat. 2</th></tr></thead>
+                                <tbody>
+                                    {formData.statements.map((stmt, idx) => (
+                                        <tr key={stmt.id} className="border-b">
+                                            <td className="p-2 text-center align-top"><button type="button" onClick={() => setFormData({...formData, statements: formData.statements.filter(s => s.id !== stmt.id)})} className="text-rose-500 p-1 hover:bg-rose-50 rounded"><Trash2 size="{16}"/></button></td>
+                                            <td className="p-2 align-top"><RichTextEditor onChange="{val" value="{stmt.text}"> { const s = [...formData.statements]; s[idx].text = val; setFormData({...formData, statements: s}); }} minHeight="50px"/></td>
+                                            <td className="p-2 text-center align-middle bg-emerald-50/30"><input type="radio" name={`r_${stmt.id}`} checked={stmt.correctCategory === stmt.category1} onChange={() => { const s = [...formData.statements]; s[idx].correctCategory = stmt.category1; setFormData({...formData, statements: s}); }} className="w-4 h-4"/></td>
+                                            <td className="p-2 text-center align-middle bg-amber-50/30"><input type="radio" name={`r_${stmt.id}`} checked={stmt.correctCategory === stmt.category2} onChange={() => { const s = [...formData.statements]; s[idx].correctCategory = stmt.category2; setFormData({...formData, statements: s}); }} className="w-4 h-4"/></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            <button type="button" onClick={() => setFormData({...formData, statements: [...formData.statements, {id: formData.statements.length + 1, text:'', category1: formData.statements[0]?.category1||'Benar', category2: formData.statements[0]?.category2||'Salah', correctCategory: formData.statements[0]?.category1||'Benar'}]})} className="text-blue-600 font-semibold text-sm bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100"><Plus className="inline mr-1" size="{14}"/> Tambah Baris Tabel</button>
                         </div>
                     );
                 }
             };
 
             if (view === 'create' || view === 'edit') {
-               const availableFolders = [...new Set([...Object.keys(folderStats), filterFolder, 'Utama'])];
-
                return (
-                 <AdminLayout title={view === 'create' ? "Buat Soal Baru" : "Edit Soal"}>
-                    <div className="bg-white rounded-xl shadow-sm border max-w-4xl mx-auto p-6 mb-10">
-                        <div className="bg-slate-50 border-b px-6 py-4 flex justify-between items-center -mx-6 -mt-6 mb-6 rounded-t-xl">
-                            <h2 className="font-semibold text-slate-800 text-sm flex items-center"><Edit className="mr-2 w-4 text-blue-600"/> {view === 'create' ? "Editor Pembuatan Soal" : "Edit Soal"}</h2>
-                            <button type="button" onClick={() => setView('list')} className="text-slate-400 hover:text-slate-700 bg-white border p-1 rounded-md"><X size={16}/></button>
-                        </div>
-                        
-                        <form onSubmit={saveQuestion} className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Tipe Soal</label>
-                                    <select value={formData.type} onChange={e => {
-                                        const type = e.target.value;
-                                        if (type === 'MCQ') setFormData({...defaultMCQ, id: formData.id, type, folder: formData.folder, points: formData.points, question: formData.question});
-                                        else if (type === 'MCMA') setFormData({...defaultMCMA, id: formData.id, type, folder: formData.folder, points: formData.points, question: formData.question});
-                                        else setFormData({...defaultCAT, id: formData.id, type, folder: formData.folder, points: formData.points, question: formData.question});
-                                    }} className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm font-medium focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                                        <option value="MCQ">Pilihan Ganda (A-D)</option>
-                                        <option value="MCMA">Ganda Kompleks (&gt;1)</option>
-                                        <option value="CATEGORY">Matriks Kategori</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Pilih Folder Ujian</label>
-                                    <select value={formData.folder || 'Utama'} onChange={e => setFormData({...formData, folder: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm font-medium focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                                        {availableFolders.map(f => (
-                                            <option key={f} value={f}>{f}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-500 mb-1">Bobot Nilai</label>
-                                    <input type="number" min="1" value={formData.points} required onChange={e => setFormData({...formData, points: parseInt(e.target.value)})} className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm font-medium focus:ring-2 focus:ring-blue-500"/>
-                                </div>
+                 <AdminLayout title="Editor Soal">
+                    <div className="bg-white rounded-xl shadow-sm border max-w-4xl mx-auto p-6">
+                        <form onSubmit={saveQuestion} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <div><label className="block text-sm font-semibold mb-1 text-slate-700">Tipe Soal</label><select value={formData.type} onChange={e => {
+                                    const t = e.target.value; 
+                                    const curFolder = formData.folder || filterFolder;
+                                    if(t === 'MCQ') setFormData({...defaultMCQ, type: 'MCQ', folder: curFolder});
+                                    else if(t === 'MCMA') setFormData({...defaultMCMA, type: 'MCMA', folder: curFolder});
+                                    else if(t === 'CATEGORY') setFormData({...defaultCAT, type: 'CATEGORY', folder: curFolder});
+                                }} className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-blue-500 font-bold text-blue-700"><option value="MCQ">Pilihan Ganda (A-D)</option><option value="MCMA">Ganda Kompleks (Checkbox)</option><option value="CATEGORY">Matriks Kategori (Tabel)</option></select></div>
+                                
+                                <div><label className="block text-sm font-semibold mb-1 text-slate-700">Pilih Folder Soal</label><select value={formData.folder || filterFolder} onChange={e => setFormData({...formData, folder: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-blue-500 font-bold">{availableFolders.map(f => <option key={f} value={f}>{f}</option>)}</select></div>
+                                
+                                <div><label className="block text-sm font-semibold mb-1 text-slate-700">Bobot Nilai</label><input type="number" min="1" value={formData.points} onChange={e => setFormData({...formData, points: parseInt(e.target.value) || 1})} className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm focus:ring-2 focus:ring-blue-500"/></div>
                             </div>
-
-                            <div className="mb-2">
-                                <label className="block text-sm font-semibold text-slate-800 mb-2">Pertanyaan Utama</label>
-                                <RichTextEditor value={formData.question} onChange={val => setFormData({...formData, question: val})} placeholder="Ketik pertanyaan di sini..." minHeight="120px" />
-                            </div>
-
+                            <div><label className="block text-sm font-semibold mb-2 text-slate-800">Pertanyaan Utama</label><RichTextEditor onChange="{val" value="{formData.question}"> setFormData({...formData, question: val})} /></div>
                             {renderOptionsEditor()}
-
-                            <div className="pt-6 mt-6 border-t border-slate-200 flex justify-end gap-3">
-                                <button type="button" onClick={() => setView('list')} className="px-5 py-2.5 rounded-lg font-medium text-slate-600 border border-slate-300 hover:bg-slate-50 text-sm transition-colors">Batal</button>
-                                <button type="submit" disabled={isSaving} className="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 flex items-center text-sm disabled:opacity-50 shadow-sm transition-colors">
-                                    <Save size={16} className="mr-2"/> {isSaving ? 'Menyimpan...' : 'Simpan Soal'}
-                                </button>
-                            </div>
+                            <div className="flex justify-end gap-3 pt-6 border-t"><button type="button" onClick={() => setView('list')} className="px-5 py-2.5 border rounded-lg font-medium hover:bg-slate-50">Batal</button><button type="submit" disabled={isSaving} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-bold shadow-sm hover:bg-blue-700">{isSaving ? 'Menyimpan...' : 'Simpan Soal'}</button></div>
                         </form>
                     </div>
                  </AdminLayout>
@@ -1398,16 +1332,19 @@
             if (view === 'list') {
               const folderQuestions = questions.filter(q => String(q.folder || 'Utama').trim().toLowerCase() === filterFolder.toLowerCase());
               return (
-                <AdminLayout title={`Folder: ${filterFolder}`}>
-                  <div className="mb-6 flex gap-3">
-                     <button onClick={() => setView('folders')} className="border px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors">Kembali ke Folder</button>
-                     <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center hover:bg-emerald-700 transition-colors"><Upload size={16} className="mr-2"/> Unggah Soal (CSV)</button>
+                <AdminLayout ${filterFolder}`} title="{`Folder:">
+                  <div className="mb-6 flex flex-wrap justify-between items-center gap-3">
+                     <div className="flex gap-3">
+                        <button onClick={() => setView('folders')} className="border px-4 py-2 rounded-lg text-sm font-semibold bg-white hover:bg-slate-50 flex items-center shadow-sm"><ChevronLeft className="mr-1" size="{16}"/> Kembali ke Daftar Folder</button>
+                        <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center shadow-sm hover:bg-emerald-700"><Upload className="mr-2" size="{16}"/> Unggah Soal (CSV)</button>
+                     </div>
+                     <button onClick={() => { setFormData({...defaultMCQ, folder: filterFolder}); setView('create'); }} className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-bold flex items-center shadow-sm hover:bg-blue-700"><Plus className="mr-1.5" size="{16}"/> Buat Soal Baru</button>
                   </div>
                   {showImport && (
                      <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
-                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Impor Soal CSV</h3><button onClick={()=>setShowImport(false)} className="hover:text-rose-500"><X size={18}/></button></div>
-                            <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 hover:bg-blue-100 transition-colors px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText size={16} className="mr-2"/> Download Templat Soal</button>
+                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-slate-800">Impor Soal ke Folder "{filterFolder}"</h3><button onClick={()=>setShowImport(false)}><X size="{18}"/></button></div>
+                            <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText className="mr-2" size="{16}"/> Download Templat Soal</button>
                             <input type="file" accept=".csv" onChange={handleUploadSoal} className="w-full p-4 border-2 border-dashed rounded-xl"/>
                             {fileError && <p className="text-rose-500 text-xs mt-2">{fileError}</p>}
                         </div>
@@ -1415,223 +1352,111 @@
                   )}
                   <div className="space-y-4">
                     {folderQuestions.map((q, idx) => (
-                       <div key={q.id} className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 hover:border-blue-300 transition-colors">
-                         <div className="w-10 h-10 flex-shrink-0 bg-slate-50 rounded-lg flex items-center justify-center font-bold text-slate-500 border border-slate-200 text-sm">
-                            {idx + 1}
+                       <div key={q.id} className="bg-white p-5 rounded-xl border flex justify-between items-start shadow-sm">
+                         <div className="flex-1 pr-4">
+                             <div className="flex items-center gap-2 mb-3">
+                                 <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md border border-blue-100">No. {idx+1}</span>
+                                 <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md">{q.type}</span>
+                                 <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-100">Folder: {q.folder || filterFolder}</span>
+                             </div>
+                             <div className="text-slate-800 rich-text-content" dangerouslySetInnerHTML={{__html: q.question}}></div>
                          </div>
-                         <div className="flex-1 overflow-hidden min-w-0">
-                            <div className="flex flex-wrap gap-2 mb-3 items-center">
-                              <span className="text-[10px] font-bold px-2 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded uppercase tracking-wider">{q.type}</span>
-                            </div>
-                            <div className="font-medium text-slate-800 text-sm sm:text-base mb-3 rich-text-content" dangerouslySetInnerHTML={{__html: q.question}}></div>
-                            <div className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded border inline-block font-medium">
-                              <span className="mr-1">Kunci:</span> 
-                              {q.type === 'MCQ' ? <span className="font-bold text-emerald-600">{q.correctAnswer}</span> : 
-                               q.type === 'MCMA' ? <span className="font-bold text-blue-600">{JSON.stringify(q.correctAnswers)}</span> : 
-                               <span className="font-bold text-indigo-600">Matriks Tabel</span>}
-                            </div>
-                         </div>
-                         <div className="flex sm:flex-col gap-2 justify-end sm:justify-start pt-3 sm:pt-0 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-100 sm:pl-4 mt-2 sm:mt-0">
-                            <button onClick={() => {setFormData(q); setView('edit');}} className="bg-blue-50 text-blue-600 hover:bg-blue-100 p-2 rounded-lg flex items-center justify-center text-xs font-semibold border border-blue-100">
-                               <Edit size={14} className="sm:mr-1.5"/> <span className="hidden sm:inline">Edit</span>
-                            </button>
-                            <button onClick={() => deleteQuestion(q.id)} className="bg-rose-50 text-rose-500 hover:bg-rose-100 p-2 rounded-lg flex items-center justify-center text-xs font-semibold border border-rose-100">
-                               <Trash2 size={14} className="sm:mr-1.5"/> <span className="hidden sm:inline">Hapus</span>
-                            </button>
+                         <div className="flex flex-col gap-2 flex-shrink-0">
+                             <button onClick={() => {setFormData(q); setView('edit');}} className="text-blue-600 p-2 bg-blue-50 hover:bg-blue-100 rounded transition-colors" title="Edit Soal"><Edit size="{16}"/></button>
+                             <button onClick={() => deleteQuestion(q.id)} className="text-rose-600 p-2 bg-rose-50 hover:bg-rose-100 rounded transition-colors" title="Hapus Soal"><Trash2 size="{16}"/></button>
                          </div>
                        </div>
                     ))}
-                    {folderQuestions.length === 0 && (
-                       <div className="text-center py-16 bg-white rounded-xl border border-dashed border-slate-300">
-                         <Database size={40} className="mx-auto text-slate-300 mb-4"/>
-                         <p className="text-slate-500 font-medium text-sm">Belum ada soal tersimpan di folder ini.</p>
-                       </div>
-                    )}
+                    {folderQuestions.length === 0 && <div className="text-center py-16 text-slate-400 font-medium bg-white rounded-xl border border-dashed">Belum ada butir soal di dalam folder "{filterFolder}". Klik tombol "Buat Soal Baru" di atas untuk menambahkan.</div>}
                   </div>
-                  <button onClick={() => {setFormData({...defaultMCQ, folder: filterFolder}); setView('create');}} className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 z-40 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-2xl hover:bg-blue-700 hover:scale-105 transition-all"><Plus size={28} /></button>
                 </AdminLayout>
               );
             }
 
             return (
               <AdminLayout title="Manajemen Bank Soal">
-                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                    <div onClick={handleCreateNewFolder} className="bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer min-h-[160px] hover:bg-emerald-100 transition-colors">
-                        <Plus size={24} className="text-emerald-600 mb-2"/><span className="font-bold text-sm text-emerald-700">Buat Folder Baru</span>
-                    </div>
-                    {Object.entries(folderStats).map(([fname, count]) => (
-                        <div key={fname} className="bg-white border rounded-2xl p-6 flex flex-col justify-between shadow-sm min-h-[160px] hover:border-blue-400 transition-colors group">
-                            <div onClick={() => { setFilterFolder(fname); setView('list'); }} className="cursor-pointer">
-                                <h4 className="font-bold text-lg text-slate-800 group-hover:text-blue-600 transition-colors">{fname}</h4>
-                                <p className="text-xs text-slate-500 mt-1">{count} Soal</p>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <button disabled={isSaving} onClick={createFolder} className="bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer min-h-[190px] hover:bg-emerald-100 transition-colors disabled:opacity-50 text-center">
+                        <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3"><Plus size="{24}"/></div>
+                        <span className="font-bold text-base text-emerald-800">{isSaving ? 'Memproses...' : 'Buat Folder Baru'}</span>
+                        <p className="text-xs text-emerald-600 mt-1">Tambah wadah bank soal baru</p>
+                    </button>
+                    {availableFolders.map((fname) => {
+                        const count = folderStats[fname] || 0;
+                        const isPublished = activeFolder.toLowerCase() === fname.toLowerCase();
+                        return (
+                            <div key={fname} className={`bg-white border rounded-2xl p-6 flex flex-col justify-between shadow-sm min-h-[190px] transition-all hover:shadow-md ${isPublished ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'hover:border-blue-300'}`}>
+                                <div>
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><FolderIcon size="{20}"/></div>
+                                        <div className="flex items-center gap-1">
+                                            <button onClick={(e) => renameFolder(e, fname)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-md" title="Ubah Nama Folder"><Edit size="{14}"/></button>
+                                            {fname !== 'Utama' && (
+                                                <button onClick={(e) => deleteFolder(e, fname)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md" title="Hapus Folder"><Trash2 size="{14}"/></button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <h4 className="font-bold text-lg text-slate-800 truncate" title={fname}>{fname}</h4>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">{count} Butir Soal</span>
+                                        {isPublished && <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">Aktif Diterbitkan</span>}
+                                    </div>
+                                </div>
+                                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2">
+                                    <button onClick={() => { setFilterFolder(fname); setView('list'); }} className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-colors flex items-center justify-center">
+                                        <FolderOpenIcon className="mr-1.5" size="{14}"/> Kelola Soal
+                                    </button>
+                                    <button onClick={() => publishFolder(fname)} className={`py-2 px-3 rounded-lg text-xs font-bold transition-colors ${isPublished ? 'bg-emerald-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`} title="Terbitkan folder ini agar dikerjakan peserta">
+                                        {isPublished ? 'Diterbitkan' : 'Terbitkan'}
+                                    </button>
+                                </div>
                             </div>
-                            <button onClick={() => publishFolder(fname)} className={`mt-4 w-full py-2 rounded-lg text-xs font-bold transition-colors ${activeFolder.toLowerCase() === fname.toLowerCase() ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
-                                {activeFolder.toLowerCase() === fname.toLowerCase() ? 'Sedang Diterbitkan' : 'Terbitkan Folder Ini'}
-                            </button>
-                        </div>
-                    ))}
+                        );
+                    })}
                  </div>
               </AdminLayout>
             );
           };
 
           const AdminItemAnalysis = () => {
-            const analysisData = questions.map(q => {
-              let correct = 0, wrong = 0, empty = 0;
-              results.forEach(r => {
-                const d = r.detail?.detailedResults?.find(x => x.qId === q.id);
-                if (!d || d.isEmpty) empty++;
-                else if (d.isCorrect) correct++;
-                else wrong++;
-              });
-              const total = results.length;
-              const percentage = total > 0 ? ((correct / total) * 100).toFixed(1) : 0;
-              let difficulty = "N/A";
-              if (total > 0) {
-                 const p = parseFloat(percentage);
-                 if (p > 85) difficulty = "Sangat Mudah";
-                 else if (p >= 70) difficulty = "Mudah";
-                 else if (p >= 50) difficulty = "Sedang";
-                 else if (p >= 30) difficulty = "Sulit";
-                 else difficulty = "Sangat Sulit";
-              }
-              return { ...q, correct, wrong, empty, total, percentage, difficulty };
-            });
-
-            const stripHtml = (html) => {
-               if (!html) return "";
-               const doc = new DOMParser().parseFromString(html, 'text/html');
-               return doc.body.textContent || "";
-            };
-
             return (
-              <AdminLayout title="Analisis Butir Soal">
-                <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
-                   <h3 className="font-bold text-slate-800 text-lg mb-2">Total Responden Ujian</h3>
-                   <p className="text-slate-600 text-sm">Data diolah berdasarkan hasil ujian yang tersubmit. <br/><strong className="text-emerald-600">{results.length} Peserta</strong></p>
-                </div>
-                
-                <div className="bg-white rounded-xl shadow-sm border overflow-x-auto mb-8">
-                  <table className="w-full text-sm text-left whitespace-nowrap">
-                    <thead className="bg-slate-50 text-slate-700 font-semibold border-b">
-                      <tr>
-                        <th className="py-4 px-4 text-center">No</th>
-                        <th className="py-4 px-4">Tipe Pertanyaan</th>
-                        <th className="py-4 px-4 text-center text-emerald-600">Benar</th>
-                        <th className="py-4 px-4 text-center text-red-600">Salah</th>
-                        <th className="py-4 px-4 text-center text-amber-600">Kosong</th>
-                        <th className="py-4 px-4 text-center">% Benar</th>
-                        <th className="py-4 px-4">Tingkat Kesulitan</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {analysisData.map((d, idx) => (
-                        <tr key={d.id} className="border-b hover:bg-slate-50">
-                          <td className="py-3 px-4 text-center font-medium text-slate-500">{idx + 1}</td>
-                          <td className="py-3 px-4 text-xs font-bold text-blue-600">{d.type}</td>
-                          <td className="py-3 px-4 text-center font-bold text-emerald-600">{d.correct}</td>
-                          <td className="py-3 px-4 text-center font-bold text-red-600">{d.wrong}</td>
-                          <td className="py-3 px-4 text-center font-bold text-amber-600">{d.empty}</td>
-                          <td className="py-3 px-4 text-center font-bold text-slate-700">{d.percentage}%</td>
-                          <td className="py-3 px-4 text-xs font-bold bg-slate-50">{d.difficulty}</td>
-                        </tr>
-                      ))}
-                      {analysisData.length === 0 && <tr><td colSpan="7" className="text-center py-8 text-slate-500">Belum ada data soal.</td></tr>}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm border p-6 overflow-x-auto">
-                    <h3 className="font-semibold text-slate-800 text-lg mb-4">Matriks Peta Jawaban per Siswa</h3>
-                    <table className="w-full text-sm text-left border-collapse min-w-max">
-                        <thead className="bg-slate-50 text-slate-700 border-b">
-                            <tr>
-                                <th className="p-3 border-r font-semibold">Nama Siswa</th>
-                                {questions.map((q, i) => <th key={q.id} className="p-3 text-center border-r font-semibold w-12" title={stripHtml(q.question)}>Q{i+1}</th>)}
-                                <th className="p-3 text-center font-bold text-blue-600">Skor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {results.map((r, i) => (
-                                <tr key={r.id} className="border-b hover:bg-slate-50">
-                                    <td className="p-3 border-r font-medium text-slate-800">{r.participant?.name}</td>
-                                    {questions.map((q) => {
-                                        const d = r.detail?.detailedResults?.find(x => x.qId === q.id);
-                                        let icon = <span className="text-slate-300">-</span>;
-                                        if (d) {
-                                            if (d.isEmpty) icon = <span className="text-amber-500 font-bold">O</span>;
-                                            else if (d.isCorrect) icon = <span className="text-emerald-500 font-bold">✓</span>;
-                                            else icon = <span className="text-red-500 font-bold">✗</span>;
-                                        }
-                                        return <td key={q.id} className="p-3 text-center border-r bg-white">{icon}</td>;
-                                    })}
-                                    <td className="p-3 text-center font-bold text-blue-600">{r.score}</td>
-                                </tr>
-                            ))}
-                            {results.length === 0 && <tr><td colSpan={questions.length + 2} className="text-center py-6 text-slate-500 font-medium">Belum ada peserta.</td></tr>}
-                        </tbody>
-                    </table>
+              <AdminLayout title="Analisis Soal">
+                <div className="bg-white rounded-xl border p-6 shadow-sm">
+                   <h3 className="font-bold text-slate-800 text-lg mb-4">Statistik Responden</h3>
+                   <p className="text-slate-600 text-sm">Total peserta ujian selesai: <strong className="text-emerald-600 font-bold">{results.length} Siswa</strong></p>
                 </div>
               </AdminLayout>
             );
           };
 
           const AdminReports = () => {
-             const [filterSchool, setFilterSchool] = useState('Semua');
-             const schoolList = ['Semua', ...new Set(results.map(r => r.participant?.school).filter(Boolean))];
-             const filteredResults = filterSchool === 'Semua' ? results : results.filter(r => r.participant?.school === filterSchool);
-
              return (
                 <AdminLayout title="Cetak Laporan">
-                   <div className="mb-6 flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm print:hidden">
-                      <div className="flex items-center">
-                         <label className="text-sm font-semibold text-slate-600 mr-2">Filter Sekolah:</label>
-                         <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="border rounded-lg p-2 text-sm font-semibold">
-                            {schoolList.map(s => <option key={s} value={s}>{s}</option>)}
-                         </select>
-                      </div>
-                      <button onClick={() => window.print()} className="bg-slate-800 text-white px-5 py-2 rounded-lg font-semibold shadow-md"><Printer size={16} className="inline mr-2"/> Cetak PDF</button>
-                   </div>
-                   <div className="bg-white border shadow-md mx-auto max-w-[21.5cm] min-h-[33cm] p-12 print-container print:border-none print:shadow-none print:p-0">
-                      <div className="text-center border-b-2 border-slate-800 pb-4 mb-6"><h1 className="text-2xl font-bold uppercase tracking-widest text-slate-900">Laporan Hasil Ujian</h1><p className="text-slate-600 font-medium">{organizerName}</p></div>
-                      <table className="w-full text-left border-collapse border border-slate-800 text-sm">
-                         <thead className="bg-slate-100 text-slate-900 uppercase font-bold text-xs"><tr className="border-b border-slate-800"><th className="border-r border-slate-800 py-2.5 px-3 text-center">No</th><th className="border-r border-slate-800 py-2.5 px-3">Nama Peserta</th><th className="border-r border-slate-800 py-2.5 px-3">Sekolah</th><th className="py-2.5 px-3 text-center">Nilai</th></tr></thead>
-                         <tbody>
-                            {filteredResults.map((r, i) => (
-                               <tr key={i} className="border-b border-slate-800 text-slate-800 font-medium">
-                                  <td className="border-r border-slate-800 py-2.5 px-3 text-center">{i+1}</td>
-                                  <td className="border-r border-slate-800 py-2.5 px-3">{r.participant?.name}</td>
-                                  <td className="border-r border-slate-800 py-2.5 px-3">{r.participant?.school}</td>
-                                  <td className="py-2.5 px-3 text-center font-bold">{r.score}</td>
-                               </tr>
-                            ))}
-                            {filteredResults.length === 0 && <tr><td colSpan="4" className="text-center py-8 text-slate-500">Kosong</td></tr>}
-                         </tbody>
-                      </table>
+                   <div className="bg-white border rounded-xl p-6 text-center shadow-sm">
+                      <button onClick={() => window.print()} className="bg-slate-800 text-white px-6 py-2.5 rounded-lg font-semibold shadow-sm hover:bg-slate-900"><Printer className="inline mr-2" size="{16}"/> Cetak Halaman</button>
                    </div>
                 </AdminLayout>
              );
           };
 
           switch (currentRoute) {
-            case '/': case '/login': return <ParticipantLogin />;
-            case '/identity': return <ParticipantIdentity />;
-            case '/instruction': return <ParticipantInstruction />;
-            case '/exam': return <ExamEngine />;
-            case '/review': return <ExamReview />;
-            case '/submitted': return <ExamSubmitted />;
-            case '/admin': case '/admin/login': return <AdminLogin />;
-            case '/admin/dashboard': return <AdminDashboard />;
-            case '/admin/tokens': return <AdminTokens />;
-            case '/admin/results': return <AdminResults />;
-            case '/admin/questions': return <AdminQuestions />;
-            case '/admin/analysis': return <AdminItemAnalysis />;
-            case '/admin/reports': return <AdminReports />;
-            default: return <ParticipantLogin />;
+            case '/': case '/login': return <ParticipantLogin/>;
+            case '/instruction': return <ParticipantInstruction/>;
+            case '/exam': return <ExamEngine/>;
+            case '/review': return <ExamReview/>;
+            case '/submitted': return <ExamSubmitted/>;
+            case '/admin': case '/admin/login': return <AdminLogin/>;
+            case '/admin/dashboard': return <AdminDashboard/>;
+            case '/admin/tokens': return <AdminTokens/>;
+            case '/admin/results': return <AdminResults/>;
+            case '/admin/questions': return <AdminQuestions/>;
+            case '/admin/analysis': return <AdminItemAnalysis/>;
+            case '/admin/reports': return <AdminReports/>;
+            default: return <ParticipantLogin/>;
           }
         }
 
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
     </script>
 </body>
 </html>
