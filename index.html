@@ -57,6 +57,7 @@
         const Clock = ({size=24, className=""}) => <i className={`fas fa-clock ${className}`} style={{fontSize: size}}></i>;
         const FileText = ({size=24, className=""}) => <i className={`fas fa-file-alt ${className}`} style={{fontSize: size}}></i>;
         const CheckCircle = ({size=24, className=""}) => <i className={`fas fa-check-circle ${className}`} style={{fontSize: size}}></i>;
+        const CheckSquare = ({size=24, className=""}) => <i className={`fas fa-check-square ${className}`} style={{fontSize: size}}></i>;
         const AlertCircle = ({size=24, className=""}) => <i className={`fas fa-exclamation-circle ${className}`} style={{fontSize: size}}></i>;
         const Cloud = ({size=24, className=""}) => <i className={`fas fa-cloud ${className}`} style={{fontSize: size}}></i>;
         const LogOut = ({size=24, className=""}) => <i className={`fas fa-sign-out-alt ${className}`} style={{fontSize: size}}></i>;
@@ -78,7 +79,6 @@
         const Eye = ({size=24, className=""}) => <i className={`fas fa-eye ${className}`} style={{fontSize: size}}></i>;
         const EyeSlash = ({size=24, className=""}) => <i className={`fas fa-eye-slash ${className}`} style={{fontSize: size}}></i>;
         const Upload = ({size=24, className=""}) => <i className={`fas fa-upload ${className}`} style={{fontSize: size}}></i>;
-        const CheckSquare = ({size=24, className=""}) => <i className={`fas fa-check-square ${className}`} style={{fontSize: size}}></i>;
 
         const getSupabase = async () => {
             if (supabase) return supabase;
@@ -285,7 +285,7 @@
 
           useEffect(() => { fetchSupabaseData(); }, [isAdminLoggedIn]);
 
-          const activeQuestions = isAdminLoggedIn ? questions : questions.filter(q => String(q.folder || 'Utama').trim().toLowerCase() === String(activeFolder || 'Utama').trim().toLowerCase());
+          const activeQuestions = questions.filter(q => String(q.folder || 'Utama').trim().toLowerCase() === String(activeFolder || 'Utama').trim().toLowerCase());
 
           useEffect(() => {
             if (currentRoute === '/') {
@@ -326,18 +326,12 @@
                     }
                 }
 
-                // Ambil data pengaturan terbaru untuk folder sebelum memulai sesi setup
-                const { data: folderData } = await db.from('tokens').select('status').eq('code', 'SYS_SETTING_FOLDER').maybeSingle();
-                if (folderData && folderData.status) {
-                    setActiveFolder(folderData.status);
-                }
-
                 setActiveSession({ 
                     token: tokenObj.code, 
                     participant: { name: tokenObj.participant_name || 'Peserta', school: tokenObj.participant_school || organizerName, nis: '', grade: '6' }, 
                     answers: {}, flagged: [], status: 'SETUP' 
                 });
-                navigate('/instruction');
+                navigate('/identity');
               } catch (err) { setError(err.message || 'Gagal terhubung ke server.'); }
               setIsChecking(false);
             };
@@ -385,10 +379,24 @@
           };
 
           const ParticipantIdentity = () => {
+             const [formData, setFormData] = useState({ name: '', nis: '', school: '', grade: '6' });
+             
+             useEffect(() => {
+                 if (activeSession && activeSession.participant) {
+                     setFormData({
+                         name: activeSession.participant.name || '',
+                         nis: activeSession.participant.nis || '',
+                         school: activeSession.participant.school || organizerName,
+                         grade: activeSession.participant.grade || '6'
+                     });
+                 }
+             }, [activeSession, organizerName]);
+
              if (!activeSession || activeSession.status !== 'SETUP') { navigate('/login'); return null; }
              
              const handleSubmit = (e) => {
                e.preventDefault();
+               setActiveSession(prev => ({ ...prev, participant: formData }));
                navigate('/instruction');
              };
              
@@ -402,12 +410,12 @@
                      <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                           <div className="sm:col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap</label>
-                            <input type="text" value={activeSession.participant.name} readOnly className="w-full p-3 border border-slate-200 bg-slate-100 rounded-lg text-slate-600 font-bold cursor-not-allowed"/>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap *</label>
+                            <input type="text" readOnly value={formData.name} className="w-full p-3 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-semibold cursor-not-allowed"/>
                           </div>
                           <div className="sm:col-span-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Asal Sekolah</label>
-                            <input type="text" value={activeSession.participant.school} readOnly className="w-full p-3 border border-slate-200 bg-slate-100 rounded-lg text-slate-600 font-bold cursor-not-allowed"/>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Asal Sekolah *</label>
+                            <input type="text" readOnly value={formData.school} className="w-full p-3 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 font-semibold cursor-not-allowed"/>
                           </div>
                         </div>
                         <div className="pt-4 mt-6 border-t border-slate-100">
@@ -423,20 +431,13 @@
             const [isStarting, setIsStarting] = useState(false);
             if (!activeSession || !activeSession.participant) { navigate('/login'); return null; }
             
-            // Mengambil soal yang telah difilter di level App berdasarkan activeFolder terbaru
-            const activeQuestionsForParticipant = activeQuestions;
-
             const startExam = async () => {
-              if (activeQuestionsForParticipant.length === 0) {
-                  alert("Sistem mendeteksi 0 soal. Pastikan Admin telah menerbitkan soal.");
-                  return;
-              }
               setIsStarting(true);
               try {
                 const db = await getSupabase();
                 await db.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
 
-                let sessionQuestions = JSON.parse(JSON.stringify(activeQuestionsForParticipant));
+                let sessionQuestions = JSON.parse(JSON.stringify(activeQuestions));
                 if (isRandomQ) {
                     for (let i = sessionQuestions.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
@@ -491,7 +492,7 @@
                     </div>
                     <div className="prose prose-slate max-w-none mb-8">
                        <ul className="space-y-4 text-slate-700 font-medium">
-                         <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Waktu pengerjaan disesuaikan hingga jam selesai untuk <b>{activeQuestionsForParticipant.length} soal</b>.</li>
+                         <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Waktu pengerjaan disesuaikan hingga jam selesai untuk <b>{activeQuestions.length} soal</b>.</li>
                          <li className="flex items-start"><CheckCircle className="text-emerald-500 mr-3 mt-1 flex-shrink-0" size={18}/> Jawaban akan <b>tersimpan otomatis</b> setiap Anda berpindah nomor.</li>
                          <li className="flex items-start text-red-600 font-medium bg-red-50 p-4 rounded-lg border border-red-100"><AlertCircle className="text-red-500 mr-3 mt-0.5 flex-shrink-0" size={18}/> Dilarang keras membuka tab/jendela lain. Sistem akan mencatat setiap pelanggaran yang terjadi.</li>
                        </ul>
@@ -500,7 +501,7 @@
                        <div className="text-blue-900 text-center sm:text-left">
                          Peserta: <strong className="text-lg block sm:inline">{activeSession.participant.name}</strong> <br className="sm:hidden"/>({activeSession.participant.school})
                        </div>
-                       <button onClick={startExam} disabled={isStarting || activeQuestionsForParticipant.length === 0} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50">
+                       <button onClick={startExam} disabled={isStarting || activeQuestions.length === 0} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50">
                            {isStarting ? 'Memproses...' : 'Mulai Ujian'}
                        </button>
                     </div>
@@ -639,6 +640,7 @@
                       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 sm:p-8 flex-1 flex flex-col">
                          <div className="flex flex-wrap gap-2 justify-between items-center mb-6 pb-4 border-b">
                             <h2 className="text-xl font-bold text-slate-800">SOAL NO. {examCurrentIndex + 1}</h2>
+                            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">{currentQuestion.category}</span>
                          </div>
                          <div className="flex-1 overflow-y-auto pr-1 pb-8">
                             <div className="text-base sm:text-lg text-slate-800 leading-relaxed font-medium mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: currentQuestion.question || '' }} />
@@ -893,10 +895,52 @@
              const [isSaving, setIsSaving] = useState(false);
              const [showImport, setShowImport] = useState(false);
              const [fileUploadError, setFileUploadError] = useState('');
-             const [editModeId, setEditModeId] = useState(null);
-             const [editData, setEditData] = useState({});
+             
+             const [isMassEdit, setIsMassEdit] = useState(false);
+             const [massEditTokens, setMassEditTokens] = useState([]);
              
              const actualTokens = tokens.filter(t => !t.code.startsWith('SYS_SETTING_') && !t.code.startsWith('SYS_FOLDER_'));
+
+             const addManual = () => {
+                 const newToken = { 
+                     code: `TKA-${Math.random().toString(36).substring(2,6).toUpperCase()}`, 
+                     status: 'AVAILABLE', 
+                     participant_name: '', 
+                     participant_school: '' 
+                 };
+                 setTokens([newToken, ...tokens]);
+             };
+
+             const startMassEdit = () => {
+                 setMassEditTokens(JSON.parse(JSON.stringify(actualTokens)));
+                 setIsMassEdit(true);
+             };
+
+             const handleEditChange = (index, field, val) => {
+                 const updated = [...massEditTokens];
+                 updated[index][field] = val;
+                 setMassEditTokens(updated);
+             };
+
+             const saveEdits = async () => {
+                 setIsSaving(true);
+                 try {
+                     const db = await getSupabase();
+                     const { error } = await db.from('tokens').upsert(
+                         massEditTokens.map(t => ({
+                             code: t.code,
+                             status: t.status,
+                             participant_name: t.participant_name || '',
+                             participant_school: t.participant_school || ''
+                         }))
+                     );
+                     if (error) throw error;
+                     await fetchSupabaseData();
+                     setIsMassEdit(false);
+                     alert("Data peserta berhasil diperbarui!");
+                 } catch (err) { alert(err.message); }
+                 finally { setIsSaving(false); }
+             };
 
              const downloadTemplate = () => {
                  const csvContent = "Nama Murid,Asal Sekolah\nBudi Santoso,SDN 1\nSiti Aminah,SDN 2\n";
@@ -930,33 +974,6 @@
                  reader.readAsText(file);
              };
 
-             const addManualToken = async () => {
-                 setIsSaving(true);
-                 try {
-                     const db = await getSupabase();
-                     const newToken = { code: `TKA-${Math.random().toString(36).substring(2,6).toUpperCase()}`, status: 'AVAILABLE', participant_name: 'Siswa Baru', participant_school: '', generatedAt: new Date().toISOString() };
-                     await db.from('tokens').insert([newToken]);
-                     fetchSupabaseData();
-                 } catch(err) { alert(err.message); }
-                 finally { setIsSaving(false); }
-             };
-
-             const startEdit = (token) => {
-                 setEditModeId(token.code);
-                 setEditData({ participant_name: token.participant_name, participant_school: token.participant_school, status: token.status });
-             };
-
-             const saveEdit = async (code) => {
-                 setIsSaving(true);
-                 try {
-                     const db = await getSupabase();
-                     await db.from('tokens').update(editData).eq('code', code);
-                     setEditModeId(null);
-                     fetchSupabaseData();
-                 } catch(err) { alert(err.message); }
-                 finally { setIsSaving(false); }
-             };
-
              const deleteToken = async (code) => {
                  if(!confirm(`Hapus token ${code}?`)) return;
                  setIsSaving(true);
@@ -966,9 +983,19 @@
 
              return (
                <AdminLayout title="Token Ujian">
-                 <div className="bg-white p-4 rounded-xl border mb-6 flex gap-3">
-                    <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Upload size={16} className="mr-2"/> Unggah Peserta</button>
-                    <button onClick={addManualToken} disabled={isSaving} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Plus size={16} className="mr-2"/> Tambah Manual</button>
+                 <div className="bg-white p-4 rounded-xl border mb-6 flex flex-wrap gap-3">
+                    {!isMassEdit ? (
+                        <>
+                            <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Upload size={16} className="mr-2"/> Unggah Peserta</button>
+                            <button onClick={addManual} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center shadow-sm hover:bg-blue-700 transition-colors"><Plus size={16} className="mr-2"/> Tambah Manual</button>
+                            <button onClick={startMassEdit} disabled={actualTokens.length===0} className="bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center shadow-sm hover:bg-indigo-700 transition-colors disabled:opacity-50"><Edit size={16} className="mr-2"/> Edit Data Peserta</button>
+                        </>
+                    ) : (
+                        <>
+                            <button onClick={saveEdits} disabled={isSaving} className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold flex items-center shadow-sm hover:bg-indigo-700 transition-colors"><Save size={16} className="mr-2"/> {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</button>
+                            <button onClick={() => setIsMassEdit(false)} disabled={isSaving} className="bg-slate-100 text-slate-700 border border-slate-300 px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-colors">Batal</button>
+                        </>
+                    )}
                  </div>
                  {showImport && (
                      <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
@@ -982,40 +1009,34 @@
                  )}
                  <div className="bg-white rounded-xl border overflow-x-auto">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 border-b"><tr><th className="p-4">No</th><th className="p-4">Nama</th><th className="p-4">Sekolah</th><th className="p-4">Token</th><th className="p-4 text-center">Status</th><th className="p-4 text-center">Aksi</th></tr></thead>
+                        <thead className="bg-slate-50 border-b"><tr><th className="p-4">No</th><th className="p-4">Nama</th><th className="p-4">Sekolah</th><th className="p-4">Token</th><th className="p-4 text-center">Status</th>{!isMassEdit && <th className="p-4 text-center">Aksi</th>}</tr></thead>
                         <tbody>
-                            {actualTokens.map((t, i) => (
-                                <tr key={t.code} className="border-b">
-                                    <td className="p-4">{i+1}</td>
-                                    {editModeId === t.code ? (
-                                        <>
-                                            <td className="p-2"><input type="text" value={editData.participant_name} onChange={e=>setEditData({...editData, participant_name: e.target.value})} className="border p-2 rounded w-full"/></td>
-                                            <td className="p-2"><input type="text" value={editData.participant_school} onChange={e=>setEditData({...editData, participant_school: e.target.value})} className="border p-2 rounded w-full"/></td>
-                                            <td className="p-4 font-mono font-bold text-indigo-600">{t.code}</td>
-                                            <td className="p-2">
-                                                <select value={editData.status} onChange={e=>setEditData({...editData, status: e.target.value})} className="border p-2 rounded w-full text-xs">
-                                                    <option value="AVAILABLE">AVAILABLE</option><option value="USED">USED</option><option value="BLOCKED">BLOCKED</option>
-                                                </select>
-                                            </td>
-                                            <td className="p-4 text-center">
-                                                <button onClick={()=>saveEdit(t.code)} className="text-emerald-600 mr-2"><Save size={16}/></button>
-                                                <button onClick={()=>setEditModeId(null)} className="text-slate-500"><X size={16}/></button>
-                                            </td>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <td className="p-4 font-semibold">{t.participant_name || '-'}</td>
-                                            <td className="p-4">{t.participant_school || '-'}</td>
-                                            <td className="p-4 font-mono font-bold text-indigo-600">{t.code}</td>
-                                            <td className="p-4 text-center"><span className={`px-2 py-1 text-[10px] font-bold rounded ${t.status==='AVAILABLE'?'bg-emerald-50 text-emerald-600':t.status==='USED'?'bg-amber-50 text-amber-600':'bg-rose-50 text-rose-600'}`}>{t.status}</span></td>
-                                            <td className="p-4 text-center">
-                                                <button onClick={()=>startEdit(t)} className="text-blue-500 p-2 mr-1"><Edit size={16}/></button>
-                                                <button onClick={()=>deleteToken(t.code)} className="text-rose-500 p-2"><Trash2 size={16}/></button>
-                                            </td>
-                                        </>
-                                    )}
-                                </tr>
-                            ))}
+                            {isMassEdit ? (
+                                massEditTokens.map((t, i) => (
+                                    <tr key={t.code} className="border-b bg-blue-50/30">
+                                        <td className="p-4 text-slate-500 font-bold">{i+1}</td>
+                                        <td className="p-2"><input type="text" value={t.participant_name} onChange={e=>handleEditChange(i,'participant_name',e.target.value)} className="w-full p-2.5 border rounded-lg font-semibold" placeholder="Nama..."/></td>
+                                        <td className="p-2"><input type="text" value={t.participant_school} onChange={e=>handleEditChange(i,'participant_school',e.target.value)} className="w-full p-2.5 border rounded-lg font-semibold" placeholder="Sekolah..."/></td>
+                                        <td className="p-4 font-mono font-bold text-slate-500">{t.code}</td>
+                                        <td className="p-2">
+                                            <select value={t.status} onChange={e=>handleEditChange(i,'status',e.target.value)} className="w-full p-2.5 border rounded-lg font-bold text-xs bg-white">
+                                                <option value="AVAILABLE">AVAILABLE</option><option value="USED">USED</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                actualTokens.map((t, i) => (
+                                    <tr key={t.code} className="border-b">
+                                        <td className="p-4">{i+1}</td>
+                                        <td className="p-4 font-semibold">{t.participant_name || '-'}</td>
+                                        <td className="p-4">{t.participant_school || '-'}</td>
+                                        <td className="p-4 font-mono font-bold text-indigo-600">{t.code}</td>
+                                        <td className="p-4 text-center"><span className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded">{t.status}</span></td>
+                                        <td className="p-4 text-center"><button onClick={()=>deleteToken(t.code)} className="text-rose-500 p-2"><Trash2 size={16}/></button></td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                  </div>
@@ -1078,13 +1099,19 @@
             const [showImport, setShowImport] = useState(false);
             const [fileError, setFileError] = useState('');
 
-            const availableFolders = [...new Set([...questions.map(q => q.folder || 'Utama'), filterFolder, 'Utama'])];
+            const availableFolders = [...new Set([
+                ...questions.map(q => q.folder || 'Utama'), 
+                ...tokens.filter(t => t.code && t.code.startsWith('SYS_FOLDER_')).map(t => t.status), 
+                'Utama'
+            ])];
 
             const defaultMCQ = { id: '', type: 'MCQ', folder: filterFolder, points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
             const defaultMCMA = { id: '', type: 'MCMA', folder: filterFolder, points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}, {id:3, text:''}], correctAnswers: [] };
             const defaultCAT = { id: '', type: 'CATEGORY', folder: filterFolder, points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'},{id:2, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
             
             const [formData, setFormData] = useState(defaultMCQ);
+
+            useEffect(() => { triggerMathRender(); }, [view, questions, formData.type]);
 
             const downloadTemplate = () => {
                 const csvContent = "Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci\nIbu kota Indonesia adalah?,Jakarta,Bandung,Surabaya,Medan,A\n";
@@ -1108,7 +1135,6 @@
                                 id: `q${Date.now()}_${i}`,
                                 type: 'MCQ',
                                 folder: filterFolder,
-                                category: 'Umum',
                                 points: 1,
                                 question: cols[0].replace(/["\r]/g, '').trim(),
                                 options: [
@@ -1139,24 +1165,30 @@
                try {
                  const db = await getSupabase();
                  let payload = { ...formData };
+                 if(!payload.folder) payload.folder = filterFolder; 
+
                  if(!payload.id) { 
                     payload.id = `q${Date.now()}`;
                     await db.from('questions').insert([payload]);
                  } else { 
                     await db.from('questions').update(payload).eq('id', payload.id);
                  }
-                 setFilterFolder(payload.folder); // Update folder view just in case it was changed
-                 fetchSupabaseData(); setView('list');
+                 await fetchSupabaseData(); 
+                 setFilterFolder(payload.folder);
+                 setView('list');
                } catch (err) { alert(err.message); }
                finally { setIsSaving(false); }
             };
 
             const deleteQuestion = async (id) => {
                 if(!confirm("Hapus soal?")) return;
+                setIsSaving(true);
                 try { const db = await getSupabase(); await db.from('questions').delete().eq('id', id); fetchSupabaseData(); } catch(e) { alert(e.message); }
+                finally { setIsSaving(false); }
             };
 
             const publishFolder = async (fname) => {
+                setIsSaving(true);
                 try {
                     const db = await getSupabase();
                     const { data } = await db.from('tokens').select('code').eq('code', 'SYS_SETTING_FOLDER').maybeSingle();
@@ -1165,6 +1197,7 @@
                     setActiveFolder(fname);
                     alert(`Folder "${fname}" berhasil diterbitkan ke peserta!`);
                 } catch(e) { alert("Gagal terbit: " + e.message); }
+                finally { setIsSaving(false); }
             };
 
             const renderOptionsEditor = () => {
@@ -1252,7 +1285,7 @@
                                     </div>
                                 </div>
                             ))}
-                            <button type="button" onClick={() => setFormData({...formData, statements: [...formData.statements, {id: formData.statements.length + 1, text:'', category1: formData.statements[0].category1, category2: formData.statements[0].category2, correctCategory: formData.statements[0].category1}]})} className="text-blue-600 font-semibold text-sm hover:underline flex items-center bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 w-fit"><Plus size={16} className="mr-1"/> Tambah Baris Tabel</button>
+                            <button type="button" onClick={() => setFormData({...formData, statements: [...formData.statements, {id: formData.statements.length + 1, text:'', category1: formData.statements[0]?.category1||'Benar', category2: formData.statements[0]?.category2||'Salah', correctCategory: formData.statements[0]?.category1||'Benar'}]})} className="text-blue-600 font-semibold text-sm hover:underline flex items-center bg-blue-50 px-3 py-2 rounded-lg border border-blue-100 w-fit"><Plus size={16} className="mr-1"/> Tambah Baris Tabel</button>
                         </div>
                     );
                 }
@@ -1280,9 +1313,7 @@
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-500 mb-1">Pilih Folder Ujian</label>
                                     <select value={formData.folder || 'Utama'} onChange={e => setFormData({...formData, folder: e.target.value})} className="w-full p-2.5 border border-slate-300 rounded-lg bg-white text-sm font-medium focus:ring-2 focus:ring-blue-500 cursor-pointer">
-                                        {availableFolders.map(f => (
-                                            <option key={f} value={f}>{f}</option>
-                                        ))}
+                                        {availableFolders.map(f => <option key={f} value={f}>{f}</option>)}
                                     </select>
                                 </div>
                                 <div>
@@ -1291,11 +1322,11 @@
                                 </div>
                             </div>
                             
-                            <div><label className="block text-sm font-semibold mb-1">Pertanyaan</label><RichTextEditor value={formData.question} onChange={val => setFormData({...formData, question: val})} /></div>
+                            <div><label className="block text-sm font-semibold mb-1">Pertanyaan Utama</label><RichTextEditor value={formData.question} onChange={val => setFormData({...formData, question: val})} /></div>
                             
                             {renderOptionsEditor()}
 
-                            <div className="flex justify-end gap-2 pt-4 border-t mt-6"><button type="button" onClick={() => setView('list')} className="px-4 py-2 border rounded-lg font-medium">Batal</button><button type="submit" disabled={isSaving} className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold">{isSaving ? 'Menyimpan...' : 'Simpan Soal'}</button></div>
+                            <div className="flex justify-end gap-2 pt-4 border-t mt-6"><button type="button" onClick={() => setView('list')} className="px-4 py-2 border rounded-lg font-medium">Batal</button><button type="submit" disabled={isSaving} className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold flex items-center">{isSaving ? 'Menyimpan...' : <><Save size={16} className="mr-2"/> Simpan Soal</>}</button></div>
                         </form>
                     </div>
                  </AdminLayout>
@@ -1307,7 +1338,7 @@
               return (
                 <AdminLayout title={`Folder: ${filterFolder}`}>
                   <div className="mb-6 flex gap-3">
-                     <button onClick={() => setView('folders')} className="border px-4 py-2 rounded-lg text-sm font-semibold">Kembali</button>
+                     <button onClick={() => setView('folders')} className="border bg-white border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold">Kembali ke Folder</button>
                      <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><Upload size={16} className="mr-2"/> Unggah Soal (CSV)</button>
                   </div>
                   {showImport && (
@@ -1315,24 +1346,25 @@
                         <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
                             <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Impor Soal CSV</h3><button onClick={()=>setShowImport(false)}><X size={18}/></button></div>
                             <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText size={16} className="mr-2"/> Download Templat Soal</button>
-                            <input type="file" accept=".csv" onChange={handleUploadSoal} className="w-full p-4 border-2 border-dashed rounded-xl"/>
+                            <input type="file" accept=".csv" onChange={handleUploadSoal} className="w-full p-4 border-2 border-dashed rounded-xl bg-slate-50"/>
                             {fileError && <p className="text-rose-500 text-xs mt-2">{fileError}</p>}
                         </div>
                      </div>
                   )}
                   <div className="space-y-4">
                     {folderQuestions.map((q, idx) => (
-                       <div key={q.id} className="bg-white p-4 rounded-xl border flex justify-between items-start">
-                         <div>
+                       <div key={q.id} className="bg-white p-4 rounded-xl border flex justify-between items-start shadow-sm">
+                         <div className="flex-1">
                             <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded">No. {idx+1} | {q.type}</span>
                             <div className="mt-2 text-slate-800" dangerouslySetInnerHTML={{__html: q.question}}></div>
                          </div>
-                         <div className="flex gap-2">
-                             <button onClick={() => {setFormData(q); setView('edit');}} className="text-blue-500 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg"><Edit size={16}/></button>
-                             <button onClick={() => deleteQuestion(q.id)} className="text-rose-500 bg-rose-50 hover:bg-rose-100 p-2 rounded-lg"><Trash2 size={16}/></button>
+                         <div className="flex gap-2 ml-4">
+                             <button onClick={() => {setFormData(q); setView('edit');}} className="text-blue-500 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition-colors"><Edit size={16}/></button>
+                             <button onClick={() => deleteQuestion(q.id)} disabled={isSaving} className="text-rose-500 bg-rose-50 hover:bg-rose-100 p-2 rounded-lg transition-colors"><Trash2 size={16}/></button>
                          </div>
                        </div>
                     ))}
+                    {folderQuestions.length === 0 && <div className="text-center py-10 text-slate-500 bg-white border border-dashed rounded-xl">Belum ada soal di folder ini.</div>}
                   </div>
                   <button onClick={() => {setFormData({...defaultMCQ, folder: filterFolder}); setView('create');}} className="fixed bottom-6 right-6 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:bg-blue-700 transition-transform hover:scale-105"><Plus size={24}/></button>
                 </AdminLayout>
@@ -1340,50 +1372,86 @@
             }
 
             const folderStats = questions.reduce((acc, q) => { const f = q.folder || 'Utama'; acc[f] = (acc[f] || 0) + 1; return acc; }, {});
-            if (!folderStats['Utama']) folderStats['Utama'] = 0;
-            
             tokens.forEach(t => {
                 if (t.code && t.code.startsWith('SYS_FOLDER_') && folderStats[t.status] === undefined) {
                     folderStats[t.status] = 0;
                 }
             });
+            if (folderStats['Utama'] === undefined) folderStats['Utama'] = 0;
 
             const createFolder = async () => {
-                const fname = prompt("Masukkan Nama Folder Baru:\n(Contoh: Tryout 1, STS Ganjil)");
+                const fname = prompt("Masukkan Nama Folder Baru:\n(Contoh: Tryout 1, Paket A)");
                 if (fname && fname.trim() !== '') {
                     const folderName = fname.trim();
                     setIsSaving(true);
                     try {
                         const db = await getSupabase();
-                        await db.from('tokens').insert([{ 
-                            code: `SYS_FOLDER_${Date.now()}`, 
-                            status: folderName, 
-                            generatedAt: new Date().toISOString(),
-                            participant_name: 'SYSTEM_FOLDER' 
-                        }]);
-                        await fetchSupabaseData(); // Refresh untuk menarik folder baru
+                        await db.from('tokens').insert([{ code: `SYS_FOLDER_${Date.now()}`, status: folderName, generatedAt: new Date().toISOString(), participant_name: 'SYSTEM_FOLDER' }]);
+                        await fetchSupabaseData();
                         setFilterFolder(folderName);
                         setView('list');
-                    } catch(e) {
-                        alert("Gagal menyimpan folder: " + e.message);
-                    }
-                    setIsSaving(false);
+                    } catch(e) { alert("Gagal menyimpan folder: " + e.message); }
+                    finally { setIsSaving(false); }
                 }
+            };
+
+            const editFolder = async (oldName) => {
+                if (oldName === 'Utama') return alert("Folder Utama tidak dapat diubah namanya.");
+                const newName = prompt(`Ubah nama folder "${oldName}" menjadi:`, oldName);
+                if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
+                
+                setIsSaving(true);
+                try {
+                    const db = await getSupabase();
+                    await db.from('tokens').update({ status: newName.trim() }).like('code', 'SYS_FOLDER_%').eq('status', oldName);
+                    await db.from('questions').update({ folder: newName.trim() }).eq('folder', oldName);
+                    if (activeFolder === oldName) await db.from('tokens').update({ status: newName.trim() }).eq('code', 'SYS_SETTING_FOLDER');
+                    
+                    await fetchSupabaseData();
+                    alert(`Folder berhasil diubah menjadi "${newName.trim()}"`);
+                } catch(e) { alert("Gagal mengubah: " + e.message); }
+                finally { setIsSaving(false); }
+            };
+
+            const deleteFolder = async (folderName) => {
+                if (folderName === 'Utama') return alert("Folder Utama tidak dapat dihapus.");
+                if (!confirm(`HAPUS FOLDER "${folderName}"?\nPERINGATAN: Semua soal di dalamnya juga akan terhapus permanen!`)) return;
+                
+                setIsSaving(true);
+                try {
+                    const db = await getSupabase();
+                    await db.from('tokens').delete().like('code', 'SYS_FOLDER_%').eq('status', folderName);
+                    await db.from('questions').delete().eq('folder', folderName);
+                    if (activeFolder === folderName) await db.from('tokens').update({ status: 'Utama' }).eq('code', 'SYS_SETTING_FOLDER');
+                    
+                    await fetchSupabaseData();
+                    alert(`Folder "${folderName}" dan seluruh isinya berhasil dihapus.`);
+                } catch(e) { alert("Gagal menghapus: " + e.message); }
+                finally { setIsSaving(false); }
             };
 
             return (
               <AdminLayout title="Manajemen Bank Soal">
-                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                 <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-5">
                     <div onClick={createFolder} className="bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer min-h-[160px] hover:bg-emerald-100 transition-colors">
-                        <Plus size={24} className="text-emerald-600 mb-2"/><span className="font-bold text-sm text-emerald-700">Buat Folder Baru</span>
+                        <Plus size={24} className="text-emerald-600 mb-2"/>
+                        <span className="font-bold text-sm text-emerald-700">Buat Folder Baru</span>
+                        {isSaving && <span className="text-xs text-emerald-600 mt-2">Memproses...</span>}
                     </div>
                     {Object.entries(folderStats).map(([fname, count]) => (
-                        <div key={fname} className="bg-white border rounded-2xl p-6 flex flex-col justify-between shadow-sm min-h-[160px] hover:border-blue-300 transition-colors">
-                            <div onClick={() => { setFilterFolder(fname); setView('list'); }} className="cursor-pointer">
-                                <h4 className="font-bold text-lg text-slate-800">{fname}</h4>
-                                <p className="text-xs text-slate-500 mt-1">{count} Soal</p>
+                        <div key={fname} className="bg-white border rounded-2xl p-5 flex flex-col justify-between shadow-sm min-h-[160px] hover:border-blue-300 transition-colors group relative">
+                            {fname !== 'Utama' && (
+                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={(e) => { e.stopPropagation(); editFolder(fname); }} className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded" title="Ganti Nama Folder"><Edit size={14}/></button>
+                                    <button onClick={(e) => { e.stopPropagation(); deleteFolder(fname); }} className="p-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded" title="Hapus Folder & Isinya"><Trash2 size={14}/></button>
+                                </div>
+                            )}
+                            <div onClick={() => { setFilterFolder(fname); setView('list'); }} className="cursor-pointer flex-1 flex flex-col items-center justify-center mt-2">
+                                <i className="fas fa-folder text-3xl text-slate-300 mb-2 group-hover:text-blue-400 transition-colors"></i>
+                                <h4 className="font-bold text-lg text-slate-800 text-center truncate w-full px-2" title={fname}>{fname}</h4>
+                                <p className="text-xs font-semibold text-slate-500 mt-1 bg-slate-50 px-2 py-1 rounded border">{count} Soal</p>
                             </div>
-                            <button onClick={() => publishFolder(fname)} className={`mt-4 w-full py-2 rounded-lg text-xs font-bold transition-colors ${activeFolder.toLowerCase() === fname.toLowerCase() ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                            <button onClick={(e) => { e.stopPropagation(); publishFolder(fname); }} disabled={isSaving} className={`mt-4 w-full py-2 rounded-lg text-xs font-bold transition-colors ${activeFolder.toLowerCase() === fname.toLowerCase() ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border'}`}>
                                 {activeFolder.toLowerCase() === fname.toLowerCase() ? 'Sedang Diterbitkan' : 'Terbitkan Folder Ini'}
                             </button>
                         </div>
@@ -1394,113 +1462,68 @@
           };
 
           const AdminItemAnalysis = () => {
-             const analysisData = questions.map(q => {
-               let correct = 0, wrong = 0, empty = 0;
-               results.forEach(r => {
-                 const d = r.detail?.detailedResults?.find(x => x.qId === q.id);
-                 if (!d || d.isEmpty) empty++;
-                 else if (d.isCorrect) correct++;
-                 else wrong++;
-               });
-               const total = results.length;
-               const percentage = total > 0 ? ((correct / total) * 100).toFixed(1) : 0;
-               let difficulty = "N/A";
-               if (total > 0) {
-                  const p = parseFloat(percentage);
-                  if (p > 85) difficulty = "Sangat Mudah";
-                  else if (p >= 70) difficulty = "Mudah";
-                  else if (p >= 50) difficulty = "Sedang";
-                  else if (p >= 30) difficulty = "Sulit";
-                  else difficulty = "Sangat Sulit";
-               }
-               return { ...q, correct, wrong, empty, total, percentage, difficulty };
-             });
+            const analysisData = questions.map(q => {
+              let correct = 0, wrong = 0, empty = 0;
+              results.forEach(r => {
+                const details = Array.isArray(r.detail?.detailedResults) ? r.detail.detailedResults : [];
+                const d = details.find(x => x.qId === q.id);
+                if (!d || d.isEmpty) empty++;
+                else if (d.isCorrect) correct++;
+                else wrong++;
+              });
+              const total = results.length;
+              const percentage = total > 0 ? ((correct / total) * 100).toFixed(1) : 0;
+              let difficulty = "N/A";
+              if (total > 0) {
+                 const p = parseFloat(percentage);
+                 if (p > 85) difficulty = "Sangat Mudah";
+                 else if (p >= 70) difficulty = "Mudah";
+                 else if (p >= 50) difficulty = "Sedang";
+                 else if (p >= 30) difficulty = "Sulit";
+                 else difficulty = "Sangat Sulit";
+              }
+              return { ...q, correct, wrong, empty, total, percentage, difficulty };
+            });
 
-             const stripHtml = (html) => {
-                 if (!html) return "";
-                 const doc = new DOMParser().parseFromString(html, 'text/html');
-                 return doc.body.textContent || "";
-             };
-
-             return (
-               <AdminLayout title="Analisis Soal">
-                 <div className="bg-white rounded-xl border p-6 mb-6">
-                    <h3 className="font-bold text-slate-800 text-lg mb-4">Statistik Responden</h3>
-                    <p className="text-slate-600 text-sm">Total peserta ujian selesai: <strong className="text-emerald-600">{results.length} Siswa</strong></p>
-                 </div>
-                 
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto mb-8">
-                   <table className="w-full text-sm text-left whitespace-nowrap">
-                     <thead className="bg-slate-50 text-slate-700 font-semibold border-b">
-                       <tr>
-                         <th className="py-4 px-4 text-center">No</th>
-                         <th className="py-4 px-4">Tipe Pertanyaan</th>
-                         <th className="py-4 px-4 text-center text-emerald-600">Benar</th>
-                         <th className="py-4 px-4 text-center text-red-600">Salah</th>
-                         <th className="py-4 px-4 text-center text-amber-600">Kosong</th>
-                         <th className="py-4 px-4 text-center">% Benar</th>
-                         <th className="py-4 px-4">Tingkat Kesulitan</th>
-                       </tr>
-                     </thead>
-                     <tbody>
-                       {analysisData.map((d, idx) => (
-                         <tr key={d.id} className="border-b last:border-0 hover:bg-slate-50">
-                           <td className="py-3 px-4 text-center font-medium text-slate-500">{idx + 1}</td>
-                           <td className="py-3 px-4">
-                              <div className="text-xs font-bold">{d.type}</div>
-                           </td>
-                           <td className="py-3 px-4 text-center font-bold text-emerald-600">{d.correct}</td>
-                           <td className="py-3 px-4 text-center font-bold text-red-600">{d.wrong}</td>
-                           <td className="py-3 px-4 text-center font-bold text-amber-600">{d.empty}</td>
-                           <td className="py-3 px-4 text-center font-bold text-slate-700">{d.percentage}%</td>
-                           <td className="py-3 px-4">
-                              <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide
-                                 ${d.difficulty === 'Sangat Mudah' || d.difficulty === 'Mudah' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 
-                                   d.difficulty === 'Sedang' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 
-                                   d.difficulty === 'N/A' ? 'bg-slate-100 text-slate-500 border' : 'bg-red-50 text-red-600 border border-red-100'}`}>
-                                {d.difficulty}
-                              </span>
-                           </td>
-                         </tr>
-                       ))}
-                       {analysisData.length === 0 && <tr><td colSpan="7" className="text-center py-8 text-slate-500">Belum ada data soal.</td></tr>}
-                     </tbody>
-                   </table>
-                 </div>
-
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 overflow-x-auto relative">
-                     <h3 className="font-semibold text-slate-800 text-lg mb-4">Matriks Peta Jawaban per Siswa</h3>
-                     <table className="w-full text-sm text-left border-collapse min-w-max">
-                         <thead className="bg-slate-50 text-slate-700 border-b">
-                             <tr>
-                                 <th className="p-3 border-r font-semibold sticky left-0 z-10 bg-slate-50 border-b">Nama Siswa</th>
-                                 {questions.map((q, i) => <th key={q.id} className="p-3 text-center border-r font-semibold w-12 text-slate-500" title={stripHtml(q.question)}>Q{i+1}</th>)}
-                                 <th className="p-3 text-center font-bold text-blue-600 bg-blue-50/50">Skor</th>
-                             </tr>
-                         </thead>
-                         <tbody>
-                             {results.map((r, i) => (
-                                 <tr key={r.id} className="border-b hover:bg-slate-50">
-                                     <td className="p-3 border-r font-medium text-slate-800 sticky left-0 z-10 bg-white border-b">{r.participant?.name}</td>
-                                     {questions.map((q) => {
-                                         const d = r.detail?.detailedResults?.find(x => x.qId === q.id);
-                                         let icon = <span className="text-slate-300">-</span>;
-                                         if (d) {
-                                             if (d.isEmpty) icon = <span className="text-amber-500 font-bold">O</span>;
-                                             else if (d.isCorrect) icon = <span className="text-emerald-500 font-bold">✓</span>;
-                                             else icon = <span className="text-red-500 font-bold">✗</span>;
-                                         }
-                                         return <td key={q.id} className="p-3 text-center border-r bg-white">{icon}</td>;
-                                     })}
-                                     <td className="p-3 text-center font-bold text-blue-600 bg-blue-50/30">{r.score}</td>
-                                 </tr>
-                             ))}
-                             {results.length === 0 && <tr><td colSpan={questions.length + 2} className="text-center py-6 text-slate-500 font-medium">Belum ada peserta.</td></tr>}
-                         </tbody>
-                     </table>
-                 </div>
-               </AdminLayout>
-             );
+            return (
+              <AdminLayout title="Analisis Soal">
+                <div className="bg-white rounded-xl border p-6 mb-6">
+                   <h3 className="font-bold text-slate-800 text-lg mb-4">Statistik Responden</h3>
+                   <p className="text-slate-600 text-sm">Total peserta ujian selesai: <strong className="text-emerald-600">{results.length} Siswa</strong></p>
+                </div>
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto mb-8">
+                  <table className="w-full text-sm text-left whitespace-nowrap">
+                    <thead className="bg-slate-50 text-slate-700 font-semibold border-b">
+                      <tr>
+                        <th className="py-4 px-4 text-center">No</th>
+                        <th className="py-4 px-4">Kategori / Tipe</th>
+                        <th className="py-4 px-4">Pertanyaan</th>
+                        <th className="py-4 px-4 text-center text-emerald-600">Benar</th>
+                        <th className="py-4 px-4 text-center text-red-600">Salah</th>
+                        <th className="py-4 px-4 text-center text-amber-600">Kosong</th>
+                        <th className="py-4 px-4 text-center">% Benar</th>
+                        <th className="py-4 px-4">Tingkat Kesulitan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analysisData.map((d, idx) => (
+                        <tr key={d.id} className="border-b last:border-0 hover:bg-slate-50">
+                          <td className="py-3 px-4 text-center font-medium text-slate-500">{idx + 1}</td>
+                          <td className="py-3 px-4"><div className="text-xs font-bold">{d.type}</div><div className="text-xs text-slate-500 font-medium">{d.category || d.folder}</div></td>
+                          <td className="py-3 px-4 text-slate-800 max-w-xs truncate"><span dangerouslySetInnerHTML={{ __html: (d.question||'').replace(/<[^>]+>/g, '') }} /></td>
+                          <td className="py-3 px-4 text-center font-bold text-emerald-600">{d.correct}</td>
+                          <td className="py-3 px-4 text-center font-bold text-red-600">{d.wrong}</td>
+                          <td className="py-3 px-4 text-center font-bold text-amber-600">{d.empty}</td>
+                          <td className="py-3 px-4 text-center font-bold text-slate-700">{d.percentage}%</td>
+                          <td className="py-3 px-4"><span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide ${d.difficulty === 'Sangat Mudah' || d.difficulty === 'Mudah' ? 'bg-blue-50 text-blue-600 border border-blue-100' : d.difficulty === 'Sedang' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : d.difficulty === 'N/A' ? 'bg-slate-100 text-slate-500 border' : 'bg-red-50 text-red-600 border border-red-100'}`}>{d.difficulty}</span></td>
+                        </tr>
+                      ))}
+                      {analysisData.length === 0 && <tr><td colSpan="8" className="text-center py-8 text-slate-500">Belum ada data soal.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </AdminLayout>
+            );
           };
 
           const AdminReports = () => {
