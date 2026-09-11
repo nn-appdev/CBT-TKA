@@ -1044,12 +1044,12 @@
             const [showImport, setShowImport] = useState(false);
             const [fileError, setFileError] = useState('');
 
-            const defaultMCQ = { id: '', type: 'MCQ', folder: filterFolder, category: 'Bahasa Indonesia', points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
-            const [formData, setFormData] = useState(defaultMCQ);
-
-            // Fetch dynamic custom folders from tokens
+            // Memastikan custom folder dari database terdeteksi
             const customFolders = tokens.filter(t => t.code && t.code.startsWith('SYS_FOLDER_')).map(t => t.status);
             const allFolders = [...new Set(['Utama', ...customFolders, ...questions.map(q => q.folder || 'Utama'), filterFolder])];
+
+            const defaultMCQ = { id: '', type: 'MCQ', folder: filterFolder, category: 'Bahasa Indonesia', points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
+            const [formData, setFormData] = useState(defaultMCQ);
 
             const downloadTemplate = () => {
                 const csvContent = "Mapel,Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci\nBahasa Indonesia,Ibu kota Indonesia adalah?,Jakarta,Bandung,Surabaya,Medan,A\n";
@@ -1104,7 +1104,7 @@
                try {
                  const db = await getSupabase();
                  let payload = { ...formData };
-                 if(!payload.folder) payload.folder = filterFolder;
+                 if (!payload.folder) payload.folder = filterFolder; // Pastikan menggunakan folder dari dropdown
                  if(!payload.id) { 
                     payload.id = `q${Date.now()}`;
                     await db.from('questions').insert([payload]);
@@ -1132,6 +1132,7 @@
                 } catch(e) { alert("Gagal terbit: " + e.message); }
             };
 
+            // ---- DATABASE FUNCTIONS FOR FOLDERS ----
             const createFolder = async () => {
                 const fname = prompt("Masukkan Nama Folder Baru:");
                 if (fname && fname.trim() !== '') {
@@ -1155,12 +1156,8 @@
                     setIsSaving(true);
                     try {
                         const db = await getSupabase();
-                        // Update folder token status if exists
                         const folderToken = tokens.find(t => t.code && t.code.startsWith('SYS_FOLDER_') && t.status === oldName);
-                        if (folderToken) {
-                            await db.from('tokens').update({ status: updatedName }).eq('code', folderToken.code);
-                        }
-                        // Update all questions in this folder
+                        if (folderToken) { await db.from('tokens').update({ status: updatedName }).eq('code', folderToken.code); }
                         await db.from('questions').update({ folder: updatedName }).eq('folder', oldName);
                         if (activeFolder === oldName) {
                             await db.from('tokens').update({ status: updatedName }).eq('code', 'SYS_SETTING_FOLDER');
@@ -1174,39 +1171,33 @@
             };
 
             const deleteFolder = async (fname) => {
-                if (fname === 'Utama') {
-                    alert("Folder Utama tidak dapat dihapus.");
-                    return;
-                }
-                if (!confirm(`Hapus folder "${fname}" beserta seluruh soal di dalamnya?`)) return;
+                if (fname === 'Utama') { alert("Folder Utama tidak dapat dihapus."); return; }
+                if (!confirm(`Hapus folder "${fname}" beserta seluruh soal di dalamnya secara permanen?`)) return;
                 setIsSaving(true);
                 try {
                     const db = await getSupabase();
-                    // Delete folder token
                     const folderToken = tokens.find(t => t.code && t.code.startsWith('SYS_FOLDER_') && t.status === fname);
-                    if (folderToken) {
-                        await db.from('tokens').delete().eq('code', folderToken.code);
-                    }
-                    // Delete questions inside this folder
+                    if (folderToken) { await db.from('tokens').delete().eq('code', folderToken.code); }
                     await db.from('questions').delete().eq('folder', fname);
                     if (activeFolder === fname) {
                         await db.from('tokens').update({ status: 'Utama' }).eq('code', 'SYS_SETTING_FOLDER');
                         setActiveFolder('Utama');
                     }
                     await fetchSupabaseData();
-                    alert("Folder berhasil dihapus.");
+                    alert("Folder beserta soal di dalamnya berhasil dihapus.");
                 } catch(e) { alert("Gagal hapus folder: " + e.message); }
                 setIsSaving(false);
             };
 
+            // ---- VIEWS ----
             if (view === 'create' || view === 'edit') {
                return (
                  <AdminLayout title="Editor Soal">
                     <div className="bg-white rounded-xl shadow-sm border max-w-4xl mx-auto p-6">
                         <form onSubmit={saveQuestion} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-semibold mb-1">Pilih Folder Ujian</label>
-                                <select value={formData.folder || filterFolder} onChange={e => setFormData({...formData, folder: e.target.value})} className="w-full p-2.5 border rounded-lg bg-white font-medium text-sm">
+                                <label className="block text-sm font-semibold mb-1">Pilih Folder Penyimpanan Soal</label>
+                                <select value={formData.folder || filterFolder} onChange={e => setFormData({...formData, folder: e.target.value})} className="w-full p-2.5 border rounded-lg bg-slate-50 font-medium text-sm focus:ring-2 focus:ring-blue-500">
                                     {allFolders.map(f => <option key={f} value={f}>{f}</option>)}
                                 </select>
                             </div>
@@ -1218,7 +1209,7 @@
                                 </div>
                             ))}
                             <div><label className="block text-sm font-semibold mb-1">Kunci Jawaban</label><select value={formData.correctAnswer} onChange={e => setFormData({...formData, correctAnswer: e.target.value})} className="p-2 border rounded font-bold"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></div>
-                            <div className="flex justify-end gap-2 pt-4"><button type="button" onClick={() => setView('list')} className="px-4 py-2 border rounded">Batal</button><button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded font-semibold">Simpan</button></div>
+                            <div className="flex justify-end gap-2 pt-4"><button type="button" onClick={() => setView('list')} className="px-4 py-2 border rounded">Batal</button><button type="submit" disabled={isSaving} className="px-6 py-2 bg-blue-600 text-white rounded font-semibold disabled:opacity-50">{isSaving ? 'Menyimpan...' : 'Simpan'}</button></div>
                         </form>
                     </div>
                  </AdminLayout>
@@ -1230,14 +1221,14 @@
               return (
                 <AdminLayout title={`Folder: ${filterFolder}`}>
                   <div className="mb-6 flex gap-3">
-                     <button onClick={() => setView('folders')} className="border px-4 py-2 rounded-lg text-sm font-semibold">Kembali</button>
-                     <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><Upload size={16} className="mr-2"/> Unggah Soal (CSV)</button>
+                     <button onClick={() => setView('folders')} className="border px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-50">Kembali</button>
+                     <button onClick={() => setShowImport(true)} className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center hover:bg-emerald-700"><Upload size={16} className="mr-2"/> Unggah Soal (CSV)</button>
                   </div>
                   {showImport && (
                      <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
                             <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Impor Soal CSV</h3><button onClick={()=>setShowImport(false)}><X size={18}/></button></div>
-                            <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText size={16} className="mr-2"/> Download Templat Soal</button>
+                            <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center hover:bg-blue-100"><FileText size={16} className="mr-2"/> Download Templat Soal</button>
                             <input type="file" accept=".csv" onChange={handleUploadSoal} className="w-full p-4 border-2 border-dashed rounded-xl"/>
                             {fileError && <p className="text-rose-500 text-xs mt-2">{fileError}</p>}
                         </div>
@@ -1247,22 +1238,28 @@
                     {folderQuestions.map((q, idx) => (
                        <div key={q.id} className="bg-white p-4 rounded-xl border flex justify-between items-start">
                          <div><span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded">No. {idx+1}</span><div className="mt-2 text-slate-800" dangerouslySetInnerHTML={{__html: q.question}}></div></div>
-                         <button onClick={() => deleteQuestion(q.id)} className="text-rose-500 p-2"><Trash2 size={16}/></button>
+                         <div className="flex gap-2 shrink-0">
+                            <button onClick={() => {setFormData(q); setView('edit');}} className="text-blue-500 p-2 hover:bg-blue-50 rounded"><Edit size={16}/></button>
+                            <button onClick={() => deleteQuestion(q.id)} className="text-rose-500 p-2 hover:bg-rose-50 rounded"><Trash2 size={16}/></button>
+                         </div>
                        </div>
                     ))}
+                    {folderQuestions.length === 0 && <div className="text-center p-8 bg-white border border-dashed rounded-xl text-slate-500 font-medium">Belum ada soal di folder ini.</div>}
                   </div>
-                  <button onClick={() => {setFormData(defaultMCQ); setView('create');}} className="fixed bottom-6 right-6 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl"><Plus size={24}/></button>
+                  <button onClick={() => {setFormData({...defaultMCQ, folder: filterFolder}); setView('create');}} className="fixed bottom-6 right-6 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:bg-blue-700 transition-transform hover:scale-105"><Plus size={24}/></button>
                 </AdminLayout>
               );
             }
-            
+
+            // Hitung statistik folder termasuk customFolders kosong yang ada di tokens
             const folderStats = questions.reduce((acc, q) => { const f = q.folder || 'Utama'; acc[f] = (acc[f] || 0) + 1; return acc; }, {});
             if (!folderStats['Utama']) folderStats['Utama'] = 0;
+            customFolders.forEach(f => { if(folderStats[f] === undefined) folderStats[f] = 0; });
 
             return (
               <AdminLayout title="Manajemen Bank Soal">
                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                    <div onClick={createFolder} className="bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer min-h-[160px]">
+                    <div onClick={createFolder} className="bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer min-h-[160px] hover:bg-emerald-100 transition-colors">
                         <Plus size={24} className="text-emerald-600 mb-2"/><span className="font-bold text-sm text-emerald-700">Buat Folder Baru</span>
                     </div>
                     {Object.entries(folderStats).map(([fname, count]) => (
@@ -1277,7 +1274,7 @@
                                     <button onClick={() => editFolder(fname)} className="px-3 bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold hover:bg-blue-100" title="Edit Nama Folder"><Edit size={14}/></button>
                                     {fname !== 'Utama' && <button onClick={() => deleteFolder(fname)} className="px-3 bg-rose-50 text-rose-600 rounded-lg text-xs font-semibold hover:bg-rose-100" title="Hapus Folder"><Trash2 size={14}/></button>}
                                 </div>
-                                <button onClick={() => publishFolder(fname)} className={`w-full py-2 rounded-lg text-xs font-bold ${activeFolder.toLowerCase() === fname.toLowerCase() ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                                <button onClick={() => publishFolder(fname)} className={`w-full py-2 rounded-lg text-xs font-bold transition-colors ${activeFolder.toLowerCase() === fname.toLowerCase() ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
                                     {activeFolder.toLowerCase() === fname.toLowerCase() ? 'Sedang Diterbitkan' : 'Terbitkan Folder Ini'}
                                 </button>
                             </div>
