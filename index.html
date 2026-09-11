@@ -1247,21 +1247,17 @@
                     {folderQuestions.map((q, idx) => (
                        <div key={q.id} className="bg-white p-4 rounded-xl border flex justify-between items-start">
                          <div><span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded">No. {idx+1}</span><div className="mt-2 text-slate-800" dangerouslySetInnerHTML={{__html: q.question}}></div></div>
-                         <div className="flex gap-2">
-                             <button onClick={() => {setFormData(q); setView('edit');}} className="text-blue-600 p-2"><Edit size={16}/></button>
-                             <button onClick={() => deleteQuestion(q.id)} className="text-rose-500 p-2"><Trash2 size={16}/></button>
-                         </div>
+                         <button onClick={() => deleteQuestion(q.id)} className="text-rose-500 p-2"><Trash2 size={16}/></button>
                        </div>
                     ))}
                   </div>
-                  <button onClick={() => {setFormData({...defaultMCQ, folder: filterFolder}); setView('create');}} className="fixed bottom-6 right-6 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl"><Plus size={24}/></button>
+                  <button onClick={() => {setFormData(defaultMCQ); setView('create');}} className="fixed bottom-6 right-6 bg-blue-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl"><Plus size={24}/></button>
                 </AdminLayout>
               );
             }
-
+            
             const folderStats = questions.reduce((acc, q) => { const f = q.folder || 'Utama'; acc[f] = (acc[f] || 0) + 1; return acc; }, {});
             if (!folderStats['Utama']) folderStats['Utama'] = 0;
-            customFolders.forEach(cf => { if (!folderStats[cf]) folderStats[cf] = 0; });
 
             return (
               <AdminLayout title="Manajemen Bank Soal">
@@ -1281,7 +1277,7 @@
                                     <button onClick={() => editFolder(fname)} className="px-3 bg-blue-50 text-blue-600 rounded-lg text-xs font-semibold hover:bg-blue-100" title="Edit Nama Folder"><Edit size={14}/></button>
                                     {fname !== 'Utama' && <button onClick={() => deleteFolder(fname)} className="px-3 bg-rose-50 text-rose-600 rounded-lg text-xs font-semibold hover:bg-rose-100" title="Hapus Folder"><Trash2 size={14}/></button>}
                                 </div>
-                                <button onClick={() => publishFolder(fname)} className={`w-full py-2 rounded-lg text-xs font-bold ${activeFolder.toLowerCase() === fname.toLowerCase() ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-white hover:bg-slate-900'}`}>
+                                <button onClick={() => publishFolder(fname)} className={`w-full py-2 rounded-lg text-xs font-bold ${activeFolder.toLowerCase() === fname.toLowerCase() ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
                                     {activeFolder.toLowerCase() === fname.toLowerCase() ? 'Sedang Diterbitkan' : 'Terbitkan Folder Ini'}
                                 </button>
                             </div>
