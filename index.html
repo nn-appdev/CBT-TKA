@@ -1099,9 +1099,11 @@
                     setIsSaving(true);
                     try {
                         const db = await getSupabase();
-                        await db.from('questions').insert(payloads);
-                        setShowImport(false); fetchSupabaseData(); alert('Soal berhasil diimpor!');
-                    } catch(err) { alert(err.message); }
+                        // Perbaikan: Pastikan kita mendeteksi pesan error dari Supabase jika gagal impor
+                        const { error } = await db.from('questions').insert(payloads);
+                        if (error) throw error;
+                        setShowImport(false); await fetchSupabaseData(); alert('Soal berhasil diimpor ke database!');
+                    } catch(err) { alert("Gagal impor ke database: " + err.message); }
                     finally { setIsSaving(false); }
                 };
                 reader.readAsText(file);
@@ -1113,31 +1115,54 @@
                try {
                  const db = await getSupabase();
                  let payload = { ...formData };
+                 // Memastikan folder tidak pernah kosong, dan pasti mengarah ke folder yang dipilih di dropdown
                  if(!payload.folder) payload.folder = filterFolder;
+                 
+                 let res;
                  if(!payload.id) { 
                     payload.id = `q${Date.now()}`;
-                    await db.from('questions').insert([payload]);
+                    res = await db.from('questions').insert([payload]);
                  } else { 
-                    await db.from('questions').update(payload).eq('id', payload.id);
+                    res = await db.from('questions').update(payload).eq('id', payload.id);
                  }
+                 
+                 // Perbaikan Krusial: Supabase tidak memunculkan error otomatis, kita harus melemparnya
+                 if (res.error) throw res.error;
+                 
                  await fetchSupabaseData(); 
-                 setFilterFolder(payload.folder);
+                 setFilterFolder(payload.folder); // Otomatis mengarahkan ke folder tempat soal disimpan
                  setView('list');
-               } catch (err) { alert(err.message); }
-               finally { setIsSaving(false); }
+                 alert("Berhasil! Soal telah tersimpan permanen di folder: " + payload.folder);
+               } catch (err) { 
+                 alert("GAGAL MENYIMPAN KE DATABASE! Mohon cek struktur tabel Anda.\nError: " + err.message); 
+               } finally { 
+                 setIsSaving(false); 
+               }
             };
 
             const deleteQuestion = async (id) => {
                 if(!confirm("Hapus soal?")) return;
-                try { const db = await getSupabase(); await db.from('questions').delete().eq('id', id); fetchSupabaseData(); } catch(e) { alert(e.message); }
+                try { 
+                    const db = await getSupabase(); 
+                    const { error } = await db.from('questions').delete().eq('id', id); 
+                    if (error) throw error;
+                    await fetchSupabaseData(); 
+                } catch(e) { alert("Gagal menghapus dari database: " + e.message); }
             };
 
             const publishFolder = async (fname) => {
                 try {
                     const db = await getSupabase();
-                    const { data } = await db.from('tokens').select('code').eq('code', 'SYS_SETTING_FOLDER').maybeSingle();
-                    if (data) await db.from('tokens').update({ status: fname }).eq('code', 'SYS_SETTING_FOLDER');
-                    else await db.from('tokens').insert([{ code: 'SYS_SETTING_FOLDER', status: fname, generatedAt: new Date().toISOString() }]);
+                    const { data, error: checkErr } = await db.from('tokens').select('code').eq('code', 'SYS_SETTING_FOLDER').maybeSingle();
+                    if (checkErr && checkErr.code !== 'PGRST116') throw checkErr;
+                    
+                    if (data) {
+                        const { error } = await db.from('tokens').update({ status: fname }).eq('code', 'SYS_SETTING_FOLDER');
+                        if (error) throw error;
+                    } else {
+                        const { error } = await db.from('tokens').insert([{ code: 'SYS_SETTING_FOLDER', status: fname, generatedAt: new Date().toISOString() }]);
+                        if (error) throw error;
+                    }
                     setActiveFolder(fname);
                     alert(`Folder "${fname}" berhasil diterbitkan ke peserta!`);
                 } catch(e) { alert("Gagal terbit: " + e.message); }
@@ -1154,9 +1179,11 @@
                     setIsSaving(true);
                     try {
                         const db = await getSupabase();
-                        await db.from('tokens').insert([{ code: `SYS_FOLDER_${Date.now()}`, status: folderName, generatedAt: new Date().toISOString(), participant_name: 'SYSTEM_FOLDER' }]);
+                        const { error } = await db.from('tokens').insert([{ code: `SYS_FOLDER_${Date.now()}`, status: folderName, generatedAt: new Date().toISOString(), participant_name: 'SYSTEM_FOLDER' }]);
+                        if (error) throw error;
                         await fetchSupabaseData();
                         setFilterFolder(folderName); setView('list');
+                        alert("Folder berhasil dibuat!");
                     } catch(e) { alert("Gagal menyimpan folder: " + e.message); }
                     setIsSaving(false);
                 }
@@ -1169,10 +1196,20 @@
                     try {
                         const db = await getSupabase();
                         const folderToken = tokens.find(t => t.code && t.code.startsWith('SYS_FOLDER_') && t.status === oldName);
-                        if (folderToken) { await db.from('tokens').update({ status: newName.trim() }).eq('code', folderToken.code); }
-                        await db.from('questions').update({ folder: newName.trim() }).eq('folder', oldName);
-                        if (activeFolder === oldName) { await db.from('tokens').update({ status: newName.trim() }).eq('code', 'SYS_SETTING_FOLDER'); setActiveFolder(newName.trim()); }
+                        if (folderToken) { 
+                            const { error: err1 } = await db.from('tokens').update({ status: newName.trim() }).eq('code', folderToken.code); 
+                            if (err1) throw err1;
+                        }
+                        const { error: err2 } = await db.from('questions').update({ folder: newName.trim() }).eq('folder', oldName);
+                        if (err2) throw err2;
+                        
+                        if (activeFolder === oldName) { 
+                            const { error: err3 } = await db.from('tokens').update({ status: newName.trim() }).eq('code', 'SYS_SETTING_FOLDER'); 
+                            if (err3) throw err3;
+                            setActiveFolder(newName.trim()); 
+                        }
                         await fetchSupabaseData(); setFilterFolder(newName.trim());
+                        alert("Nama folder berhasil diubah di database!");
                     } catch(e) { alert("Gagal ubah folder: " + e.message); }
                     setIsSaving(false);
                 }
@@ -1185,10 +1222,20 @@
                 try {
                     const db = await getSupabase();
                     const folderToken = tokens.find(t => t.code && t.code.startsWith('SYS_FOLDER_') && t.status === fname);
-                    if (folderToken) { await db.from('tokens').delete().eq('code', folderToken.code); }
-                    await db.from('questions').delete().eq('folder', fname);
-                    if (activeFolder === fname) { await db.from('tokens').update({ status: 'Utama' }).eq('code', 'SYS_SETTING_FOLDER'); setActiveFolder('Utama'); }
+                    if (folderToken) { 
+                        const { error: err1 } = await db.from('tokens').delete().eq('code', folderToken.code); 
+                        if (err1) throw err1;
+                    }
+                    const { error: err2 } = await db.from('questions').delete().eq('folder', fname);
+                    if (err2) throw err2;
+                    
+                    if (activeFolder === fname) { 
+                        const { error: err3 } = await db.from('tokens').update({ status: 'Utama' }).eq('code', 'SYS_SETTING_FOLDER'); 
+                        if (err3) throw err3;
+                        setActiveFolder('Utama'); 
+                    }
                     await fetchSupabaseData(); setFilterFolder('Utama'); setView('folders');
+                    alert("Folder beserta isinya berhasil dihapus dari database!");
                 } catch(e) { alert("Gagal hapus folder: " + e.message); }
                 setIsSaving(false);
             };
