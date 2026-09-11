@@ -231,8 +231,7 @@
                 
                 if(qRes.data) setQuestions(qRes.data);
                 if(tRes.data) {
-                    const actualTokens = tRes.data.filter(t => !t.code.startsWith('SYS_SETTING_') && !t.code.startsWith('SYS_FOLDER_'));
-                    setTokens(actualTokens);
+                    setTokens(tRes.data);
                     
                     const fToken = tRes.data.find(t => t.code === 'SYS_SETTING_FOLDER');
                     if (fToken) setActiveFolder(fToken.status);
@@ -813,7 +812,7 @@
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                     <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Peserta Selesai</div><div className="text-2xl font-bold">{results.length}</div></div>
                     <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Total Soal</div><div className="text-2xl font-bold">{questions.length}</div></div>
-                    <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Token Tersedia</div><div className="text-2xl font-bold">{tokens.filter(t=>t.status==='AVAILABLE').length}</div></div>
+                    <div className="bg-white p-5 rounded-xl border shadow-sm"><div className="text-slate-500 text-xs mb-1">Token Tersedia</div><div className="text-2xl font-bold">{tokens.filter(t => !t.code.startsWith('SYS_') && t.status === 'AVAILABLE').length}</div></div>
                 </div>
 
                 <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 mb-8">
@@ -991,6 +990,16 @@
 
           const AdminResults = () => {
              const [selectedAnalysis, setSelectedAnalysis] = useState(null);
+
+             const deleteResult = async (id) => {
+                 if(!confirm("Hapus hasil ujian peserta ini?")) return;
+                 try {
+                     const db = await getSupabase();
+                     await db.from('results').delete().eq('id', id);
+                     fetchSupabaseData();
+                 } catch(e) { alert("Gagal menghapus: " + e.message); }
+             };
+
              return (
                <AdminLayout title="Hasil Ujian">
                  {selectedAnalysis && (
@@ -1022,13 +1031,14 @@
                  )}
                  <div className="bg-white rounded-xl border overflow-x-auto">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 border-b"><tr><th className="p-4">Nama</th><th className="p-4">Sekolah</th><th className="p-4 text-center">Nilai</th><th className="p-4 text-center">Analisis</th></tr></thead>
+                        <thead className="bg-slate-50 border-b"><tr><th className="p-4">Nama</th><th className="p-4">Sekolah</th><th className="p-4 text-center">Nilai</th><th className="p-4 text-center">Analisis</th><th className="p-4 text-center">Aksi</th></tr></thead>
                         <tbody>
                             {results.map((r)=><tr key={r.id} className="border-b">
                                 <td className="p-4 font-medium">{r.participant?.name}</td>
                                 <td className="p-4">{r.participant?.school}</td>
                                 <td className="p-4 text-center font-bold text-emerald-600">{r.score}</td>
                                 <td className="p-4 text-center"><button onClick={() => setSelectedAnalysis(r)} className="text-blue-600 bg-blue-50 px-3 py-1 rounded text-xs font-semibold">Lihat Detail</button></td>
+                                <td className="p-4 text-center"><button onClick={() => deleteResult(r.id)} className="text-rose-500 hover:bg-rose-50 p-2 rounded" title="Hapus Hasil"><Trash2 size={16}/></button></td>
                             </tr>)}
                         </tbody>
                     </table>
