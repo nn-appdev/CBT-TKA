@@ -1289,6 +1289,22 @@
           };
 
           const AdminItemAnalysis = () => {
+             const [isDeleting, setIsDeleting] = useState(false);
+
+             const deleteAllResults = async () => {
+                if(results.length === 0) return;
+                if(!confirm("PERINGATAN: Menghapus data di sini akan menghapus SELURUH hasil ujian siswa. Lanjutkan?")) return;
+                setIsDeleting(true);
+                try {
+                    const db = await getSupabase();
+                    const { error } = await db.from('results').delete().neq('participant_name', 'DELETE_ALL_DUMMY');
+                    if (error) throw error;
+                    await fetchSupabaseData();
+                    alert("Seluruh data analisis dan hasil berhasil dihapus.");
+                } catch(e) { alert("Gagal menghapus data: " + e.message); }
+                setIsDeleting(false);
+             };
+
             const analysisData = questions.map(q => {
                 let correct = 0, wrong = 0, empty = 0;
                 results.forEach(r => {
@@ -1315,51 +1331,49 @@
 
             return (
               <AdminLayout title="Analisis Soal">
-                <div className="bg-white rounded-xl border p-6 mb-6">
-                   <h3 className="font-bold text-slate-800 text-lg mb-2">Total Responden Ujian</h3>
-                   <p className="text-slate-600 text-sm mb-4">Data diolah berdasarkan hasil ujian yang tersubmit.</p>
-                   <div className="inline-block bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-2 rounded-lg font-bold text-lg">
-                       {results.length} Peserta
-                   </div>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <div className="bg-white rounded-xl border p-4 flex-1 w-full sm:w-auto shadow-sm">
+                       <h3 className="font-bold text-slate-800 text-lg mb-1">Statistik Responden</h3>
+                       <p className="text-slate-600 text-sm">Total data teranalisis: <strong className="text-emerald-600">{results.length} Siswa</strong></p>
+                    </div>
+                    <button onClick={deleteAllResults} disabled={isDeleting || results.length === 0} className="w-full sm:w-auto bg-rose-600 text-white px-5 py-3 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-rose-700 disabled:opacity-50 shadow-sm transition-colors">
+                        <Trash2 size={18} className="mr-2"/> Hapus Semua Data
+                    </button>
                 </div>
-
-                <div className="bg-white rounded-xl border overflow-x-auto">
+                
+                <div className="bg-white rounded-xl border overflow-x-auto shadow-sm">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 border-b">
                             <tr>
                                 <th className="p-4 text-center">No</th>
                                 <th className="p-4">Kategori / Tipe</th>
-                                <th className="p-4">Pertanyaan</th>
+                                <th className="p-4">Pertanyaan (Cuplikan)</th>
                                 <th className="p-4 text-center">Benar</th>
                                 <th className="p-4 text-center">Salah</th>
                                 <th className="p-4 text-center">Kosong</th>
                                 <th className="p-4 text-center">% Benar</th>
-                                <th className="p-4 text-center">Tingkat Kesulitan</th>
+                                <th className="p-4 text-center">Kesulitan</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {analysisData.map((d, idx) => (
-                                <tr key={d.id} className="border-b hover:bg-slate-50">
+                            {analysisData.map((d, idx) => {
+                                // Ekstraksi teks aman menghindari error pembacaan HTML
+                                const tempDiv = document.createElement("div");
+                                tempDiv.innerHTML = d.question || "";
+                                const plainText = tempDiv.textContent || tempDiv.innerText || "";
+                                return (
+                                <tr key={d.id} className="border-b hover:bg-slate-50 transition-colors">
                                     <td className="p-4 text-center font-bold text-slate-500">{idx + 1}</td>
-                                    <td className="p-4">
-                                        <div className="font-semibold">{d.category}</div>
-                                        <div className="text-xs text-slate-500">{d.type}</div>
-                                    </td>
-                                    <td className="p-4 max-w-xs truncate" title={d.question?.replace(/<[^>]+>/g, '')}>{d.question?.replace(/<[^>]+>/g, '')}</td>
+                                    <td className="p-4"><div className="font-semibold">{d.category}</div><div className="text-[10px] uppercase font-bold text-blue-500 bg-blue-50 inline-block px-2 py-0.5 rounded mt-1 border border-blue-100">{d.type}</div></td>
+                                    <td className="p-4 max-w-xs truncate" title={plainText}>{plainText}</td>
                                     <td className="p-4 text-center font-bold text-emerald-600">{d.correct}</td>
                                     <td className="p-4 text-center font-bold text-rose-600">{d.wrong}</td>
                                     <td className="p-4 text-center font-bold text-slate-400">{d.empty}</td>
-                                    <td className="p-4 text-center font-bold text-blue-600">{d.percentage}%</td>
-                                    <td className="p-4 text-center">
-                                        <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                            d.difficulty.includes('Mudah') ? 'bg-emerald-100 text-emerald-700' : 
-                                            d.difficulty === 'Sedang' ? 'bg-blue-100 text-blue-700' :
-                                            d.difficulty.includes('Sulit') ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'
-                                        }`}>{d.difficulty}</span>
-                                    </td>
+                                    <td className="p-4 text-center font-black text-blue-600">{d.percentage}%</td>
+                                    <td className="p-4 text-center"><span className={`px-2 py-1 rounded text-xs font-bold border ${d.difficulty.includes('Mudah') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : d.difficulty === 'Sedang' ? 'bg-blue-50 text-blue-700 border-blue-200' : d.difficulty.includes('Sulit') ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>{d.difficulty}</span></td>
                                 </tr>
-                            ))}
-                            {analysisData.length === 0 && <tr><td colSpan="8" className="text-center p-6 text-slate-500 font-medium">Belum ada data soal.</td></tr>}
+                            )})}
+                            {analysisData.length === 0 && <tr><td colSpan="8" className="text-center p-8 text-slate-500 font-bold bg-slate-50">Belum ada data soal atau ujian.</td></tr>}
                         </tbody>
                     </table>
                 </div>
