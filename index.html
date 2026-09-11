@@ -1082,7 +1082,6 @@
                                 id: `q${Date.now()}_${i}`,
                                 type: 'MCQ',
                                 folder: filterFolder,
-                                category: cols[0].replace(/["\r]/g, '').trim(),
                                 points: 1,
                                 question: cols[1].replace(/["\r]/g, '').trim(),
                                 options: [
@@ -1099,11 +1098,10 @@
                     setIsSaving(true);
                     try {
                         const db = await getSupabase();
-                        // Perbaikan: Pastikan kita mendeteksi pesan error dari Supabase jika gagal impor
                         const { error } = await db.from('questions').insert(payloads);
                         if (error) throw error;
-                        setShowImport(false); await fetchSupabaseData(); alert('Soal berhasil diimpor ke database!');
-                    } catch(err) { alert("Gagal impor ke database: " + err.message); }
+                        setShowImport(false); fetchSupabaseData(); alert('Soal berhasil diimpor!');
+                    } catch(err) { alert("Gagal impor ke database!\nPastikan tabel 'questions' memiliki kolom 'correctAnswer'.\nError: " + err.message); }
                     finally { setIsSaving(false); }
                 };
                 reader.readAsText(file);
@@ -1114,27 +1112,37 @@
                setIsSaving(true);
                try {
                  const db = await getSupabase();
-                 let payload = { ...formData };
-                 // Memastikan folder tidak pernah kosong, dan pasti mengarah ke folder yang dipilih di dropdown
-                 if(!payload.folder) payload.folder = filterFolder;
                  
-                 let res;
-                 if(!payload.id) { 
-                    payload.id = `q${Date.now()}`;
-                    res = await db.from('questions').insert([payload]);
+                 // Sanitasi Payload: Hanya mengirim kolom yang dibutuhkan sesuai tipe soal ke Supabase
+                 let payload = { 
+                    id: formData.id || `q${Date.now()}`,
+                    type: formData.type,
+                    folder: formData.folder || filterFolder,
+                    points: formData.points,
+                    question: formData.question
+                 };
+
+                 if (formData.type === 'MCQ') {
+                     payload.options = formData.options;
+                     payload.correctAnswer = formData.correctAnswer;
+                 } else if (formData.type === 'MCMA') {
+                     payload.statements = formData.statements;
+                     payload.correctAnswers = formData.correctAnswers;
+                 } else if (formData.type === 'CATEGORY') {
+                     payload.statements = formData.statements;
+                 }
+
+                 if(!formData.id) { 
+                    const { error } = await db.from('questions').insert([payload]);
+                    if (error) throw error;
                  } else { 
-                    res = await db.from('questions').update(payload).eq('id', payload.id);
+                    const { error } = await db.from('questions').update(payload).eq('id', payload.id);
+                    if (error) throw error;
                  }
                  
-                 // Perbaikan Krusial: Supabase tidak memunculkan error otomatis, kita harus melemparnya
-                 if (res.error) throw res.error;
-                 
-                 await fetchSupabaseData(); 
-                 setFilterFolder(payload.folder); // Otomatis mengarahkan ke folder tempat soal disimpan
-                 setView('list');
-                 alert("Berhasil! Soal telah tersimpan permanen di folder: " + payload.folder);
+                 fetchSupabaseData(); setView('list');
                } catch (err) { 
-                 alert("GAGAL MENYIMPAN KE DATABASE! Mohon cek struktur tabel Anda.\nError: " + err.message); 
+                 alert("GAGAL MENYIMPAN KE DATABASE!\nDatabase Supabase Anda menolak karena ada kolom yang belum dibuat.\nPastikan Anda telah menjalankan perintah SQL untuk menambahkan kolom.\n\nDetail Error: " + err.message); 
                } finally { 
                  setIsSaving(false); 
                }
