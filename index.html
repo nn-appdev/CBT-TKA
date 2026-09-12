@@ -1113,7 +1113,6 @@
                try {
                  const db = await getSupabase();
                  
-                 // Sanitasi Payload: Hanya mengirim kolom yang dibutuhkan sesuai tipe soal ke Supabase
                  let payload = { 
                     id: formData.id || `q${Date.now()}`,
                     type: formData.type,
@@ -1135,14 +1134,20 @@
                  if(!formData.id) { 
                     const { error } = await db.from('questions').insert([payload]);
                     if (error) throw error;
+                    // Update formData dengan ID yang baru dibuat agar edit selanjutnya memakai fungsi UPDATE
+                    setFormData({...formData, id: payload.id});
                  } else { 
                     const { error } = await db.from('questions').update(payload).eq('id', payload.id);
                     if (error) throw error;
                  }
                  
-                 fetchSupabaseData(); setView('list');
+                 fetchSupabaseData(); 
+                 
+                 // NOTIFIKASI SUKSES DITAMBAHKAN, setView('list') DIHAPUS
+                 alert("Soal berhasil disimpan!"); 
+                 
                } catch (err) { 
-                 alert("GAGAL MENYIMPAN KE DATABASE!\nDatabase Supabase Anda menolak karena ada kolom yang belum dibuat.\nPastikan Anda telah menjalankan perintah SQL untuk menambahkan kolom.\n\nDetail Error: " + err.message); 
+                 alert("GAGAL MENYIMPAN KE DATABASE!\n" + err.message); 
                } finally { 
                  setIsSaving(false); 
                }
