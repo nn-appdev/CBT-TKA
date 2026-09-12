@@ -1134,17 +1134,18 @@
                  if(!formData.id) { 
                     const { error } = await db.from('questions').insert([payload]);
                     if (error) throw error;
-                    // Update formData dengan ID yang baru dibuat agar edit selanjutnya memakai fungsi UPDATE
-                    setFormData({...formData, id: payload.id});
                  } else { 
                     const { error } = await db.from('questions').update(payload).eq('id', payload.id);
                     if (error) throw error;
                  }
                  
-                 fetchSupabaseData(); 
+                 await fetchSupabaseData(); 
                  
-                 // NOTIFIKASI SUKSES DITAMBAHKAN, setView('list') DIHAPUS
-                 alert("Soal berhasil disimpan!"); 
+                 // KUNCI ALUR UX:
+                 // 1. Kunci aplikasi agar tetap berada di folder tempat soal tersebut disimpan/diedit
+                 setFilterFolder(payload.folder);
+                 // 2. Kembalikan layar ke daftar soal di dalam folder tersebut (tidak terlempar ke luar)
+                 setView('list');
                  
                } catch (err) { 
                  alert("GAGAL MENYIMPAN KE DATABASE!\n" + err.message); 
