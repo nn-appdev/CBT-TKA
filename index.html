@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CBT TKA Terpadu - Sekolah Dasar</title>
+    <title>CBT TKA - Sekolah Dasar</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -385,7 +385,7 @@
                   </form>
                   <div className="mt-8 pt-6 border-t border-slate-100 flex justify-between items-center">
                      <span className={`text-xs font-bold px-3 py-1.5 rounded-md flex items-center ${dbStatus === 'connected' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
-                         <Cloud size={14} className="mr-1.5"/> {dbStatus === 'connected' ? 'Server Online' : 'Server Offline'}
+                         <Cloud size={14} className="mr-1.5"/> {dbStatus === 'connected' ? 'On-line' : 'Offline'}
                      </span>
                      <button onClick={() => navigate('/admin/login')} className="text-xs font-semibold text-slate-400 hover:text-slate-800 transition-colors flex items-center"><Settings size={14} className="mr-1"/> Admin</button>
                   </div>
