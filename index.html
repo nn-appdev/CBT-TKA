@@ -175,14 +175,20 @@
         };
 
         const calculateScore = (answers, questions) => {
-          let totalPoints = 0;
-          let maxPoints = questions.length; 
+          let totalPoints = 0; // Ini adalah Skor Mentah (akumulasi bobot yang dijawab benar)
+          
+          // Ini adalah penentu Nilai Maksimal. Dihitung dari total seluruh bobot soal, bukan sekadar jumlah soal.
+          let maxPoints = questions.reduce((sum, q) => sum + (q.points || 1), 0); 
+          
           const detailedResults = questions.map(q => {
             const userAnswer = answers[q.id];
             let isCorrect = false;
+            
             if (!userAnswer) return { qId: q.id, type: q.type, isCorrect: false, isEmpty: true };
-            if (q.type === 'MCQ') isCorrect = userAnswer === q.correctAnswer;
-            else if (q.type === 'MCMA') {
+            
+            if (q.type === 'MCQ') {
+                isCorrect = userAnswer === q.correctAnswer;
+            } else if (q.type === 'MCMA') {
               if (Array.isArray(userAnswer)) {
                 const sortedUser = [...userAnswer].sort();
                 const sortedCorrect = [...(q.correctAnswers || [])].sort();
@@ -193,10 +199,15 @@
               const allAnswered = statementKeys.every(id => userAnswer[id]);
               if (allAnswered) isCorrect = (q.statements||[]).every(s => userAnswer[s.id] === s.correctCategory);
             }
-            if (isCorrect) totalPoints += q.points;
+            
+            if (isCorrect) totalPoints += (q.points || 1);
+            
             return { qId: q.id, type: q.type, isCorrect, isEmpty: false };
           });
+          
+          // Nilai Akhir (Final Score) dipaksa menjadi proporsi persentase absolut (Maksimal 100)
           const finalScore = maxPoints > 0 ? Math.round((totalPoints / maxPoints) * 100) : 0;
+          
           return { finalScore, totalPoints, maxPoints, detailedResults };
         };
 
