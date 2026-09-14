@@ -909,95 +909,77 @@
                  }
                  if (validTokens.length === 0) return alert("Tidak ada data untuk difilter.");
                  
-                 let csvContent = "data:text/csv;charset=utf-8,No,Nama Peserta,Sekolah/Kelas,Token,Status\n";
-                 validTokens.forEach((t, i) => {
-                     const name = t.participant_name ? t.participant_name.replace(/"/g, '""') : '';
-                     const school = t.participant_school ? t.participant_school.replace(/"/g, '""') : '';
-                     csvContent += `${i + 1},"${name}","${school}","${t.code}","${t.status}"\n`;
-                 });
+                 // Mencetak ke PDF memanfaatkan Native Browser Print
+                 const printWindow = window.open('', '_blank');
+                 const dateStr = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
                  
-                 const link = document.createElement("a");
-                 link.href = encodeURI(csvContent);
-                 link.download = `Data_Peserta_${downloadFilter}_${new Date().getTime()}.csv`;
-                 link.click();
+                 const htmlContent = `
+                     <!DOCTYPE html>
+                     <html>
+                     <head>
+                         <title>Data_Token_${downloadFilter.replace(/\s+/g, '_')}</title>
+                         <style>
+                             body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; padding: 20px; }
+                             .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e293b; padding-bottom: 15px; }
+                             .header h2 { margin: 0 0 5px 0; color: #0f172a; font-size: 22px; text-transform: uppercase; letter-spacing: 1px; }
+                             .header p { margin: 0; font-size: 14px; color: #64748b; }
+                             table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+                             th, td { border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; }
+                             th { background-color: #f8fafc; font-weight: bold; text-transform: uppercase; font-size: 11px; color: #475569; }
+                             td { color: #1e293b; }
+                             .text-center { text-align: center; }
+                             .token-font { font-family: monospace; font-weight: bold; color: #2563eb; font-size: 14px; letter-spacing: 1px; }
+                             .status { font-weight: bold; font-size: 10px; padding: 3px 6px; border-radius: 4px; text-transform: uppercase; }
+                             .status-available { background-color: #d1fae5; color: #065f46; border: 1px solid #34d399; }
+                             .status-used { background-color: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+                             @media print { 
+                                 @page { margin: 1.5cm; }
+                                 body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                             }
+                         </style>
+                     </head>
+                     <body>
+                         <div class="header">
+                             <h2>Daftar Token Ujian Peserta</h2>
+                             <p>Filter Kelas/Sekolah: <strong>${downloadFilter}</strong> &nbsp;|&nbsp; Tanggal Unduh: ${dateStr}</p>
+                         </div>
+                         <table>
+                             <thead>
+                                 <tr>
+                                     <th class="text-center" style="width: 5%;">No</th>
+                                     <th style="width: 30%;">Nama Peserta</th>
+                                     <th style="width: 30%;">Asal Sekolah / Kelas</th>
+                                     <th class="text-center" style="width: 20%;">Token</th>
+                                     <th class="text-center" style="width: 15%;">Status</th>
+                                 </tr>
+                             </thead>
+                             <tbody>
+                                 ${validTokens.map((t, i) => `
+                                     <tr>
+                                         <td class="text-center">${i + 1}</td>
+                                         <td style="text-transform: uppercase; font-weight: 600;">${t.participant_name || '-'}</td>
+                                         <td>${t.participant_school || '-'}</td>
+                                         <td class="text-center token-font">${t.code}</td>
+                                         <td class="text-center"><span class="status ${t.status === 'AVAILABLE' ? 'status-available' : 'status-used'}">${t.status}</span></td>
+                                     </tr>
+                                 `).join('')}
+                             </tbody>
+                         </table>
+                         <script>
+                             window.onload = function() { 
+                                 setTimeout(function() {
+                                     window.print();
+                                     window.close();
+                                 }, 500);
+                             }
+                         </script>
+                     </body>
+                     </html>
+                 `;
+                 printWindow.document.open();
+                 printWindow.document.write(htmlContent);
+                 printWindow.document.close();
              };
-
-             const downloadTemplate = () => {
-                 const csvContent = "Nama Murid,Asal Sekolah\nBudi Santoso,SDN 1\nSiti Aminah,SDN 2\n";
-                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                 const link = document.createElement("a");
-                 link.setAttribute("href", URL.createObjectURL(blob));
-                 link.setAttribute("download", "Template_Peserta.csv");
-                 document.body.appendChild(link); link.click(); document.body.removeChild(link);
-             };
-
-             const handleFileUpload = (e) => {
-                 const file = e.target.files[0];
-                 if (!file) return;
-                 const reader = new FileReader();
-                 reader.onload = async (event) => {
-                     const lines = event.target.result.split('\n').filter(l => l.trim() !== '');
-                     const payloads = [];
-                     for (let i = (lines[0].toLowerCase().includes('nama') ? 1 : 0); i < lines.length; i++) {
-                         const cols = lines[i].split(lines[i].includes(';') ? ';' : ',');
-                         if (cols[0]) payloads.push({ code: `TKA-${Math.random().toString(36).substring(2,6).toUpperCase()}`, status: 'AVAILABLE', participant_name: cols[0].replace(/["\r]/g, '').trim(), participant_school: cols[1]?.replace(/["\r]/g, '').trim() || '', generatedAt: new Date().toISOString() });
-                     }
-                     if (payloads.length === 0) { setFileUploadError('Data kosong.'); return; }
-                     setIsSaving(true);
-                     try {
-                          const db = await getSupabase();
-                          await db.from('tokens').insert(payloads);
-                          setShowImport(false); fetchSupabaseData(); alert('Berhasil mengimpor token!');
-                     } catch(err) { alert(err.message); }
-                     finally { setIsSaving(false); }
-                 };
-                 reader.readAsText(file);
-             };
-
-             const addManual = async () => {
-                 const name = prompt("Nama Peserta:");
-                 if (!name) return;
-                 const school = prompt("Asal Sekolah:") || organizerName;
-                 const newCode = `TKA-${Math.random().toString(36).substring(2,6).toUpperCase()}`;
-                 setIsSaving(true);
-                 try {
-                     const db = await getSupabase();
-                     await db.from('tokens').insert([{ code: newCode, status: 'AVAILABLE', participant_name: name, participant_school: school, generatedAt: new Date().toISOString() }]);
-                     fetchSupabaseData();
-                 } catch(e) { alert(e.message); }
-                 setIsSaving(false);
-             };
-
-             const startMassEdit = () => {
-                 setMassEditTokens(JSON.parse(JSON.stringify(actualTokens)));
-                 setIsMassEdit(true);
-             };
-
-             const handleMassEditChange = (index, field, value) => {
-                 const updated = [...massEditTokens];
-                 updated[index][field] = value;
-                 setMassEditTokens(updated);
-             };
-
-             const saveMassEdit = async () => {
-                 setIsSaving(true);
-                 try {
-                     const db = await getSupabase();
-                     await db.from('tokens').upsert(massEditTokens.map(t => ({ code: t.code, status: t.status, participant_name: t.participant_name, participant_school: t.participant_school })));
-                     fetchSupabaseData();
-                     setIsMassEdit(false);
-                     alert("Data berhasil diperbarui!");
-                 } catch(e) { alert(e.message); }
-                 setIsSaving(false);
-             };
-
-             const deleteToken = async (code) => {
-                 if(!confirm(`Hapus token ${code}?`)) return;
-                 setIsSaving(true);
-                 try { const db = await getSupabase(); await db.from('tokens').delete().eq('code', code); fetchSupabaseData(); } catch(e) { alert(e.message); }
-                 setIsSaving(false);
-             };
-
              return (
                <AdminLayout title="Token Ujian">
                  <div className="bg-white p-4 rounded-xl border mb-6 flex flex-wrap gap-3 items-center">
