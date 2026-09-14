@@ -186,7 +186,7 @@
             
             if (!userAnswer) return { qId: q.id, type: q.type, isCorrect: false, isEmpty: true };
             
-            if (q.type === 'Pilihan Ganda') {
+            if (q.type === 'MCQ') {
                 isCorrect = userAnswer === q.correctAnswer;
             } else if (q.type === 'MCMA') {
               if (Array.isArray(userAnswer)) {
@@ -413,7 +413,7 @@
                 }
                 if (isRandomOpt) {
                     sessionQuestions = sessionQuestions.map(q => {
-                        if (q.type === 'Pilihan Ganda' && q.options) {
+                        if (q.type === 'MCQ' && q.options) {
                             const originalOptions = [...q.options];
                             const texts = originalOptions.map(o => o.text);
                             for (let i = texts.length - 1; i > 0; i--) {
@@ -528,18 +528,18 @@
             const handleAnswerChange = (val) => { setActiveSession(prev => ({ ...prev, answers: { ...prev.answers, [currentQuestion.id]: val } })); };
             const toggleFlag = () => { setActiveSession(prev => ({ ...prev, flagged: isFlagged ? prev.flagged.filter(id => id !== currentQuestion.id) : [...(prev.flagged || []), currentQuestion.id] })); };
 
-            const handleAnswerChangePilihan Ganda = (val) => {
+            const handleAnswerChangeMCQ = (val) => {
                 handleAnswerChange(val);
                 if (examCurrentIndex < examQuestions.length - 1) {
                     setTimeout(() => setExamCurrentIndex(examCurrentIndex + 1), 400); 
                 }
             };
 
-            const RenderPilihan Ganda = () => (
+            const RenderMCQ = () => (
               <div className="space-y-3 mt-6">
                 {(currentQuestion.options||[]).map(opt => (
                   <label key={opt.id} className={`flex items-start p-4 border rounded-xl cursor-pointer transition-all ${currentAnswer === opt.id ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:bg-slate-50'}`}>
-                    <div className="flex items-center h-6 mt-0.5"><input type="radio" checked={currentAnswer === opt.id} onChange={() => handleAnswerChangePilihan Ganda(opt.id)} className="w-5 h-5 text-emerald-600" /></div>
+                    <div className="flex items-center h-6 mt-0.5"><input type="radio" checked={currentAnswer === opt.id} onChange={() => handleAnswerChangeMCQ(opt.id)} className="w-5 h-5 text-emerald-600" /></div>
                     <div className="ml-4 flex-1 flex text-slate-800"><span className="font-bold text-slate-400 w-6 mt-0.5">{opt.id}.</span><div className="flex-1 rich-text-content" dangerouslySetInnerHTML={{__html: opt.text}}></div></div>
                   </label>
                 ))}
@@ -611,7 +611,7 @@
                          </div>
                          <div className="flex-1 overflow-y-auto pr-1 pb-8">
                             <div className="text-base sm:text-lg text-slate-800 leading-relaxed font-medium mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: currentQuestion.question || '' }} />
-                            {currentQuestion.type === 'Pilihan Ganda' && <RenderPilihan Ganda />}
+                            {currentQuestion.type === 'Pilihan Ganda' && <RenderMCQ />}
                             {currentQuestion.type === 'MCMA' && <RenderMCMA />}
                             {currentQuestion.type === 'CATEGORY' && <RenderCATEGORY />}
                          </div>
@@ -1189,11 +1189,11 @@
             const [showImport, setShowImport] = useState(false);
             const [fileError, setFileError] = useState('');
 
-            const defaultPilihan Ganda = { id: '', type: 'Pilihan Ganda', folder: filterFolder, points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
+            const defaultMCQ = { id: '', type: 'Pilihan Ganda', folder: filterFolder, points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
             const defaultMCMA = { id: '', type: 'MCMA', folder: filterFolder, points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}], correctAnswers: [] };
             const defaultCAT = { id: '', type: 'CATEGORY', folder: filterFolder, points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
             
-            const [formData, setFormData] = useState(defaultPilihan Ganda);
+            const [formData, setFormData] = useState(defaultMCQ);
 
             const downloadTemplate = () => {
                 const csvContent = "Mapel,Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci\nBahasa Indonesia,Ibu kota Indonesia adalah?,Jakarta,Bandung,Surabaya,Medan,A\n";
@@ -1215,7 +1215,7 @@
                         if (cols.length >= 7) {
                             payloads.push({
                                 id: `q${Date.now()}_${i}`,
-                                type: 'Pilihan Ganda',
+                                type: 'MCQ',
                                 folder: filterFolder,
                                 points: 1,
                                 question: cols[1].replace(/["\r]/g, '').trim(),
@@ -1274,11 +1274,11 @@
                     if (error) throw error;
                  }
                  
-                 // KUNCI STRATEGIS: Tetapkan state memori SEBELUM fetchSupabaseData mereset sistem
+                 await fetchSupabaseData(); 
+                 
+                 // KUNCI STRATEGIS: Paksa sistem mengunci folder yang sama dan kembali ke mode daftar soal
                  setFilterFolder(payload.folder);
                  setView('list');
-                 
-                 await fetchSupabaseData(); 
                  alert("Soal berhasil disimpan!");
                  
                } catch (err) { 
@@ -1295,9 +1295,10 @@
                     const { error } = await db.from('questions').delete().eq('id', id); 
                     if (error) throw error;
                     
-                    // KUNCI STRATEGIS: Amankan mode list
-                    setView('list');
                     await fetchSupabaseData(); 
+                    
+                    // KUNCI STRATEGIS: Pertahankan layar di mode daftar soal
+                    setView('list');
                 } catch(e) { alert("Gagal menghapus dari database: " + e.message); }
             };
 
@@ -1310,10 +1311,11 @@
                     const { error } = await db.from('questions').insert([duplicatedQ]);
                     if (error) throw error;
                     
-                    // KUNCI STRATEGIS: Amankan folder asal dan mode list
+                    await fetchSupabaseData(); 
+                    
+                    // KUNCI STRATEGIS: Kunci target folder dan pertahankan di mode daftar soal
                     setFilterFolder(q.folder || filterFolder);
                     setView('list');
-                    await fetchSupabaseData(); 
                 } catch(e) { 
                     alert("Gagal menduplikasi: " + e.message); 
                 }
@@ -1421,7 +1423,7 @@
                                     <label className="block text-sm font-semibold mb-1 text-slate-700">Tipe Soal</label>
                                     <select value={formData.type} onChange={e => {
                                         const t = e.target.value;
-                                        if(t === 'Pilihan Ganda') setFormData({...defaultPilihan Ganda, folder: formData.folder, points: formData.points, question: formData.question});
+                                        if(t === 'Pilihan Ganda') setFormData({...defaultMCQ, folder: formData.folder, points: formData.points, question: formData.question});
                                         else if(t === 'MCMA') setFormData({...defaultMCMA, folder: formData.folder, points: formData.points, question: formData.question});
                                         else if(t === 'CATEGORY') setFormData({...defaultCAT, folder: formData.folder, points: formData.points, question: formData.question});
                                     }} className="w-full p-2.5 border rounded-lg bg-white text-sm font-medium focus:ring-2 focus:ring-blue-500">
@@ -1447,8 +1449,8 @@
                                 <RichTextEditor value={formData.question} onChange={val => setFormData({...formData, question: val})} />
                             </div>
 
-                            {/* EDITOR UNTUK PILIHAN GANDA (Pilihan Ganda) DENGAN RICH TEXT */}
-                            {formData.type === 'Pilihan Ganda' && (
+                            {/* EDITOR UNTUK PILIHAN GANDA (MCQ) DENGAN RICH TEXT */}
+                            {formData.type === 'MCQ' && (
                                 <div className="space-y-4 pt-4 border-t">
                                     <h3 className="font-bold text-slate-800 mb-2">Opsi Jawaban (A-D)</h3>
                                     {formData.options.map((opt, idx) => (
@@ -1560,7 +1562,7 @@
                     ))}
                     {folderQuestions.length === 0 && <div className="text-center py-12 bg-white rounded-xl border border-dashed border-slate-300 text-slate-500 font-bold">Belum ada soal di folder ini.</div>}
                   </div>
-                  <button onClick={() => {setFormData({...defaultPilihan Ganda, folder: filterFolder}); setView('create');}} className="fixed bottom-8 right-8 bg-blue-600 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-xl hover:scale-105 transition-transform"><Plus size={28}/></button>
+                  <button onClick={() => {setFormData({...defaultMCQ, folder: filterFolder}); setView('create');}} className="fixed bottom-8 right-8 bg-blue-600 text-white w-16 h-16 rounded-full flex items-center justify-center shadow-xl hover:scale-105 transition-transform"><Plus size={28}/></button>
                 </AdminLayout>
               );
             }
