@@ -1274,7 +1274,7 @@
                  
                  await fetchSupabaseData(); 
                  
-                 // KUNCI STRATEGIS: Paksa sistem mengunci folder yang sama dan kembali ke mode daftar soal
+                 // KUNCI UX: Paksa sistem mengingat folder dan kembali ke daftar soal di folder tersebut
                  setFilterFolder(payload.folder);
                  setView('list');
                  alert("Soal berhasil disimpan!");
@@ -1295,7 +1295,7 @@
                     
                     await fetchSupabaseData(); 
                     
-                    // KUNCI STRATEGIS: Pertahankan layar di mode daftar soal
+                    // KUNCI UX: Tetap di mode list setelah menghapus
                     setView('list');
                 } catch(e) { alert("Gagal menghapus dari database: " + e.message); }
             };
@@ -1311,7 +1311,7 @@
                     
                     await fetchSupabaseData(); 
                     
-                    // KUNCI STRATEGIS: Kunci target folder dan pertahankan di mode daftar soal
+                    // KUNCI UX: Gunakan folder asal soal yang diduplikat dan tetap di mode list
                     setFilterFolder(q.folder || filterFolder);
                     setView('list');
                 } catch(e) { 
