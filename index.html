@@ -1129,6 +1129,15 @@
 
              return (
                <AdminLayout title="Hasil Ujian">
+           {/* --- TAMBAHKAN KODE INI --- */}
+           <div className="mb-4 flex justify-end">
+               <button onClick={fetchSupabaseData} className="bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-blue-100 transition-colors">
+                   <i className="fas fa-sync-alt mr-2"></i> Refresh Data
+               </button>
+           </div>
+           {/* --- BATAS KODE --- */}
+           
+           {selectedAnalysis && (
                  {selectedAnalysis && (
                     <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
@@ -1631,6 +1640,23 @@
 
             return (
               <AdminLayout title="Analisis Soal">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                <div className="bg-white rounded-xl border p-4 flex-1 w-full sm:w-auto shadow-sm">
+                   <h3 className="font-bold text-slate-800 text-lg mb-1">Statistik Responden</h3>
+                   <p className="text-slate-600 text-sm">Total data teranalisis: <strong className="text-emerald-600">{results.length} Siswa</strong></p>
+                </div>
+                
+                {/* --- BAGIAN TOMBOL DIPERBARUI --- */}
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <button onClick={fetchSupabaseData} className="flex-1 sm:flex-none bg-blue-50 text-blue-600 border border-blue-200 px-4 py-3 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-blue-100 transition-colors">
+                       <i className="fas fa-sync-alt mr-2"></i> Refresh
+                    </button>
+                    <button onClick={deleteAllResults} disabled={isDeleting || results.length === 0} className="flex-1 sm:flex-none bg-rose-600 text-white px-5 py-3 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-rose-700 disabled:opacity-50 shadow-sm transition-colors">
+                        <Trash2 size={18} className="mr-2"/> Hapus Semua
+                    </button>
+                </div>
+                {/* --- BATAS KODE --- */}
+            </div>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <div className="bg-white rounded-xl border p-4 flex-1 w-full sm:w-auto shadow-sm">
                        <h3 className="font-bold text-slate-800 text-lg mb-1">Statistik Responden</h3>
@@ -1686,6 +1712,18 @@
              const [activeTab, setActiveTab] = useState('NILAI');
              const schoolList = ['Semua', ...new Set(results.map(r => r.participant?.school).filter(Boolean))];
              const filteredResults = filterSchool === 'Semua' ? results : results.filter(r => r.participant?.school === filterSchool);
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                 <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="border rounded-lg p-2 text-sm bg-white font-semibold">
+                    {schoolList.map(s => <option key={s} value={s}>{s}</option>)}
+                 </select>
+                 
+                 {/* --- TAMBAHKAN TOMBOL REFRESH INI --- */}
+                 <button onClick={fetchSupabaseData} className="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-blue-100 transition-colors" title="Muat Ulang Data">
+                    <i className="fas fa-sync-alt"></i>
+                 </button>
+                 
+                 <button onClick={() => window.print()} className="bg-slate-800 text-white px-5 py-2 rounded-lg font-semibold text-sm flex items-center"><Printer size={16} className="mr-2"/> Cetak PDF</button>
+              </div>
 
              return (
                 <AdminLayout title="Cetak Laporan Dokumen (F4)">
