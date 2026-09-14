@@ -1265,18 +1265,24 @@
                  }
 
                  if(!formData.id) { 
+                    // Membuat soal baru
                     const { error } = await db.from('questions').insert([payload]);
                     if (error) throw error;
+                    
+                    // STRATEGI PENTING: Update formData dengan ID baru agar klik simpan berikutnya dihitung sebagai "Edit" (Update), bukan buat baru (Insert).
+                    setFormData(prev => ({...prev, id: payload.id}));
                  } else { 
+                    // Memperbarui soal yang sudah ada
                     const { error } = await db.from('questions').update(payload).eq('id', payload.id);
                     if (error) throw error;
                  }
                  
                  await fetchSupabaseData(); 
                  
+                 // KUNCI UX: Kunci filter folder tetap pada tempatnya, tapi hilangkan setView('list') agar tidak terlempar keluar.
                  setFilterFolder(payload.folder);
-                 setView('list');
-                 alert("Soal berhasil disimpan!");
+                 
+                 alert("Soal berhasil disimpan! Anda dapat melanjutkan pengeditan.");
                  
                } catch (err) { 
                  alert("GAGAL MENYIMPAN KE DATABASE!\n" + err.message); 
@@ -1284,7 +1290,6 @@
                  setIsSaving(false); 
                }
             };
-
             const deleteQuestion = async (id) => {
                 if(!confirm("Hapus soal ini?")) return;
                 try { 
