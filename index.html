@@ -106,7 +106,6 @@
 
             useEffect(() => {
                 if (editorRef.current && value !== editorRef.current.innerHTML) editorRef.current.innerHTML = value || '';
-                // Memaksa browser menggunakan tag <p> dan style inline CSS (bukan tag jadul) agar sinkron dengan React
                 try {
                     document.execCommand('defaultParagraphSeparator', false, 'p');
                     document.execCommand('styleWithCSS', false, true);
@@ -117,7 +116,7 @@
             
             const execCmd = (cmd, e, val=null) => { 
                 if(e) e.preventDefault(); 
-                editorRef.current.focus(); // KUNCI: Kembalikan fokus ke dalam editor sebelum teks diratakan
+                editorRef.current.focus(); 
                 document.execCommand(cmd, false, val); 
                 handleInput(); 
             };
@@ -136,16 +135,68 @@
                 }
             };
 
-            const insertMath = (e) => {
-                if(e) e.preventDefault();
-                const formula = prompt("Masukkan Rumus LaTeX (contoh: \\frac{1}{2}, x^2, \\sqrt{x}):");
-                if (formula) {
-                    const mathHTML = ` <span class="math-tex">\\(${formula}\\)</span> `;
-                    editorRef.current.focus();
-                    document.execCommand('insertHTML', false, mathHTML);
-                    handleInput();
-                }
+            // Fungsi inti untuk menyisipkan LaTeX ke dalam editor
+            const insertMath = (formula) => {
+                const mathHTML = ` <span class="math-tex">\\(${formula}\\)</span> `;
+                editorRef.current.focus();
+                document.execCommand('insertHTML', false, mathHTML);
+                handleInput();
             };
+
+            const insertMathManual = (e) => {
+                if(e) e.preventDefault();
+                const formula = prompt("Ketik manual kode LaTeX (contoh: \\frac{1}{2}):");
+                if (formula) insertMath(formula);
+            };
+
+            return (
+                <div className="border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:border-emerald-500 focus-within:ring-1 transition-all">
+                    <div className="bg-slate-50 border-b border-slate-200 p-1.5 flex flex-wrap gap-1 items-center">
+                        <button onMouseDown={(e)=>execCmd('bold', e)} type="button" className="w-8 h-8 font-bold text-slate-700 hover:bg-slate-200 rounded">B</button>
+                        <button onMouseDown={(e)=>execCmd('italic', e)} type="button" className="w-8 h-8 italic text-slate-700 hover:bg-slate-200 rounded">I</button>
+                        <button onMouseDown={(e)=>execCmd('underline', e)} type="button" className="w-8 h-8 underline text-slate-700 hover:bg-slate-200 rounded">U</button>
+                        
+                        <div className="w-px h-5 bg-slate-300 mx-1"></div>
+                        <button onMouseDown={(e)=>execCmd('justifyLeft', e)} type="button" className="w-8 h-8 text-slate-700 hover:bg-slate-200 rounded flex items-center justify-center" title="Rata Kiri"><i className="fas fa-align-left text-xs"></i></button>
+                        <button onMouseDown={(e)=>execCmd('justifyCenter', e)} type="button" className="w-8 h-8 text-slate-700 hover:bg-slate-200 rounded flex items-center justify-center" title="Rata Tengah"><i className="fas fa-align-center text-xs"></i></button>
+                        <button onMouseDown={(e)=>execCmd('justifyRight', e)} type="button" className="w-8 h-8 text-slate-700 hover:bg-slate-200 rounded flex items-center justify-center" title="Rata Kanan"><i className="fas fa-align-right text-xs"></i></button>
+                        <button onMouseDown={(e)=>execCmd('justifyFull', e)} type="button" className="w-8 h-8 text-slate-700 hover:bg-slate-200 rounded flex items-center justify-center" title="Rata Kanan Kiri (Justify)"><i className="fas fa-align-justify text-xs"></i></button>
+
+                        <div className="w-px h-5 bg-slate-300 mx-1"></div>
+                        <button onMouseDown={(e)=>{ if(e) e.preventDefault(); fileInputRef.current.click();}} type="button" className="h-8 px-2.5 text-slate-700 hover:bg-slate-200 rounded flex items-center text-xs font-semibold"><ImageIcon size={14} className="mr-1 text-emerald-600"/> Gambar</button>
+                        
+                        <div className="w-px h-5 bg-slate-300 mx-1"></div>
+                        <button onMouseDown={insertMathManual} type="button" className="h-8 px-2 text-slate-700 hover:bg-slate-200 rounded flex items-center text-xs font-semibold" title="Ketik Manual LaTeX"><Calculator size={14} className="mr-1 text-blue-600"/> Manual</button>
+                        
+                        {/* DROPDOWN RUMUS CEPAT MATEMATIKA */}
+                        <select 
+                            onChange={(e) => { 
+                                if(e.target.value) { 
+                                    insertMath(e.target.value); 
+                                    e.target.value = ''; 
+                                } 
+                            }} 
+                            className="h-8 px-2 ml-1 bg-white hover:bg-slate-50 border border-slate-300 rounded text-xs font-bold text-blue-700 outline-none cursor-pointer focus:ring-1 focus:ring-blue-500 shadow-sm"
+                        >
+                            <option value="">+ Sisipkan Rumus</option>
+                            <option value="x^2">Kuadrat (x²)</option>
+                            <option value="\\sqrt{x}">Akar (√x)</option>
+                            <option value="\\sqrt[n]{x}">Akar Pangkat (ⁿ√x)</option>
+                            <option value="\\pi">Phi (π)</option>
+                            <option value="\\frac{x}{y}">Pecahan (x/y)</option>
+                            <option value="x">Tanda (x)</option>
+                            <option value="n">Tanda (n)</option>
+                            <option value="\\times">Kali (×)</option>
+                            <option value="\\div">Bagi (÷)</option>
+                            <option value="\\frac{a}{b} + \\frac{c}{d}">Jumlah Pecahan</option>
+                        </select>
+
+                        <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                    </div>
+                    <div ref={editorRef} contentEditable onInput={handleInput} onBlur={handleInput} className="p-3 outline-none rich-text-content editor-ignore-math text-slate-700 text-sm" style={{minHeight: minHeight}} placeholder={placeholder} />
+                </div>
+            );
+        };
 
             return (
                 <div className="border border-slate-300 rounded-lg overflow-hidden bg-white focus-within:border-emerald-500 focus-within:ring-1 transition-all">
