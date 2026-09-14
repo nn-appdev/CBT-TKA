@@ -1319,37 +1319,6 @@
                 }
                 setIsSaving(false);
             };
-            const deleteQuestion = async (id) => {
-                if(!confirm("Hapus soal ini?")) return;
-                try { 
-                    const db = await getSupabase(); 
-                    const { error } = await db.from('questions').delete().eq('id', id); 
-                    if (error) throw error;
-                    
-                    await fetchSupabaseData(); 
-                    
-                    setView('list');
-                } catch(e) { alert("Gagal menghapus dari database: " + e.message); }
-            };
-
-            const duplicateQuestion = async (q) => {
-                if(!confirm("Duplikasi soal ini?")) return;
-                setIsSaving(true);
-                try {
-                    const db = await getSupabase();
-                    const duplicatedQ = { ...q, id: `q${Date.now()}_copy` };
-                    const { error } = await db.from('questions').insert([duplicatedQ]);
-                    if (error) throw error;
-                    
-                    await fetchSupabaseData(); 
-                    
-                    setFilterFolder(q.folder || filterFolder);
-                    setView('list');
-                } catch(e) { 
-                    alert("Gagal menduplikasi: " + e.message); 
-                }
-                setIsSaving(false);
-            };
 
             const publishFolder = async (fname) => {
                 try {
@@ -1738,7 +1707,7 @@
                           <button onClick={() => setActiveTab('NILAI')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-bold ${activeTab === 'NILAI' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>Rekap Nilai</button>
                           <button onClick={() => setActiveTab('PELANGGARAN')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-bold ${activeTab === 'PELANGGARAN' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>Laporan Pelanggaran</button>
                       </div>
-                      <div className="flex items-center gap-3 w-full sm:w-auto">
+                      <div className="flex items-center gap-4 w-full sm:w-auto">
                          <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="border rounded-lg p-2 text-sm bg-white font-semibold">
                             {schoolList.map(s => <option key={s} value={s}>{s}</option>)}
                          </select>
@@ -1796,7 +1765,6 @@
 
           switch (currentRoute) {
             case '/': case '/login': return <ParticipantLogin />;
-            case '/identity': return <ParticipantIdentity />;
             case '/instruction': return <ParticipantInstruction />;
             case '/exam': return <ExamEngine />;
             case '/review': return <ExamReview />;
