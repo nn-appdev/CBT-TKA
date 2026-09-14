@@ -174,15 +174,21 @@
             }
         };
 
+        // FUNGSI PENILAIAN YANG SUDAH DIPERBAIKI (MAX 100)
         const calculateScore = (answers, questions) => {
           let totalPoints = 0;
-          let maxPoints = questions.length; 
+          let maxPoints = questions.reduce((sum, q) => sum + (q.points || 1), 0); 
+          
           const detailedResults = questions.map(q => {
+            const qPoints = parseInt(q.points) || 1;
             const userAnswer = answers[q.id];
             let isCorrect = false;
+            
             if (!userAnswer) return { qId: q.id, type: q.type, isCorrect: false, isEmpty: true };
-            if (q.type === 'MCQ') isCorrect = userAnswer === q.correctAnswer;
-            else if (q.type === 'MCMA') {
+            
+            if (q.type === 'MCQ') {
+                isCorrect = userAnswer === q.correctAnswer;
+            } else if (q.type === 'MCMA') {
               if (Array.isArray(userAnswer)) {
                 const sortedUser = [...userAnswer].sort();
                 const sortedCorrect = [...(q.correctAnswers || [])].sort();
@@ -193,10 +199,14 @@
               const allAnswered = statementKeys.every(id => userAnswer[id]);
               if (allAnswered) isCorrect = (q.statements||[]).every(s => userAnswer[s.id] === s.correctCategory);
             }
-            if (isCorrect) totalPoints += q.points;
+            
+            if (isCorrect) totalPoints += qPoints;
             return { qId: q.id, type: q.type, isCorrect, isEmpty: false };
           });
-          const finalScore = maxPoints > 0 ? Math.round((totalPoints / maxPoints) * 100) : 0;
+          
+          let rawPercentage = maxPoints > 0 ? (totalPoints / maxPoints) * 100 : 0;
+          const finalScore = Math.min(100, Math.round(rawPercentage));
+          
           return { finalScore, totalPoints, maxPoints, detailedResults };
         };
 
@@ -1039,7 +1049,7 @@
                      </div>
                  )}
                  
-                 <div className="bg-white rounded-xl border overflow-x-auto">
+                 <div className="bg-white rounded-xl border overflow-x-auto shadow-sm">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 border-b">
                             <tr>
@@ -1167,8 +1177,6 @@
                     </table>
                  </div>
                </AdminLayout>
-             );
-          };
              );
           };
 
@@ -1682,8 +1690,6 @@
               </AdminLayout>
             );
           };
-            );
-          };
 
           const AdminReports = () => {
              const [filterSchool, setFilterSchool] = useState('Semua');
@@ -1698,10 +1704,13 @@
                           <button onClick={() => setActiveTab('NILAI')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-bold ${activeTab === 'NILAI' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>Rekap Nilai</button>
                           <button onClick={() => setActiveTab('PELANGGARAN')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-bold ${activeTab === 'PELANGGARAN' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}>Laporan Pelanggaran</button>
                       </div>
-                      <div className="flex items-center gap-4 w-full sm:w-auto">
+                      <div className="flex items-center gap-3 w-full sm:w-auto">
                          <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="border rounded-lg p-2 text-sm bg-white font-semibold">
                             {schoolList.map(s => <option key={s} value={s}>{s}</option>)}
                          </select>
+                         <button onClick={fetchSupabaseData} className="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-blue-100 transition-colors" title="Muat Ulang Data">
+                            <i className="fas fa-sync-alt"></i>
+                         </button>
                          <button onClick={() => window.print()} className="bg-slate-800 text-white px-5 py-2 rounded-lg font-semibold text-sm flex items-center"><Printer size={16} className="mr-2"/> Cetak PDF</button>
                       </div>
                    </div>
