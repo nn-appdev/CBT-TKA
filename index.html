@@ -1118,6 +1118,12 @@
 
              return (
                <AdminLayout title="Hasil Ujian">
+                 <div className="mb-4 flex justify-end">
+                     <button onClick={fetchSupabaseData} className="bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center hover:bg-blue-100 transition-colors shadow-sm">
+                         <i className="fas fa-sync-alt mr-2"></i> Refresh Data
+                     </button>
+                 </div>
+
                  {selectedAnalysis && (
                     <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
@@ -1145,21 +1151,24 @@
                         </div>
                     </div>
                  )}
-                 <div className="bg-white rounded-xl border overflow-x-auto">
+                 <div className="bg-white rounded-xl border overflow-x-auto shadow-sm">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 border-b"><tr><th className="p-4">Nama</th><th className="p-4">Sekolah</th><th className="p-4 text-center">Nilai</th><th className="p-4 text-center">Analisis</th><th className="p-4 text-center">Aksi</th></tr></thead>
                         <tbody>
-                            {results.map((r)=><tr key={r.id} className="border-b">
-                                <td className="p-4 font-medium">{r.participant?.name}</td>
-                                <td className="p-4">{r.participant?.school}</td>
-                                <td className="p-4 text-center font-bold text-emerald-600">{r.score}</td>
-                                <td className="p-4 text-center"><button onClick={() => setSelectedAnalysis(r)} className="text-blue-600 bg-blue-50 px-3 py-1 rounded text-xs font-semibold">Lihat Detail</button></td>
-                                <td className="p-4 text-center"><button onClick={() => deleteResult(r.id)} className="text-rose-500 hover:bg-rose-50 p-2 rounded" title="Hapus Hasil"><Trash2 size={16}/></button></td>
+                            {results.map((r)=><tr key={r.id} className="border-b hover:bg-slate-50 transition-colors">
+                                <td className="p-4 font-medium text-slate-800">{r.participant?.name}</td>
+                                <td className="p-4 text-slate-600">{r.participant?.school}</td>
+                                <td className="p-4 text-center font-black text-emerald-600 text-base">{r.score}</td>
+                                <td className="p-4 text-center"><button onClick={() => setSelectedAnalysis(r)} className="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-100">Lihat Detail</button></td>
+                                <td className="p-4 text-center"><button onClick={() => deleteResult(r.id)} className="text-rose-500 hover:bg-rose-50 p-2 rounded-lg" title="Hapus Hasil"><Trash2 size={16}/></button></td>
                             </tr>)}
+                            {results.length === 0 && <tr><td colSpan="5" className="text-center p-8 text-slate-500 font-bold bg-slate-50">Belum ada data hasil ujian yang masuk.</td></tr>}
                         </tbody>
                     </table>
                  </div>
                </AdminLayout>
+             );
+          };
              );
           };
 
@@ -1625,16 +1634,21 @@
                        <h3 className="font-bold text-slate-800 text-lg mb-1">Statistik Responden</h3>
                        <p className="text-slate-600 text-sm">Total data teranalisis: <strong className="text-emerald-600">{results.length} Siswa</strong></p>
                     </div>
-                    <button onClick={deleteAllResults} disabled={isDeleting || results.length === 0} className="w-full sm:w-auto bg-rose-600 text-white px-5 py-3 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-rose-700 disabled:opacity-50 shadow-sm transition-colors">
-                        <Trash2 size={18} className="mr-2"/> Hapus Semua Data
-                    </button>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        <button onClick={fetchSupabaseData} className="flex-1 sm:flex-none bg-blue-50 text-blue-600 border border-blue-200 px-5 py-3 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-blue-100 shadow-sm transition-colors">
+                           <i className="fas fa-sync-alt mr-2"></i> Refresh Data
+                        </button>
+                        <button onClick={deleteAllResults} disabled={isDeleting || results.length === 0} className="flex-1 sm:flex-none bg-rose-600 text-white px-5 py-3 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-rose-700 disabled:opacity-50 shadow-sm transition-colors">
+                            <Trash2 size={18} className="mr-2"/> Hapus Semua
+                        </button>
+                    </div>
                 </div>
                 
                 <div className="bg-white rounded-xl border overflow-x-auto shadow-sm">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 border-b">
                             <tr>
-                                <th className="p-4 text-center">No</th>
+                                <th className="p-4 text-center w-12">No</th>
                                 <th className="p-4">Kategori / Tipe</th>
                                 <th className="p-4">Pertanyaan (Cuplikan)</th>
                                 <th className="p-4 text-center">Benar</th>
@@ -1646,15 +1660,14 @@
                         </thead>
                         <tbody>
                             {analysisData.map((d, idx) => {
-                                // Ekstraksi teks aman menghindari error pembacaan HTML
                                 const tempDiv = document.createElement("div");
                                 tempDiv.innerHTML = d.question || "";
                                 const plainText = tempDiv.textContent || tempDiv.innerText || "";
                                 return (
                                 <tr key={d.id} className="border-b hover:bg-slate-50 transition-colors">
                                     <td className="p-4 text-center font-bold text-slate-500">{idx + 1}</td>
-                                    <td className="p-4"><div className="font-semibold">{d.category}</div><div className="text-[10px] uppercase font-bold text-blue-500 bg-blue-50 inline-block px-2 py-0.5 rounded mt-1 border border-blue-100">{d.type}</div></td>
-                                    <td className="p-4 max-w-xs truncate" title={plainText}>{plainText}</td>
+                                    <td className="p-4"><div className="font-semibold text-slate-700">{d.category || d.folder || 'Utama'}</div><div className="text-[10px] uppercase font-bold text-blue-500 bg-blue-50 inline-block px-2 py-0.5 rounded mt-1 border border-blue-100">{d.type}</div></td>
+                                    <td className="p-4 max-w-xs truncate text-slate-600" title={plainText}>{plainText}</td>
                                     <td className="p-4 text-center font-bold text-emerald-600">{d.correct}</td>
                                     <td className="p-4 text-center font-bold text-rose-600">{d.wrong}</td>
                                     <td className="p-4 text-center font-bold text-slate-400">{d.empty}</td>
@@ -1667,6 +1680,8 @@
                     </table>
                 </div>
               </AdminLayout>
+            );
+          };
             );
           };
 
