@@ -136,19 +136,14 @@
                         <button onMouseDown={(e)=>execCmd('bold', e)} type="button" className="w-8 h-8 font-bold text-slate-700 hover:bg-slate-200 rounded">B</button>
                         <button onMouseDown={(e)=>execCmd('italic', e)} type="button" className="w-8 h-8 italic text-slate-700 hover:bg-slate-200 rounded">I</button>
                         <button onMouseDown={(e)=>execCmd('underline', e)} type="button" className="w-8 h-8 underline text-slate-700 hover:bg-slate-200 rounded">U</button>
+                        
                         <div className="w-px h-5 bg-slate-300 mx-1"></div>
-                        <button type="button" onClick={() => execCmd('justifyLeft')} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Rata Kiri">
-                        <i className="fas fa-align-left"></i>
-                        </button>
-                        <button type="button" onClick={() => execCmd('justifyCenter')} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Rata Tengah">
-                        <i className="fas fa-align-center"></i>
-                        </button>
-                        <button type="button" onClick={() => execCmd('justifyRight')} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Rata Kanan">
-                            <i className="fas fa-align-right"></i>
-                        </button>
-                        <button type="button" onClick={() => execCmd('justifyFull')} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Rata Kiri-Kanan (Justify)">
-                            <i className="fas fa-align-justify"></i>
-                        </button>
+                        <button onMouseDown={(e)=>execCmd('justifyLeft', e)} type="button" className="w-8 h-8 text-slate-700 hover:bg-slate-200 rounded flex items-center justify-center" title="Rata Kiri"><i className="fas fa-align-left text-xs"></i></button>
+                        <button onMouseDown={(e)=>execCmd('justifyCenter', e)} type="button" className="w-8 h-8 text-slate-700 hover:bg-slate-200 rounded flex items-center justify-center" title="Rata Tengah"><i className="fas fa-align-center text-xs"></i></button>
+                        <button onMouseDown={(e)=>execCmd('justifyRight', e)} type="button" className="w-8 h-8 text-slate-700 hover:bg-slate-200 rounded flex items-center justify-center" title="Rata Kanan"><i className="fas fa-align-right text-xs"></i></button>
+                        <button onMouseDown={(e)=>execCmd('justifyFull', e)} type="button" className="w-8 h-8 text-slate-700 hover:bg-slate-200 rounded flex items-center justify-center" title="Rata Kanan Kiri (Justify)"><i className="fas fa-align-justify text-xs"></i></button>
+
+                        <div className="w-px h-5 bg-slate-300 mx-1"></div>
                         <button onMouseDown={(e)=>{e.preventDefault(); fileInputRef.current.click();}} type="button" className="h-8 px-2.5 text-slate-700 hover:bg-slate-200 rounded flex items-center text-xs font-semibold"><ImageIcon size={14} className="mr-1 text-emerald-600"/> Gambar</button>
                         <button onMouseDown={insertMath} type="button" className="h-8 px-2.5 text-slate-700 hover:bg-slate-200 rounded flex items-center text-xs font-semibold"><Calculator size={14} className="mr-1 text-blue-600"/> Rumus</button>
                         <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
@@ -567,66 +562,19 @@
                const cat2Label = currentQuestion.statements?.[0]?.category2 || 'Salah';
                return (
                   <div className="mt-6 overflow-x-auto pb-2">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr>
-                            {/* KODE NO 3: CHECKBOX PILIH SEMUA (HEADER) */}
-                            <th className="px-4 py-3 border-b-2 border-slate-200 bg-slate-50 text-center w-12">
-                                <input 
-                                    type="checkbox" 
-                                    className="w-4 h-4 cursor-pointer accent-blue-600 rounded border-slate-300"
-                                    onChange={handleSelectAll} 
-                                    checked={selectedTokens.length > 0 && selectedTokens.length === tokens.filter(t => !t.code.startsWith('SYS_')).length} 
-                                />
-                            </th>
-                            <th className="px-4 py-3 border-b-2 border-slate-200 bg-slate-50 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">No</th>
-                            <th className="px-4 py-3 border-b-2 border-slate-200 bg-slate-50 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Nama</th>
-                            <th className="px-4 py-3 border-b-2 border-slate-200 bg-slate-50 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Sekolah</th>
-                            <th className="px-4 py-3 border-b-2 border-slate-200 bg-slate-50 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Token</th>
-                            <th className="px-4 py-3 border-b-2 border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">Status</th>
-                            <th className="px-4 py-3 border-b-2 border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {/* Pastikan filter 'tokens' di sini sesuai dengan variabel data asli Anda, contoh: filteredTokens atau tokens */}
-                        {tokens.filter(t => !t.code.startsWith('SYS_')).map((token, index) => (
-                            <tr key={index} className="hover:bg-slate-50 transition-colors">
-                                
-                                {/* KODE NO 4: CHECKBOX PILIH SATUAN (BARIS) */}
-                                <td className="px-4 py-4 border-b border-slate-100 text-center">
-                                    <input 
-                                        type="checkbox" 
-                                        className="w-4 h-4 cursor-pointer accent-blue-600 rounded border-slate-300"
-                                        checked={selectedTokens.includes(token.code)} 
-                                        onChange={() => handleSelectToken(token.code)} 
-                                    />
-                                </td>
-                                
-                                <td className="px-4 py-4 border-b border-slate-100 text-sm text-slate-700">{index + 1}</td>
-                                <td className="px-4 py-4 border-b border-slate-100 text-sm font-semibold text-slate-800 uppercase">{token.participant_name}</td>
-                                <td className="px-4 py-4 border-b border-slate-100 text-sm text-slate-600">{token.participant_school}</td>
-                                <td className="px-4 py-4 border-b border-slate-100 text-sm font-bold text-blue-700 tracking-wider">{token.code}</td>
-                                <td className="px-4 py-4 border-b border-slate-100 text-center">
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${token.status === 'AVAILABLE' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                        {token.status}
-                                    </span>
-                                </td>
-                                <td className="px-4 py-4 border-b border-slate-100 text-center">
-                                    <button onClick={() => deleteToken(token.code)} className="text-red-500 hover:text-red-700 transition-colors p-1" title="Hapus">
-                                        <i className="fas fa-trash-alt"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                        {tokens.filter(t => !t.code.startsWith('SYS_')).length === 0 && (
-                            <tr>
-                                <td colSpan="7" className="px-4 py-8 text-center text-slate-500 italic">
-                                    Belum ada data token peserta.
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                     <table className="w-full text-left border-collapse min-w-[500px] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <thead><tr className="bg-slate-50 border-b"><th className="py-3 px-4 text-center w-12">No</th><th className="py-3 px-4">Pernyataan</th><th className="py-3 px-4 text-center w-28 bg-emerald-50/50 border-l">{cat1Label}</th><th className="py-3 px-4 text-center w-28 bg-amber-50/50 border-l">{cat2Label}</th></tr></thead>
+                        <tbody>
+                           {(currentQuestion.statements||[]).map((stmt, idx) => (
+                              <tr key={stmt.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                 <td className="py-4 px-4 text-slate-400 font-medium text-center align-top">{idx + 1}</td>
+                                 <td className="py-4 px-4 text-slate-800 align-top"><div className="rich-text-content text-sm" dangerouslySetInnerHTML={{__html: stmt.text}}></div></td>
+                                 <td className="py-4 px-4 text-center align-middle border-l bg-emerald-50/30 cursor-pointer" onClick={() => handleAnswerChange({...catAnswer, [stmt.id]: cat1Label})}><input type="radio" checked={catAnswer[stmt.id] === cat1Label} onChange={() => {}} className="w-5 h-5 text-emerald-600" /></td>
+                                 <td className="py-4 px-4 text-center align-middle border-l bg-amber-50/30 cursor-pointer" onClick={() => handleAnswerChange({...catAnswer, [stmt.id]: cat2Label})}><input type="radio" checked={catAnswer[stmt.id] === cat2Label} onChange={() => {}} className="w-5 h-5 text-amber-600" /></td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
                   </div>
                );
             };
@@ -907,125 +855,62 @@
              const [fileUploadError, setFileUploadError] = useState('');
              const [isMassEdit, setIsMassEdit] = useState(false);
              const [massEditTokens, setMassEditTokens] = useState([]);
-              const [selectedTokens, setSelectedTokens] = useState([]);
-              // --- KODE LOGIKA BULK ACTION & DOWNLOAD ---
-const [selectedTokens, setSelectedTokens] = useState([]);
-const [downloadFilter, setDownloadFilter] = useState('Semua');
+             
+             // --- STATE UNTUK BULK ACTION & DOWNLOAD ---
+             const [selectedTokens, setSelectedTokens] = useState([]);
+             const [downloadFilter, setDownloadFilter] = useState('Semua');
 
-const handleSelectAll = (e) => {
-    const validTokens = tokens.filter(t => !t.code.startsWith('SYS_'));
-    if (e.target.checked) setSelectedTokens(validTokens.map(t => t.code));
-    else setSelectedTokens([]);
-};
-
-const handleSelectToken = (code) => {
-    if (selectedTokens.includes(code)) setSelectedTokens(selectedTokens.filter(t => t !== code));
-    else setSelectedTokens([...selectedTokens, code]);
-};
-
-const handleDeleteSelected = async () => {
-    if (selectedTokens.length === 0) return;
-    if (!confirm(`Hapus permanen ${selectedTokens.length} data terpilih?`)) return;
-    setIsLoading(true);
-    try {
-        const db = await getSupabase();
-        const { error } = await db.from('tokens').delete().in('code', selectedTokens);
-        if (error) throw error;
-        await fetchSupabaseData(); 
-        setSelectedTokens([]); 
-    } catch (err) {
-        alert("Gagal hapus masal: " + err.message);
-    } finally {
-        setIsLoading(false);
-    }
-};
-
-const uniqueClasses = [...new Set(tokens.filter(t => !t.code.startsWith('SYS_') && t.participant_school).map(t => t.participant_school))];
-
-const downloadPeserta = () => {
-    let validTokens = tokens.filter(t => !t.code.startsWith('SYS_'));
-    if (downloadFilter !== 'Semua') {
-        validTokens = validTokens.filter(t => t.participant_school === downloadFilter);
-    }
-    if (validTokens.length === 0) return alert("Tidak ada data untuk difilter.");
-    
-    let csvContent = "data:text/csv;charset=utf-8,No,Nama Peserta,Sekolah/Kelas,Token,Status\n";
-    validTokens.forEach((t, i) => {
-        csvContent += `${i + 1},"${t.participant_name || ''}","${t.participant_school || ''}","${t.code}","${t.status}"\n`;
-    });
-    
-    const link = document.createElement("a");
-    link.href = encodeURI(csvContent);
-    link.download = `Data_Peserta_${downloadFilter}_${new Date().getTime()}.csv`;
-    link.click();
-};
-// --- BATAS KODE LOGIKA ---
-                // Logika Checkbox Header (Pilih Semua)
-                const handleSelectAll = (e) => {
-                    // Sesuaikan 'filteredTokens' atau 'tokens' dengan variabel array data tabel Anda
-                    const validTokens = tokens.filter(t => !t.code.startsWith('SYS_')); 
-                    if (e.target.checked) {
-                        setSelectedTokens(validTokens.map(t => t.code));
-                    } else {
-                        setSelectedTokens([]);
-                    }
-                };
-                
-                // Logika Checkbox Baris (Pilih Satuan)
-                const handleSelectToken = (code) => {
-                    if (selectedTokens.includes(code)) {
-                        setSelectedTokens(selectedTokens.filter(t => t !== code));
-                    } else {
-                        setSelectedTokens([...selectedTokens, code]);
-                    }
-                };
-                
-                // Logika Hapus Multi Data
-                const handleDeleteSelected = async () => {
-                    if (!confirm(`Yakin ingin menghapus ${selectedTokens.length} data peserta yang dipilih?`)) return;
-                    setIsLoading(true);
-                    try {
-                        const db = await getSupabase();
-                        const { error } = await db.from('tokens').delete().in('code', selectedTokens);
-                        if (error) throw error;
-                        
-                        await fetchSupabaseData(); // Refresh data dari DB
-                        setSelectedTokens([]); // Kosongkan seleksi
-                        alert("Data terpilih berhasil dihapus.");
-                    } catch (err) {
-                        alert("Gagal menghapus data: " + err.message);
-                    } finally {
-                        setIsLoading(false);
-                    }
-                };
-                
-                // Logika Unduh CSV
-                const downloadPeserta = () => {
-                    const validTokens = tokens.filter(t => !t.code.startsWith('SYS_'));
-                    if (validTokens.length === 0) {
-                        alert("Tidak ada data peserta untuk diunduh.");
-                        return;
-                    }
-                    
-                    let csvContent = "data:text/csv;charset=utf-8,";
-                    csvContent += "No,Nama Peserta,Asal Sekolah,Token,Status\n";
-                    
-                    validTokens.forEach((t, index) => {
-                        const name = t.participant_name ? t.participant_name.replace(/"/g, '""') : '';
-                        const school = t.participant_school ? t.participant_school.replace(/"/g, '""') : '';
-                        const row = `${index + 1},"${name}","${school}","${t.code}","${t.status}"`;
-                        csvContent += row + "\n";
-                    });
-                    
-                    const encodedUri = encodeURI(csvContent);
-                    const link = document.createElement("a");
-                    link.setAttribute("href", encodedUri);
-                    link.setAttribute("download", `Data_Peserta_CBT_${new Date().toISOString().split('T')[0]}.csv`);
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                };
              const actualTokens = tokens.filter(t => !t.code.startsWith('SYS_SETTING_') && !t.code.startsWith('SYS_FOLDER_'));
+             const uniqueClasses = [...new Set(actualTokens.map(t => t.participant_school).filter(Boolean))];
+
+             // --- LOGIKA BULK ACTION & DOWNLOAD ---
+             const handleSelectAll = (e) => {
+                 if (e.target.checked) setSelectedTokens(actualTokens.map(t => t.code));
+                 else setSelectedTokens([]);
+             };
+
+             const handleSelectToken = (code) => {
+                 if (selectedTokens.includes(code)) setSelectedTokens(selectedTokens.filter(t => t !== code));
+                 else setSelectedTokens([...selectedTokens, code]);
+             };
+
+             const handleDeleteSelected = async () => {
+                 if (selectedTokens.length === 0) return;
+                 if (!confirm(`Hapus permanen ${selectedTokens.length} data terpilih?`)) return;
+                 setIsSaving(true);
+                 try {
+                     const db = await getSupabase();
+                     const { error } = await db.from('tokens').delete().in('code', selectedTokens);
+                     if (error) throw error;
+                     await fetchSupabaseData(); 
+                     setSelectedTokens([]); 
+                     alert("Data terpilih berhasil dihapus.");
+                 } catch (err) {
+                     alert("Gagal hapus masal: " + err.message);
+                 } finally {
+                     setIsSaving(false);
+                 }
+             };
+
+             const downloadPeserta = () => {
+                 let validTokens = actualTokens;
+                 if (downloadFilter !== 'Semua') {
+                     validTokens = validTokens.filter(t => t.participant_school === downloadFilter);
+                 }
+                 if (validTokens.length === 0) return alert("Tidak ada data untuk difilter.");
+                 
+                 let csvContent = "data:text/csv;charset=utf-8,No,Nama Peserta,Sekolah/Kelas,Token,Status\n";
+                 validTokens.forEach((t, i) => {
+                     const name = t.participant_name ? t.participant_name.replace(/"/g, '""') : '';
+                     const school = t.participant_school ? t.participant_school.replace(/"/g, '""') : '';
+                     csvContent += `${i + 1},"${name}","${school}","${t.code}","${t.status}"\n`;
+                 });
+                 
+                 const link = document.createElement("a");
+                 link.href = encodeURI(csvContent);
+                 link.download = `Data_Peserta_${downloadFilter}_${new Date().getTime()}.csv`;
+                 link.click();
+             };
 
              const downloadTemplate = () => {
                  const csvContent = "Nama Murid,Asal Sekolah\nBudi Santoso,SDN 1\nSiti Aminah,SDN 2\n";
@@ -1105,51 +990,44 @@ const downloadPeserta = () => {
 
              return (
                <AdminLayout title="Token Ujian">
-                 <div className="bg-white p-4 rounded-xl border mb-6 flex flex-wrap gap-3">
-                    <button onClick={addManual} className="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Plus size={16} className="mr-2"/> Tambah Manual</button>
-                    <button onClick={() => setShowImport(true)} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Upload size={16} className="mr-2"/> Unggah Peserta</button>
-                     {/* Tombol Unduh Peserta */}
-                    <button onClick={downloadPeserta} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-xl font-bold text-sm border border-emerald-200 transition-colors flex items-center">
-                        <i className="fas fa-download mr-2"></i> Unduh Peserta
-                    </button>
-                    
-                    {/* Tombol Hapus Terpilih (Hanya muncul jika ada kotak yang dicentang) */}
-                    {selectedTokens.length > 0 && (
-                        <button onClick={handleDeleteSelected} className="bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 transition-colors flex items-center">
-                            <i className="fas fa-trash-alt mr-2"></i> Hapus ({selectedTokens.length})
-                        </button>
-                    )}
+                 <div className="bg-white p-4 rounded-xl border mb-6 flex flex-wrap gap-3 items-center">
                     {!isMassEdit ? (
-                        <button onClick={startMassEdit} disabled={actualTokens.length===0} className="bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Edit size={16} className="mr-2"/> Edit Semua</button> {/* --- KODE TOMBOL FILTER & HAPUS MASAL --- */}
-<div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 ml-auto">
-    <select 
-        value={downloadFilter} 
-        onChange={(e) => setDownloadFilter(e.target.value)}
-        className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 cursor-pointer"
-    >
-        <option value="Semua">Semua Kelas/Sekolah</option>
-        {uniqueClasses.map((cls, idx) => (
-            <option key={idx} value={cls}>{cls}</option>
-        ))}
-    </select>
-    <button onClick={downloadPeserta} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center border border-emerald-200">
-        <i className="fas fa-download mr-2"></i> Unduh
-    </button>
-</div>
-
-{selectedTokens.length > 0 && (
-    <button onClick={handleDeleteSelected} className="bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 transition-colors flex items-center">
-        <i className="fas fa-trash-alt mr-2"></i> Hapus Terpilih ({selectedTokens.length})
-    </button>
-)}
-{/* --- BATAS KODE TOMBOL --- */}
+                        <>
+                            <button onClick={addManual} className="bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Plus size={16} className="mr-2"/> Tambah Manual</button>
+                            <button onClick={() => setShowImport(true)} className="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Upload size={16} className="mr-2"/> Unggah Peserta</button>
+                            <button onClick={startMassEdit} disabled={actualTokens.length===0} className="bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Edit size={16} className="mr-2"/> Edit Semua</button>
+                            
+                            {/* --- KODE TOMBOL FILTER & UNDUH & HAPUS MASAL --- */}
+                            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 ml-auto">
+                                <select 
+                                    value={downloadFilter} 
+                                    onChange={(e) => setDownloadFilter(e.target.value)}
+                                    className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 cursor-pointer"
+                                >
+                                    <option value="Semua">Semua Kelas/Sekolah</option>
+                                    {uniqueClasses.map((cls, idx) => (
+                                        <option key={idx} value={cls}>{cls}</option>
+                                    ))}
+                                </select>
+                                <button onClick={downloadPeserta} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center border border-emerald-200">
+                                    <i className="fas fa-download mr-2"></i> Unduh
+                                </button>
+                            </div>
+                            
+                            {selectedTokens.length > 0 && (
+                                <button onClick={handleDeleteSelected} disabled={isSaving} className="bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 transition-colors flex items-center">
+                                    <i className="fas fa-trash-alt mr-2"></i> Hapus Terpilih ({selectedTokens.length})
+                                </button>
+                            )}
+                        </>
                     ) : (
                         <div className="flex gap-2">
-                            <button onClick={saveMassEdit} className="bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold"><Save size={16} className="inline mr-1"/> Simpan</button>
+                            <button onClick={saveMassEdit} disabled={isSaving} className="bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold"><Save size={16} className="inline mr-1"/> Simpan</button>
                             <button onClick={() => setIsMassEdit(false)} className="bg-slate-200 px-4 py-2.5 rounded-lg text-sm font-semibold">Batal</button>
                         </div>
                     )}
                  </div>
+
                  {showImport && (
                      <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
@@ -1160,30 +1038,67 @@ const downloadPeserta = () => {
                         </div>
                      </div>
                  )}
+                 
                  <div className="bg-white rounded-xl border overflow-x-auto">
-                    {/* --- KODE TOMBOL FILTER & HAPUS MASAL --- */}
-<div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 ml-auto">
-    <select 
-        value={downloadFilter} 
-        onChange={(e) => setDownloadFilter(e.target.value)}
-        className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 cursor-pointer"
-    >
-        <option value="Semua">Semua Kelas/Sekolah</option>
-        {uniqueClasses.map((cls, idx) => (
-            <option key={idx} value={cls}>{cls}</option>
-        ))}
-    </select>
-    <button onClick={downloadPeserta} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center border border-emerald-200">
-        <i className="fas fa-download mr-2"></i> Unduh
-    </button>
-</div>
-
-{selectedTokens.length > 0 && (
-    <button onClick={handleDeleteSelected} className="bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 transition-colors flex items-center">
-        <i className="fas fa-trash-alt mr-2"></i> Hapus Terpilih ({selectedTokens.length})
-    </button>
-)}
-{/* --- BATAS KODE TOMBOL --- */}
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50 border-b">
+                            <tr>
+                                {!isMassEdit && (
+                                    <th className="p-4 text-center w-12">
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+                                            onChange={handleSelectAll} 
+                                            checked={selectedTokens.length > 0 && selectedTokens.length === actualTokens.length} 
+                                        />
+                                    </th>
+                                )}
+                                <th className="p-4">No</th>
+                                <th className="p-4">Nama</th>
+                                <th className="p-4">Sekolah/Kelas</th>
+                                <th className="p-4">Token</th>
+                                <th className="p-4 text-center">Status</th>
+                                {!isMassEdit && <th className="p-4 text-center">Aksi</th>}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {isMassEdit ? (
+                                massEditTokens.map((t, i) => (
+                                    <tr key={t.code} className="border-b bg-blue-50/20">
+                                        <td className="p-3">{i+1}</td>
+                                        <td className="p-2"><input type="text" value={t.participant_name} onChange={e=>handleMassEditChange(i, 'participant_name', e.target.value)} className="w-full p-2 border rounded text-sm"/></td>
+                                        <td className="p-2"><input type="text" value={t.participant_school} onChange={e=>handleMassEditChange(i, 'participant_school', e.target.value)} className="w-full p-2 border rounded text-sm"/></td>
+                                        <td className="p-3 font-mono">{t.code}</td>
+                                        <td className="p-2">
+                                            <select value={t.status} onChange={e=>handleMassEditChange(i, 'status', e.target.value)} className="w-full p-2 border rounded text-xs">
+                                                <option value="AVAILABLE">AVAILABLE</option><option value="USED">USED</option><option value="EXPIRED">EXPIRED</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                actualTokens.map((t, i) => (
+                                    <tr key={t.code} className="border-b hover:bg-slate-50">
+                                        <td className="p-4 text-center">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+                                                checked={selectedTokens.includes(t.code)} 
+                                                onChange={() => handleSelectToken(t.code)} 
+                                            />
+                                        </td>
+                                        <td className="p-4 text-slate-500 font-semibold">{i+1}</td>
+                                        <td className="p-4 font-semibold text-slate-800">{t.participant_name || '-'}</td>
+                                        <td className="p-4 text-slate-600">{t.participant_school || '-'}</td>
+                                        <td className="p-4 font-mono font-bold text-indigo-600">{t.code}</td>
+                                        <td className="p-4 text-center"><span className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded uppercase tracking-wider">{t.status}</span></td>
+                                        <td className="p-4 text-center"><button onClick={()=>deleteToken(t.code)} className="text-rose-500 p-2 hover:bg-rose-50 rounded" title="Hapus"><Trash2 size={16}/></button></td>
+                                    </tr>
+                                ))
+                            )}
+                            {actualTokens.length === 0 && <tr><td colSpan={isMassEdit ? 6 : 7} className="text-center py-8 text-slate-500 italic bg-slate-50">Belum ada data token peserta.</td></tr>}
+                        </tbody>
+                    </table>
                  </div>
                </AdminLayout>
              );
@@ -1342,9 +1257,9 @@ const downloadPeserta = () => {
                  
                  await fetchSupabaseData(); 
                  
-                 // KUNCI UX: Tetap berada di dalam folder yang sama setelah membuat/mengedit soal
                  setFilterFolder(payload.folder);
                  setView('list');
+                 alert("Soal berhasil disimpan!");
                  
                } catch (err) { 
                  alert("GAGAL MENYIMPAN KE DATABASE!\n" + err.message); 
@@ -1362,7 +1277,6 @@ const downloadPeserta = () => {
                     
                     await fetchSupabaseData(); 
                     
-                    // KUNCI UX: Tetap berada di dalam folder setelah menghapus
                     setView('list');
                 } catch(e) { alert("Gagal menghapus dari database: " + e.message); }
             };
@@ -1372,16 +1286,20 @@ const downloadPeserta = () => {
                 setIsSaving(true);
                 try {
                     const db = await getSupabase();
-                    // Membuat salinan persis, hanya mengubah ID agar tidak bentrok
                     const duplicatedQ = { ...q, id: `q${Date.now()}_copy` };
                     const { error } = await db.from('questions').insert([duplicatedQ]);
                     if (error) throw error;
+                    
                     await fetchSupabaseData(); 
+                    
+                    setFilterFolder(q.folder || filterFolder);
+                    setView('list');
                 } catch(e) { 
                     alert("Gagal menduplikasi: " + e.message); 
                 }
                 setIsSaving(false);
             };
+
             const publishFolder = async (fname) => {
                 try {
                     const db = await getSupabase();
