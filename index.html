@@ -908,6 +908,58 @@
              const [isMassEdit, setIsMassEdit] = useState(false);
              const [massEditTokens, setMassEditTokens] = useState([]);
               const [selectedTokens, setSelectedTokens] = useState([]);
+              // --- KODE LOGIKA BULK ACTION & DOWNLOAD ---
+const [selectedTokens, setSelectedTokens] = useState([]);
+const [downloadFilter, setDownloadFilter] = useState('Semua');
+
+const handleSelectAll = (e) => {
+    const validTokens = tokens.filter(t => !t.code.startsWith('SYS_'));
+    if (e.target.checked) setSelectedTokens(validTokens.map(t => t.code));
+    else setSelectedTokens([]);
+};
+
+const handleSelectToken = (code) => {
+    if (selectedTokens.includes(code)) setSelectedTokens(selectedTokens.filter(t => t !== code));
+    else setSelectedTokens([...selectedTokens, code]);
+};
+
+const handleDeleteSelected = async () => {
+    if (selectedTokens.length === 0) return;
+    if (!confirm(`Hapus permanen ${selectedTokens.length} data terpilih?`)) return;
+    setIsLoading(true);
+    try {
+        const db = await getSupabase();
+        const { error } = await db.from('tokens').delete().in('code', selectedTokens);
+        if (error) throw error;
+        await fetchSupabaseData(); 
+        setSelectedTokens([]); 
+    } catch (err) {
+        alert("Gagal hapus masal: " + err.message);
+    } finally {
+        setIsLoading(false);
+    }
+};
+
+const uniqueClasses = [...new Set(tokens.filter(t => !t.code.startsWith('SYS_') && t.participant_school).map(t => t.participant_school))];
+
+const downloadPeserta = () => {
+    let validTokens = tokens.filter(t => !t.code.startsWith('SYS_'));
+    if (downloadFilter !== 'Semua') {
+        validTokens = validTokens.filter(t => t.participant_school === downloadFilter);
+    }
+    if (validTokens.length === 0) return alert("Tidak ada data untuk difilter.");
+    
+    let csvContent = "data:text/csv;charset=utf-8,No,Nama Peserta,Sekolah/Kelas,Token,Status\n";
+    validTokens.forEach((t, i) => {
+        csvContent += `${i + 1},"${t.participant_name || ''}","${t.participant_school || ''}","${t.code}","${t.status}"\n`;
+    });
+    
+    const link = document.createElement("a");
+    link.href = encodeURI(csvContent);
+    link.download = `Data_Peserta_${downloadFilter}_${new Date().getTime()}.csv`;
+    link.click();
+};
+// --- BATAS KODE LOGIKA ---
                 // Logika Checkbox Header (Pilih Semua)
                 const handleSelectAll = (e) => {
                     // Sesuaikan 'filteredTokens' atau 'tokens' dengan variabel array data tabel Anda
@@ -1068,7 +1120,29 @@
                         </button>
                     )}
                     {!isMassEdit ? (
-                        <button onClick={startMassEdit} disabled={actualTokens.length===0} className="bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Edit size={16} className="mr-2"/> Edit Semua</button>
+                        <button onClick={startMassEdit} disabled={actualTokens.length===0} className="bg-indigo-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center"><Edit size={16} className="mr-2"/> Edit Semua</button> {/* --- KODE TOMBOL FILTER & HAPUS MASAL --- */}
+<div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 ml-auto">
+    <select 
+        value={downloadFilter} 
+        onChange={(e) => setDownloadFilter(e.target.value)}
+        className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 cursor-pointer"
+    >
+        <option value="Semua">Semua Kelas/Sekolah</option>
+        {uniqueClasses.map((cls, idx) => (
+            <option key={idx} value={cls}>{cls}</option>
+        ))}
+    </select>
+    <button onClick={downloadPeserta} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center border border-emerald-200">
+        <i className="fas fa-download mr-2"></i> Unduh
+    </button>
+</div>
+
+{selectedTokens.length > 0 && (
+    <button onClick={handleDeleteSelected} className="bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 transition-colors flex items-center">
+        <i className="fas fa-trash-alt mr-2"></i> Hapus Terpilih ({selectedTokens.length})
+    </button>
+)}
+{/* --- BATAS KODE TOMBOL --- */}
                     ) : (
                         <div className="flex gap-2">
                             <button onClick={saveMassEdit} className="bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold"><Save size={16} className="inline mr-1"/> Simpan</button>
@@ -1087,38 +1161,29 @@
                      </div>
                  )}
                  <div className="bg-white rounded-xl border overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 border-b"><tr><th className="p-4">No</th><th className="p-4">Nama</th><th className="p-4">Sekolah</th><th className="p-4">Token</th><th className="p-4 text-center">Status</th><th className="p-4 text-center">Aksi</th></tr></thead>
-                        <tbody>
-                            {isMassEdit ? (
-                                massEditTokens.map((t, i) => (
-                                    <tr key={t.code} className="border-b bg-blue-50/20">
-                                        <td className="p-3">{i+1}</td>
-                                        <td className="p-2"><input type="text" value={t.participant_name} onChange={e=>handleMassEditChange(i, 'participant_name', e.target.value)} className="w-full p-2 border rounded text-sm"/></td>
-                                        <td className="p-2"><input type="text" value={t.participant_school} onChange={e=>handleMassEditChange(i, 'participant_school', e.target.value)} className="w-full p-2 border rounded text-sm"/></td>
-                                        <td className="p-3 font-mono">{t.code}</td>
-                                        <td className="p-2">
-                                            <select value={t.status} onChange={e=>handleMassEditChange(i, 'status', e.target.value)} className="w-full p-2 border rounded text-xs">
-                                                <option value="AVAILABLE">AVAILABLE</option><option value="USED">USED</option><option value="EXPIRED">EXPIRED</option>
-                                            </select>
-                                        </td>
-                                        <td className="p-3 text-center">-</td>
-                                    </tr>
-                                ))
-                            ) : (
-                                actualTokens.map((t, i) => (
-                                    <tr key={t.code} className="border-b">
-                                        <td className="p-4">{i+1}</td>
-                                        <td className="p-4 font-semibold">{t.participant_name || '-'}</td>
-                                        <td className="p-4">{t.participant_school || '-'}</td>
-                                        <td className="p-4 font-mono font-bold text-indigo-600">{t.code}</td>
-                                        <td className="p-4 text-center"><span className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded">{t.status}</span></td>
-                                        <td className="p-4 text-center"><button onClick={()=>deleteToken(t.code)} className="text-rose-500 p-2"><Trash2 size={16}/></button></td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                    {/* --- KODE TOMBOL FILTER & HAPUS MASAL --- */}
+<div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 ml-auto">
+    <select 
+        value={downloadFilter} 
+        onChange={(e) => setDownloadFilter(e.target.value)}
+        className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 cursor-pointer"
+    >
+        <option value="Semua">Semua Kelas/Sekolah</option>
+        {uniqueClasses.map((cls, idx) => (
+            <option key={idx} value={cls}>{cls}</option>
+        ))}
+    </select>
+    <button onClick={downloadPeserta} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center border border-emerald-200">
+        <i className="fas fa-download mr-2"></i> Unduh
+    </button>
+</div>
+
+{selectedTokens.length > 0 && (
+    <button onClick={handleDeleteSelected} className="bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 transition-colors flex items-center">
+        <i className="fas fa-trash-alt mr-2"></i> Hapus Terpilih ({selectedTokens.length})
+    </button>
+)}
+{/* --- BATAS KODE TOMBOL --- */}
                  </div>
                </AdminLayout>
              );
