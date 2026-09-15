@@ -943,7 +943,6 @@
              
              // --- STATE UNTUK MODE EDIT ---
              const [editFilter, setEditFilter] = useState('Semua');
-             const [bulkSchoolInput, setBulkSchoolInput] = useState('');
 
              const actualTokens = tokens.filter(t => !t.code.startsWith('SYS_SETTING_') && !t.code.startsWith('SYS_FOLDER_'));
              const uniqueClasses = [...new Set(actualTokens.map(t => t.participant_school).filter(Boolean))];
@@ -1141,16 +1140,6 @@
                  setMassEditTokens(updated);
              };
 
-             // Logika Ubah Massal untuk Sekolah/Kelas
-             const handleBulkEditSchool = () => {
-                 if (selectedTokens.length === 0) return alert("Pilih baris terlebih dahulu dengan mencentang kotak di kiri!");
-                 if (!bulkSchoolInput.trim()) return alert("Ketikkan nama sekolah atau kelas yang baru terlebih dahulu!");
-                 
-                 const updated = massEditTokens.map(t => selectedTokens.includes(t.code) ? { ...t, participant_school: bulkSchoolInput } : t);
-                 setMassEditTokens(updated);
-                 setBulkSchoolInput(''); // Reset input setelah berhasil
-             };
-
              const saveMassEdit = async () => {
                  setIsSaving(true);
                  try {
@@ -1250,17 +1239,7 @@
                                 </th>
                                 <th className="p-4 w-12 text-center">No</th>
                                 <th className="p-4">Nama</th>
-                                {isMassEdit ? (
-                                    <th className="p-4 min-w-[200px]">
-                                        Sekolah/Kelas
-                                        <div className="flex mt-1.5 shadow-sm rounded-md overflow-hidden">
-                                            <input type="text" placeholder="Ketik nama sekolah/kelas..." value={bulkSchoolInput} onChange={e=>setBulkSchoolInput(e.target.value)} className="w-full border-y border-l border-slate-300 p-1.5 text-xs font-normal outline-none focus:bg-blue-50"/>
-                                            <button onClick={handleBulkEditSchool} className="bg-blue-600 text-white px-3 py-1.5 border border-blue-600 text-xs font-bold hover:bg-blue-700 transition-colors">Set Terpilih</button>
-                                        </div>
-                                    </th>
-                                ) : (
-                                    <th className="p-4">Sekolah/Kelas</th>
-                                )}
+                                <th className="p-4">Sekolah/Kelas</th>
                                 <th className="p-4">Token</th>
                                 {isMassEdit ? (
                                     <th className="p-4 min-w-[160px]">
