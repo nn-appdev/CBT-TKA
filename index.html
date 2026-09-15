@@ -218,37 +218,64 @@
             }
         };
 
-        // FUNGSI PENILAIAN YANG SUDAH DIPERBAIKI (MAX 100)
-       const calculateScore = (answers, questions) => {
+       // FUNGSI PENILAIAN BARU (SKORING VALID & AKURAT)
+        const calculateScore = (answers, questions) => {
           let totalPoints = 0;
-          let maxPoints = questions.reduce((sum, q) => sum + (q.points || 1), 0); 
+          let maxPoints = 0;
           
           const detailedResults = questions.map(q => {
-            const qPoints = parseInt(q.points) || 1;
             const userAnswer = answers[q.id];
+            let pointsEarned = 0;
+            let questionMaxPoints = 0;
             let isCorrect = false;
             
-            if (!userAnswer) return { qId: q.id, type: q.type, isCorrect: false, isEmpty: true };
-            
-            // KEMBALIKAN KE MCQ AGAR BISA MEMBACA DATABASE
             if (q.type === 'MCQ') {
-                isCorrect = userAnswer === q.correctAnswer;
+                questionMaxPoints = 1;
+                if (userAnswer && userAnswer === q.correctAnswer) {
+                    pointsEarned = 1;
+                    isCorrect = true;
+                }
             } else if (q.type === 'MCMA') {
-              if (Array.isArray(userAnswer)) {
-                const sortedUser = [...userAnswer].sort();
-                const sortedCorrect = [...(q.correctAnswers || [])].sort();
-                isCorrect = sortedUser.length === sortedCorrect.length && sortedUser.every((val, index) => val === sortedCorrect[index]);
-              }
+                questionMaxPoints = 2;
+                if (userAnswer && Array.isArray(userAnswer)) {
+                    const sortedUser = [...userAnswer].sort();
+                    const sortedCorrect = [...(q.correctAnswers || [])].sort();
+                    if (sortedUser.length === sortedCorrect.length && sortedUser.every((val, index) => val === sortedCorrect[index])) {
+                        pointsEarned = 2;
+                        isCorrect = true;
+                    }
+                }
             } else if (q.type === 'CATEGORY') {
-              const statementKeys = (q.statements || []).map(s => s.id);
-              const allAnswered = statementKeys.every(id => userAnswer[id]);
-              if (allAnswered) isCorrect = (q.statements||[]).every(s => userAnswer[s.id] === s.correctCategory);
+                const statementsCount = (q.statements || []).length;
+                questionMaxPoints = statementsCount; // Tiap baris bernilai 1 poin (benar 3 = 3 poin)
+                
+                if (userAnswer) {
+                    let correctCount = 0;
+                    (q.statements || []).forEach(s => {
+                        if (userAnswer[s.id] === s.correctCategory) correctCount++;
+                    });
+                    pointsEarned = correctCount;
+                    isCorrect = correctCount === statementsCount;
+                }
             }
             
-            if (isCorrect) totalPoints += qPoints;
-            return { qId: q.id, type: q.type, isCorrect, isEmpty: false };
+            maxPoints += questionMaxPoints;
+            totalPoints += pointsEarned;
+            
+            const isEmpty = !userAnswer || (typeof userAnswer === 'object' && Object.keys(userAnswer).length === 0);
+            
+            return { 
+                qId: q.id, 
+                type: q.type, 
+                isCorrect, 
+                isEmpty,
+                pointsEarned,
+                questionMaxPoints,
+                userAnswer: userAnswer // Simpan jawaban mentah siswa untuk dilihat admin
+            };
           });
           
+          // (Skor Didapat / Total Skor Maksimal) x 100
           let rawPercentage = maxPoints > 0 ? (totalPoints / maxPoints) * 100 : 0;
           const finalScore = Math.min(100, Math.round(rawPercentage));
           
