@@ -937,20 +937,31 @@
              const [isMassEdit, setIsMassEdit] = useState(false);
              const [massEditTokens, setMassEditTokens] = useState([]);
              
+             // --- STATE UNTUK BULK ACTION & DOWNLOAD ---
              const [selectedTokens, setSelectedTokens] = useState([]);
              const [downloadFilter, setDownloadFilter] = useState('Semua');
+             
+             // --- STATE UNTUK MODE EDIT ---
+             const [editFilter, setEditFilter] = useState('Semua');
+             const [bulkSchoolInput, setBulkSchoolInput] = useState('');
 
              const actualTokens = tokens.filter(t => !t.code.startsWith('SYS_SETTING_') && !t.code.startsWith('SYS_FOLDER_'));
              const uniqueClasses = [...new Set(actualTokens.map(t => t.participant_school).filter(Boolean))];
+             const uniqueEditClasses = [...new Set(massEditTokens.map(t => t.participant_school).filter(Boolean))];
 
+             const displayedMassEditTokens = editFilter === 'Semua' 
+                 ? massEditTokens 
+                 : massEditTokens.filter(t => t.participant_school === editFilter);
+
+             // --- LOGIKA BULK ACTION & DOWNLOAD ---
              const handleSelectAll = (e) => {
                  if (e.target.checked) setSelectedTokens(actualTokens.map(t => t.code));
                  else setSelectedTokens([]);
              };
 
-             // Fungsi select all khusus saat di dalam mode Edit
              const handleSelectAllEdit = (e) => {
-                 if (e.target.checked) setSelectedTokens(massEditTokens.map(t => t.code));
+                 // Efisiensi: Hanya centang yang tampil di layar filter saat ini
+                 if (e.target.checked) setSelectedTokens(displayedMassEditTokens.map(t => t.code));
                  else setSelectedTokens([]);
              };
 
@@ -1107,14 +1118,14 @@
              };
 
              const startMassEdit = () => {
-                 // Efisiensi: Jika ada token yang dicentang, cukup render dan edit token tersebut saja.
+                 setEditFilter('Semua');
                  if (selectedTokens.length > 0) {
                      const tokensToEdit = actualTokens.filter(t => selectedTokens.includes(t.code));
                      setMassEditTokens(JSON.parse(JSON.stringify(tokensToEdit)));
                  } else {
                      setMassEditTokens(JSON.parse(JSON.stringify(actualTokens)));
                  }
-                 setSelectedTokens([]); // Reset area centang agar bisa dipakai fungsi bulk edit
+                 setSelectedTokens([]); 
                  setIsMassEdit(true);
              };
 
@@ -1124,11 +1135,20 @@
                  setMassEditTokens(updated);
              };
 
-             // Fungsi Aksi Bulk Edit (Ubah Masal)
              const handleBulkEditStatus = (status) => {
                  if (selectedTokens.length === 0) return alert("Pilih baris terlebih dahulu dengan mencentang kotak di kiri!");
                  const updated = massEditTokens.map(t => selectedTokens.includes(t.code) ? { ...t, status } : t);
                  setMassEditTokens(updated);
+             };
+
+             // Logika Ubah Massal untuk Sekolah/Kelas
+             const handleBulkEditSchool = () => {
+                 if (selectedTokens.length === 0) return alert("Pilih baris terlebih dahulu dengan mencentang kotak di kiri!");
+                 if (!bulkSchoolInput.trim()) return alert("Ketikkan nama sekolah atau kelas yang baru terlebih dahulu!");
+                 
+                 const updated = massEditTokens.map(t => selectedTokens.includes(t.code) ? { ...t, participant_school: bulkSchoolInput } : t);
+                 setMassEditTokens(updated);
+                 setBulkSchoolInput(''); // Reset input setelah berhasil
              };
 
              const saveMassEdit = async () => {
@@ -1160,7 +1180,7 @@
                             <button onClick={() => setShowImport(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors"><Upload size={16} className="mr-2"/> Unggah Peserta</button>
                             
                             <button onClick={startMassEdit} disabled={actualTokens.length===0} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors disabled:opacity-50">
-                                <Edit size={16} className="mr-2"/> Edit
+                                <Edit size={16} className="mr-2"/> {selectedTokens.length > 0 ? `Edit Terpilih (${selectedTokens.length})` : 'Edit'}
                             </button>
                             
                             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 ml-auto">
@@ -1186,9 +1206,21 @@
                             )}
                         </>
                     ) : (
-                        <div className="flex gap-2">
-                            <button onClick={saveMassEdit} disabled={isSaving} className="bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md"><Save size={16} className="inline mr-2"/> Simpan Perubahan</button>
-                            <button onClick={() => { setIsMassEdit(false); setSelectedTokens([]); }} className="bg-slate-200 text-slate-700 hover:bg-slate-300 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors">Batal</button>
+                        <div className="w-full flex flex-wrap gap-2 items-center justify-between">
+                            <div className="flex gap-2">
+                                <button onClick={saveMassEdit} disabled={isSaving} className="bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md"><Save size={16} className="inline mr-2"/> Simpan Perubahan</button>
+                                <button onClick={() => { setIsMassEdit(false); setSelectedTokens([]); }} className="bg-slate-200 text-slate-700 hover:bg-slate-300 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors">Batal</button>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 ml-auto">
+                                <span className="text-xs font-bold text-slate-500 pl-2">Filter Edit:</span>
+                                <select value={editFilter} onChange={e => {setEditFilter(e.target.value); setSelectedTokens([]);}} className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-3 py-1.5 outline-none focus:border-blue-500 cursor-pointer">
+                                    <option value="Semua">Semua Kelas/Sekolah</option>
+                                    {uniqueEditClasses.map((cls, idx) => (
+                                        <option key={idx} value={cls}>{cls}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     )}
                  </div>
@@ -1213,21 +1245,31 @@
                                         type="checkbox" 
                                         className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
                                         onChange={isMassEdit ? handleSelectAllEdit : handleSelectAll} 
-                                        checked={selectedTokens.length > 0 && selectedTokens.length === (isMassEdit ? massEditTokens.length : actualTokens.length)} 
+                                        checked={selectedTokens.length > 0 && selectedTokens.length === (isMassEdit ? displayedMassEditTokens.length : actualTokens.length)} 
                                     />
                                 </th>
                                 <th className="p-4 w-12 text-center">No</th>
                                 <th className="p-4">Nama</th>
-                                <th className="p-4">Sekolah/Kelas</th>
+                                {isMassEdit ? (
+                                    <th className="p-4 min-w-[200px]">
+                                        Sekolah/Kelas
+                                        <div className="flex mt-1.5 shadow-sm rounded-md overflow-hidden">
+                                            <input type="text" placeholder="Ketik nama sekolah/kelas..." value={bulkSchoolInput} onChange={e=>setBulkSchoolInput(e.target.value)} className="w-full border-y border-l border-slate-300 p-1.5 text-xs font-normal outline-none focus:bg-blue-50"/>
+                                            <button onClick={handleBulkEditSchool} className="bg-blue-600 text-white px-3 py-1.5 border border-blue-600 text-xs font-bold hover:bg-blue-700 transition-colors">Set Terpilih</button>
+                                        </div>
+                                    </th>
+                                ) : (
+                                    <th className="p-4">Sekolah/Kelas</th>
+                                )}
                                 <th className="p-4">Token</th>
                                 {isMassEdit ? (
-                                    <th className="p-4 flex items-center gap-2">
+                                    <th className="p-4 min-w-[160px]">
                                         Status
-                                        <select onChange={(e) => { if(e.target.value) handleBulkEditStatus(e.target.value); e.target.value=''; }} className="border border-slate-300 rounded text-xs font-bold text-blue-700 bg-blue-50 p-1.5 outline-none cursor-pointer">
-                                            <option value="">+ Ubah Terpilih</option>
-                                            <option value="AVAILABLE">AVAILABLE (Tersedia)</option>
-                                            <option value="USED">USED (Terpakai)</option>
-                                            <option value="EXPIRED">EXPIRED (Kedaluwarsa)</option>
+                                        <select onChange={(e) => { if(e.target.value) handleBulkEditStatus(e.target.value); e.target.value=''; }} className="mt-1.5 w-full border border-slate-300 rounded text-xs font-bold text-blue-700 bg-blue-50 p-1.5 outline-none cursor-pointer">
+                                            <option value="">+ Set Terpilih</option>
+                                            <option value="AVAILABLE">AVAILABLE</option>
+                                            <option value="USED">USED</option>
+                                            <option value="EXPIRED">EXPIRED</option>
                                         </select>
                                     </th>
                                 ) : (
@@ -1238,22 +1280,26 @@
                         </thead>
                         <tbody>
                             {isMassEdit ? (
-                                massEditTokens.map((t, i) => (
-                                    <tr key={t.code} className={`border-b ${selectedTokens.includes(t.code) ? 'bg-blue-50/40' : 'bg-slate-50/30'}`}>
-                                        <td className="p-3 text-center">
-                                            <input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" checked={selectedTokens.includes(t.code)} onChange={() => handleSelectToken(t.code)} />
-                                        </td>
-                                        <td className="p-3 text-center text-slate-500 font-semibold">{i+1}</td>
-                                        <td className="p-2"><input type="text" value={t.participant_name} onChange={e=>handleMassEditChange(i, 'participant_name', e.target.value)} className="w-full p-2 border border-blue-200 rounded text-sm outline-none focus:ring-1"/></td>
-                                        <td className="p-2"><input type="text" value={t.participant_school} onChange={e=>handleMassEditChange(i, 'participant_school', e.target.value)} className="w-full p-2 border border-blue-200 rounded text-sm outline-none focus:ring-1"/></td>
-                                        <td className="p-3 font-mono font-bold text-slate-500">{t.code}</td>
-                                        <td className="p-2">
-                                            <select value={t.status} onChange={e=>handleMassEditChange(i, 'status', e.target.value)} className="w-full p-2 border border-blue-200 rounded text-xs font-bold outline-none cursor-pointer bg-white">
-                                                <option value="AVAILABLE">AVAILABLE</option><option value="USED">USED</option><option value="EXPIRED">EXPIRED</option>
-                                            </select>
-                                        </td>
-                                    </tr>
-                                ))
+                                displayedMassEditTokens.map((t, idx) => {
+                                    // Cari index asli dari massEditTokens untuk fungsi update
+                                    const originalIndex = massEditTokens.findIndex(orig => orig.code === t.code);
+                                    return (
+                                        <tr key={t.code} className={`border-b ${selectedTokens.includes(t.code) ? 'bg-blue-50/60' : 'bg-white'}`}>
+                                            <td className="p-3 text-center">
+                                                <input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" checked={selectedTokens.includes(t.code)} onChange={() => handleSelectToken(t.code)} />
+                                            </td>
+                                            <td className="p-3 text-center text-slate-500 font-semibold">{idx+1}</td>
+                                            <td className="p-2"><input type="text" value={t.participant_name} onChange={e=>handleMassEditChange(originalIndex, 'participant_name', e.target.value)} className="w-full p-2 border border-blue-200 rounded text-sm outline-none focus:ring-1"/></td>
+                                            <td className="p-2"><input type="text" value={t.participant_school} onChange={e=>handleMassEditChange(originalIndex, 'participant_school', e.target.value)} className="w-full p-2 border border-blue-200 rounded text-sm outline-none focus:ring-1"/></td>
+                                            <td className="p-3 font-mono font-bold text-slate-500">{t.code}</td>
+                                            <td className="p-2">
+                                                <select value={t.status} onChange={e=>handleMassEditChange(originalIndex, 'status', e.target.value)} className="w-full p-2 border border-blue-200 rounded text-xs font-bold outline-none cursor-pointer bg-white">
+                                                    <option value="AVAILABLE">AVAILABLE</option><option value="USED">USED</option><option value="EXPIRED">EXPIRED</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             ) : (
                                 actualTokens.map((t, i) => (
                                     <tr key={t.code} className={`border-b transition-colors ${selectedTokens.includes(t.code) ? 'bg-blue-50/40' : 'hover:bg-slate-50'}`}>
@@ -1274,7 +1320,7 @@
                                     </tr>
                                 ))
                             )}
-                            {actualTokens.length === 0 && <tr><td colSpan={isMassEdit ? 6 : 7} className="text-center py-8 text-slate-500 italic bg-slate-50">Belum ada data token peserta.</td></tr>}
+                            {(isMassEdit ? displayedMassEditTokens : actualTokens).length === 0 && <tr><td colSpan={isMassEdit ? 6 : 7} className="text-center py-8 text-slate-500 italic bg-slate-50">Belum ada data token peserta.</td></tr>}
                         </tbody>
                     </table>
                  </div>
