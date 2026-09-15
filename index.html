@@ -1254,9 +1254,21 @@
           const AdminResults = () => {
              const [selectedAnalysis, setSelectedAnalysis] = useState(null);
              const [filterSchool, setFilterSchool] = useState('Semua');
+             const [selectedResults, setSelectedResults] = useState([]);
+             const [isDeleting, setIsDeleting] = useState(false);
 
              const schoolList = ['Semua', ...new Set(results.map(r => r.participant?.school).filter(Boolean))];
              const filteredResults = filterSchool === 'Semua' ? results : results.filter(r => r.participant?.school === filterSchool);
+
+             const handleSelectAll = (e) => {
+                 if (e.target.checked) setSelectedResults(filteredResults.map(r => r.id));
+                 else setSelectedResults([]);
+             };
+
+             const handleSelectResult = (id) => {
+                 if (selectedResults.includes(id)) setSelectedResults(selectedResults.filter(rid => rid !== id));
+                 else setSelectedResults([...selectedResults, id]);
+             };
 
              const deleteResult = async (id) => {
                  if(!confirm("Hapus hasil ujian peserta ini?")) return;
@@ -1267,18 +1279,73 @@
                  } catch(e) { alert("Gagal menghapus: " + e.message); }
              };
 
+             const handleDeleteSelected = async () => {
+                 if (selectedResults.length === 0) return;
+                 if (!confirm(`Hapus permanen ${selectedResults.length} data ujian terpilih?`)) return;
+                 setIsDeleting(true);
+                 try {
+                     const db = await getSupabase();
+                     const { error } = await db.from('results').delete().in('id', selectedResults);
+                     if (error) throw error;
+                     await fetchSupabaseData(); 
+                     setSelectedResults([]); 
+                     alert("Data terpilih berhasil dihapus.");
+                 } catch (err) {
+                     alert("Gagal hapus masal: " + err.message);
+                 } finally {
+                     setIsDeleting(false);
+                 }
+             };
+
+             const downloadExcel = () => {
+                 if (filteredResults.length === 0) return alert("Tidak ada data untuk diunduh.");
+                 
+                 // BOM \uFEFF agar Excel membaca UTF-8 dengan sempurna
+                 let csvContent = "\uFEFFNo,Nama Peserta,Sekolah/Kelas,Skor Didapat,Total Maks Skor,Nilai Akhir (100),Waktu Mulai Ujian\n";
+                 
+                 filteredResults.forEach((r, i) => {
+                     const name = r.participant?.name ? r.participant.name.replace(/"/g, '""') : '';
+                     const school = r.participant?.school ? r.participant.school.replace(/"/g, '""') : '';
+                     
+                     const details = Array.isArray(r.detail?.detailedResults) ? r.detail.detailedResults : [];
+                     const earned = details.reduce((sum, d) => sum + (d.pointsEarned || 0), 0);
+                     const maxP = details.reduce((sum, d) => sum + (d.questionMaxPoints || 0), 0);
+                     
+                     const dateObj = new Date(r.startTime);
+                     const timeStr = dateObj.toLocaleString('id-ID');
+                     
+                     csvContent += `${i + 1},"${name}","${school}",${earned},${maxP},${r.score},"${timeStr}"\n`;
+                 });
+                 
+                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                 const link = document.createElement("a");
+                 link.href = URL.createObjectURL(blob);
+                 link.download = `Hasil_Ujian_${filterSchool}_${new Date().getTime()}.csv`;
+                 link.click();
+             };
+
              return (
-               <AdminLayout title="Hasil Ujian">
+               <AdminLayout title="Manajemen Hasil Ujian">
                  <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border shadow-sm">
-                     <div className="flex items-center gap-3 w-full sm:w-auto">
-                         <label className="text-sm font-bold text-slate-700 whitespace-nowrap">Filter Kelas/Sekolah:</label>
-                         <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="w-full sm:w-auto border rounded-lg p-2.5 text-sm bg-slate-50 font-semibold focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
+                     <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                         <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="w-full sm:w-auto border rounded-lg p-2 text-sm bg-slate-50 font-semibold focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
                              {schoolList.map(s => <option key={s} value={s}>{s}</option>)}
                          </select>
+                         
+                         {selectedResults.length > 0 && (
+                             <button onClick={handleDeleteSelected} disabled={isDeleting} className="bg-rose-50 text-rose-700 border border-rose-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-rose-100 transition-colors shadow-sm">
+                                 <Trash2 size={16} className="mr-2"/> Hapus ({selectedResults.length})
+                             </button>
+                         )}
                      </div>
-                     <button onClick={fetchSupabaseData} className="w-full sm:w-auto bg-blue-50 text-blue-600 border border-blue-200 px-5 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm">
-                         <i className="fas fa-sync-alt mr-2"></i> Refresh Data
-                     </button>
+                     <div className="flex gap-2 w-full sm:w-auto">
+                         <button onClick={downloadExcel} className="flex-1 sm:flex-none bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center hover:bg-emerald-100 transition-colors shadow-sm">
+                             <i className="fas fa-file-excel mr-2"></i> Unduh Excel
+                         </button>
+                         <button onClick={fetchSupabaseData} className="flex-1 sm:flex-none bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm" title="Refresh">
+                             <i className="fas fa-sync-alt"></i>
+                         </button>
+                     </div>
                  </div>
 
                  {selectedAnalysis && (
@@ -1290,8 +1357,8 @@
                                     <thead className="bg-slate-100 border-b sticky top-0 shadow-sm z-10">
                                         <tr>
                                             <th className="p-4 w-12 text-center text-slate-600">No</th>
-                                            <th className="p-4 text-slate-600">Pertanyaan</th>
-                                            <th className="p-4 w-64 text-slate-600 border-l border-r border-slate-200">Jawaban Siswa</th>
+                                            <th className="p-4 text-slate-600">Pertanyaan & Kunci Asli</th>
+                                            <th className="p-4 w-64 text-slate-600 border-l border-r border-slate-200 bg-blue-50/30">Pilihan Siswa</th>
                                             <th className="p-4 w-28 text-center text-slate-600">Skor</th>
                                         </tr>
                                     </thead>
@@ -1299,54 +1366,69 @@
                                         {questions.map((q, i) => {
                                             const details = Array.isArray(selectedAnalysis.detail?.detailedResults) ? selectedAnalysis.detail.detailedResults : [];
                                             const d = details.find(x => x.qId === q.id);
-                                            
                                             if (!d) return null;
 
-                                            // Logika merender bentuk jawaban siswa sesuai tipe soal
                                             let ansDisplay = <span className="text-amber-500 italic font-semibold">Tidak Menjawab</span>;
+                                            let keyDisplay = null;
                                             
-                                            if (!d.isEmpty && d.userAnswer) {
-                                                if (q.type === 'MCQ') {
+                                            // Ekstraksi jawaban spesifik
+                                            if (q.type === 'MCQ') {
+                                                const correctOpt = q.options?.find(o => o.id === q.correctAnswer);
+                                                const tmpK = document.createElement("div"); tmpK.innerHTML = correctOpt?.text || q.correctAnswer;
+                                                keyDisplay = <div className="mt-3 p-2 bg-emerald-50 rounded border border-emerald-100 text-xs text-slate-700 font-medium"><strong className="text-emerald-700">Kunci Jawaban: {q.correctAnswer}</strong> - {tmpK.textContent}</div>;
+                                                
+                                                if (!d.isEmpty && d.userAnswer) {
                                                     const opt = q.options?.find(o => o.id === d.userAnswer);
                                                     const tmp = document.createElement("div"); tmp.innerHTML = opt?.text || d.userAnswer;
                                                     ansDisplay = <div className="font-medium text-slate-800"><strong className="text-blue-600">{d.userAnswer}.</strong> {tmp.textContent}</div>;
-                                                } else if (q.type === 'MCMA') {
-                                                    if (Array.isArray(d.userAnswer)) {
-                                                        ansDisplay = <ul className="list-disc pl-4 space-y-1">
-                                                            {d.userAnswer.map(ansId => {
-                                                                const stmt = q.statements?.find(s => String(s.id) === String(ansId));
-                                                                const tmp = document.createElement("div"); tmp.innerHTML = stmt?.text || ansId;
-                                                                return <li key={ansId} className="text-xs font-medium text-slate-700">{tmp.textContent}</li>;
-                                                            })}
-                                                        </ul>;
-                                                    }
-                                                } else if (q.type === 'CATEGORY') {
+                                                }
+                                            } else if (q.type === 'MCMA') {
+                                                const correctTexts = (q.correctAnswers||[]).map(ansId => {
+                                                    const stmt = q.statements?.find(s => String(s.id) === String(ansId));
+                                                    const t = document.createElement("div"); t.innerHTML = stmt?.text || ansId;
+                                                    return t.textContent;
+                                                });
+                                                keyDisplay = <div className="mt-3 p-2 bg-emerald-50 rounded border border-emerald-100 text-xs text-slate-700 font-medium"><strong className="text-emerald-700 block mb-1">Kunci (Pilih Semua):</strong> <ul className="list-disc pl-4">{correctTexts.map((txt, ii)=><li key={ii}>{txt}</li>)}</ul></div>;
+
+                                                if (!d.isEmpty && Array.isArray(d.userAnswer)) {
+                                                    ansDisplay = <ul className="list-disc pl-4 space-y-1">
+                                                        {d.userAnswer.map(ansId => {
+                                                            const stmt = q.statements?.find(s => String(s.id) === String(ansId));
+                                                            const tmp = document.createElement("div"); tmp.innerHTML = stmt?.text || ansId;
+                                                            return <li key={ansId} className="text-xs font-medium text-slate-700">{tmp.textContent}</li>;
+                                                        })}
+                                                    </ul>;
+                                                }
+                                            } else if (q.type === 'CATEGORY') {
+                                                if (!d.isEmpty && d.userAnswer) {
                                                     const keys = Object.keys(d.userAnswer);
-                                                    ansDisplay = <ul className="space-y-1">
+                                                    ansDisplay = <ul className="space-y-2">
                                                         {keys.map(k => {
                                                             const stmt = q.statements?.find(s => String(s.id) === String(k));
                                                             const tmp = document.createElement("div"); tmp.innerHTML = stmt?.text || k;
                                                             const isCorrectLine = d.userAnswer[k] === stmt?.correctCategory;
-                                                            return <li key={k} className="text-xs text-slate-600 bg-slate-50 p-1.5 rounded border"><span className={`font-bold px-1.5 py-0.5 rounded text-white ${isCorrectLine ? 'bg-emerald-500' : 'bg-rose-500'}`}>{d.userAnswer[k]}</span> <span className="ml-1 line-clamp-1" title={tmp.textContent}>{tmp.textContent}</span></li>;
+                                                            return <li key={k} className="text-xs text-slate-600 bg-slate-50 p-2 rounded border leading-snug"><div className="mb-1 text-[10px] font-bold text-slate-400">Pernyataan: <span className="text-slate-700 font-medium">{tmp.textContent}</span></div> <span className={`font-bold px-1.5 py-0.5 rounded text-white ${isCorrectLine ? 'bg-emerald-500' : 'bg-rose-500'}`}>{d.userAnswer[k]}</span> <span className="text-slate-400 ml-1">(Kunci: {stmt?.correctCategory})</span></li>;
                                                         })}
                                                     </ul>;
                                                 }
                                             }
 
-                                            // Menjaga kompatibilitas dengan data ujian lama yang belum punya sistem poin baru
                                             const earned = d.pointsEarned !== undefined ? d.pointsEarned : (d.isCorrect ? (q.type === 'MCMA' ? 2 : 1) : 0);
                                             const maxP = d.questionMaxPoints !== undefined ? d.questionMaxPoints : (q.type === 'MCMA' ? 2 : (q.type === 'CATEGORY' ? (q.statements||[]).length : 1));
 
                                             return (
                                                 <tr key={q.id} className="border-b border-slate-100 hover:bg-slate-50">
                                                     <td className="p-4 text-center font-bold text-slate-400 align-top">{i + 1}</td>
-                                                    <td className="p-4 align-top"><div className="line-clamp-3 text-slate-700 text-sm" dangerouslySetInnerHTML={{__html: q.question}} /></td>
-                                                    <td className="p-4 align-top border-l border-r border-slate-100 bg-white">{ansDisplay}</td>
+                                                    <td className="p-4 align-top">
+                                                        <div className="line-clamp-4 text-slate-800 text-sm font-medium" dangerouslySetInnerHTML={{__html: q.question}} />
+                                                        {keyDisplay}
+                                                    </td>
+                                                    <td className="p-4 align-top border-l border-r border-slate-100 bg-blue-50/10">{ansDisplay}</td>
                                                     <td className="p-4 text-center align-top">
                                                         {d.isEmpty ? <span className="text-amber-500 font-bold text-xs bg-amber-50 px-2 py-1 rounded border border-amber-200">KOSONG</span> : 
                                                             <div className="flex flex-col items-center">
-                                                                <span className="font-black text-slate-800 text-base">{earned} <span className="text-slate-400 font-medium text-xs">/ {maxP}</span></span>
-                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1 uppercase ${earned === maxP ? 'bg-emerald-100 text-emerald-700' : (earned > 0 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700')}`}>{earned === maxP ? 'BENAR' : (earned > 0 ? 'SEBAGIAN' : 'SALAH')}</span>
+                                                                <span className="font-black text-slate-800 text-lg">{earned} <span className="text-slate-400 font-medium text-xs">/ {maxP}</span></span>
+                                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1 uppercase tracking-wider ${earned === maxP ? 'bg-emerald-100 text-emerald-700' : (earned > 0 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700')}`}>{earned === maxP ? 'BENAR' : (earned > 0 ? 'SEBAGIAN' : 'SALAH')}</span>
                                                             </div>
                                                         }
                                                     </td>
@@ -1359,19 +1441,45 @@
                         </div>
                     </div>
                  )}
+                 
                  <div className="bg-white rounded-xl border overflow-x-auto shadow-sm">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 border-b"><tr><th className="p-4 w-12 text-center">No</th><th className="p-4">Nama</th><th className="p-4">Sekolah/Kelas</th><th className="p-4 text-center">Nilai</th><th className="p-4 text-center">Analisis</th><th className="p-4 text-center">Aksi</th></tr></thead>
+                        <thead className="bg-slate-50 border-b">
+                            <tr>
+                                <th className="p-4 text-center w-12">
+                                    <input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" onChange={handleSelectAll} checked={selectedResults.length > 0 && selectedResults.length === filteredResults.length} />
+                                </th>
+                                <th className="p-4 w-12 text-center">No</th>
+                                <th className="p-4">Nama Peserta</th>
+                                <th className="p-4">Sekolah/Kelas</th>
+                                <th className="p-4 text-center" title="Skor Poin yang didapat">Skor</th>
+                                <th className="p-4 text-center" title="Nilai Skala 100">Nilai</th>
+                                <th className="p-4 text-center">Analisis</th>
+                                <th className="p-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
                         <tbody>
-                            {filteredResults.map((r, idx)=><tr key={r.id} className="border-b hover:bg-slate-50 transition-colors">
-                                <td className="p-4 text-center font-semibold text-slate-500">{idx + 1}</td>
-                                <td className="p-4 font-medium text-slate-800">{r.participant?.name}</td>
-                                <td className="p-4 text-slate-600">{r.participant?.school}</td>
-                                <td className="p-4 text-center font-black text-emerald-600 text-base">{r.score}</td>
-                                <td className="p-4 text-center"><button onClick={() => setSelectedAnalysis(r)} className="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-blue-100">Lihat Detail</button></td>
-                                <td className="p-4 text-center"><button onClick={() => deleteResult(r.id)} className="text-rose-500 hover:bg-rose-50 p-2 rounded-lg" title="Hapus Hasil"><Trash2 size={16}/></button></td>
-                            </tr>)}
-                            {filteredResults.length === 0 && <tr><td colSpan="6" className="text-center p-8 text-slate-500 font-bold bg-slate-50">Belum ada data hasil ujian yang masuk untuk filter ini.</td></tr>}
+                            {filteredResults.map((r, idx)=> {
+                                const details = Array.isArray(r.detail?.detailedResults) ? r.detail.detailedResults : [];
+                                const earned = details.reduce((sum, d) => sum + (d.pointsEarned || 0), 0);
+                                const maxP = details.reduce((sum, d) => sum + (d.questionMaxPoints || 0), 0);
+                                return (
+                                <tr key={r.id} className={`border-b transition-colors ${selectedResults.includes(r.id) ? 'bg-blue-50/40' : 'hover:bg-slate-50'}`}>
+                                    <td className="p-4 text-center">
+                                        <input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" checked={selectedResults.includes(r.id)} onChange={() => handleSelectResult(r.id)} />
+                                    </td>
+                                    <td className="p-4 text-center font-semibold text-slate-500">{idx + 1}</td>
+                                    <td className="p-4 font-bold text-slate-800 uppercase">{r.participant?.name}</td>
+                                    <td className="p-4 font-medium text-slate-600">{r.participant?.school}</td>
+                                    <td className="p-4 text-center">
+                                        <div className="font-bold text-slate-700">{earned} <span className="text-xs text-slate-400 font-normal">/ {maxP}</span></div>
+                                    </td>
+                                    <td className="p-4 text-center font-black text-emerald-600 text-lg">{r.score}</td>
+                                    <td className="p-4 text-center"><button onClick={() => setSelectedAnalysis(r)} className="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors shadow-sm">Lihat Detail</button></td>
+                                    <td className="p-4 text-center"><button onClick={() => deleteResult(r.id)} className="text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition-colors" title="Hapus Hasil"><Trash2 size={16}/></button></td>
+                                </tr>
+                            )})}
+                            {filteredResults.length === 0 && <tr><td colSpan="8" className="text-center p-8 text-slate-500 font-bold bg-slate-50">Belum ada data hasil ujian yang masuk.</td></tr>}
                         </tbody>
                     </table>
                  </div>
@@ -1388,12 +1496,17 @@
             const [showImport, setShowImport] = useState(false);
             const [fileError, setFileError] = useState('');
 
-            // KEMBALIKAN KE defaultMCQ
+            // DEFAULT BOBOT POIN SESUAI INSTRUKSI
             const defaultMCQ = { id: '', type: 'MCQ', folder: filterFolder, points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
-            const defaultMCMA = { id: '', type: 'MCMA', folder: filterFolder, points: 1, question: '', statements: [{id:1, text:''}, {id:2, text:''}], correctAnswers: [] };
-            const defaultCAT = { id: '', type: 'CATEGORY', folder: filterFolder, points: 1, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
+            const defaultMCMA = { id: '', type: 'MCMA', folder: filterFolder, points: 2, question: '', statements: [{id:1, text:''}, {id:2, text:''}], correctAnswers: [] };
+            const defaultCAT = { id: '', type: 'CATEGORY', folder: filterFolder, points: 3, question: '', statements: [{id:1, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}, {id:2, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}, {id:3, text:'', category1:'Benar', category2:'Salah', correctCategory:'Benar'}] };
             
             const [formData, setFormData] = useState(defaultMCQ);
+
+            // ... (Biarkan fungsi downloadTemplate dan handleUploadSoal tetap seperti aslinya sampai Anda menemukan form return) ...
+
+            // LALU PADA BAGIAN RETURN FORM (Tepat di Tipe Soal):
+            // <select value={formData.type} onChange={e => { ...
 
             const downloadTemplate = () => {
                 const csvContent = "Mapel,Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci\nBahasa Indonesia,Ibu kota Indonesia adalah?,Jakarta,Bandung,Surabaya,Medan,A\n";
@@ -1620,14 +1733,15 @@
                                     <label className="block text-sm font-semibold mb-1 text-slate-700">Tipe Soal</label>
                                     <select value={formData.type} onChange={e => {
                                         const t = e.target.value;
-                                        if(t === 'MCQ') setFormData({...defaultMCQ, folder: formData.folder, points: formData.points, question: formData.question});
-                                        else if(t === 'MCMA') setFormData({...defaultMCMA, folder: formData.folder, points: formData.points, question: formData.question});
-                                        else if(t === 'CATEGORY') setFormData({...defaultCAT, folder: formData.folder, points: formData.points, question: formData.question});
+                                        if(t === 'MCQ') setFormData({...defaultMCQ, folder: formData.folder, points: 1, question: formData.question});
+                                        else if(t === 'MCMA') setFormData({...defaultMCMA, folder: formData.folder, points: 2, question: formData.question});
+                                        else if(t === 'CATEGORY') setFormData({...defaultCAT, folder: formData.folder, points: 3, question: formData.question});
                                     }} className="w-full p-2.5 border rounded-lg bg-white text-sm font-medium focus:ring-2 focus:ring-blue-500">
                                         <option value="MCQ">Pilihan Ganda (A-D)</option>
                                         <option value="MCMA">Pilihan Ganda Kompleks (&gt; 1 Jawaban)</option>
                                         <option value="CATEGORY">Matriks Kategori (Benar/Salah)</option>
                                     </select>
+                                </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold mb-1 text-slate-700">Pilih Folder Ujian</label>
