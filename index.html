@@ -247,7 +247,7 @@
                 }
             } else if (q.type === 'CATEGORY') {
                 const statementsCount = (q.statements || []).length;
-                questionMaxPoints = statementsCount; // Tiap baris bernilai 1 poin (benar 3 = 3 poin)
+                questionMaxPoints = statementsCount; 
                 
                 if (userAnswer) {
                     let correctCount = 0;
@@ -271,11 +271,10 @@
                 isEmpty,
                 pointsEarned,
                 questionMaxPoints,
-                userAnswer: userAnswer // Simpan jawaban mentah siswa untuk dilihat admin
+                userAnswer: userAnswer 
             };
           });
           
-          // (Skor Didapat / Total Skor Maksimal) x 100
           let rawPercentage = maxPoints > 0 ? (totalPoints / maxPoints) * 100 : 0;
           const finalScore = Math.min(100, Math.round(rawPercentage));
           
@@ -1503,11 +1502,6 @@
             
             const [formData, setFormData] = useState(defaultMCQ);
 
-            // ... (Biarkan fungsi downloadTemplate dan handleUploadSoal tetap seperti aslinya sampai Anda menemukan form return) ...
-
-            // LALU PADA BAGIAN RETURN FORM (Tepat di Tipe Soal):
-            // <select value={formData.type} onChange={e => { ...
-
             const downloadTemplate = () => {
                 const csvContent = "Mapel,Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci\nBahasa Indonesia,Ibu kota Indonesia adalah?,Jakarta,Bandung,Surabaya,Medan,A\n";
                 const link = document.createElement("a");
@@ -1587,6 +1581,7 @@
                     if (error) throw error;
                  }
                  
+                 // KUNCI STRATEGIS: Tetapkan state memori SEBELUM fetchSupabaseData mereset sistem
                  setFilterFolder(payload.folder);
                  setView('list');
                  
@@ -1741,7 +1736,6 @@
                                         <option value="MCMA">Pilihan Ganda Kompleks (&gt; 1 Jawaban)</option>
                                         <option value="CATEGORY">Matriks Kategori (Benar/Salah)</option>
                                     </select>
-                                </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold mb-1 text-slate-700">Pilih Folder Ujian</label>
