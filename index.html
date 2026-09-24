@@ -1591,7 +1591,7 @@
             
             const [formData, setFormData] = useState(defaultMCQ);
 
-            const downloadTemplate = () => {
+            const downloadTemplateCSV = () => {
                 const csvContent = "Mapel,Pertanyaan,Opsi A,Opsi B,Opsi C,Opsi D,Kunci\nBahasa Indonesia,Ibu kota Indonesia adalah?,Jakarta,Bandung,Surabaya,Medan,A\n";
                 const link = document.createElement("a");
                 link.setAttribute("href", URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })));
@@ -1599,41 +1599,121 @@
                 document.body.appendChild(link); link.click(); document.body.removeChild(link);
             };
 
+            const downloadTemplateJSON = () => {
+                const jsonTemplate = [
+                    {
+                        "type": "MCQ",
+                        "points": 1,
+                        "question": "Siapa penemu lampu pijar?",
+                        "options": [
+                            {"id": "A", "text": "Thomas Edison"},
+                            {"id": "B", "text": "Albert Einstein"},
+                            {"id": "C", "text": "Nikola Tesla"},
+                            {"id": "D", "text": "Isaac Newton"}
+                        ],
+                        "correctAnswer": "A"
+                    },
+                    {
+                        "type": "MCMA",
+                        "points": 2,
+                        "question": "Pilih dua hewan mamalia:",
+                        "statements": [
+                            {"id": 1, "text": "Kucing"},
+                            {"id": 2, "text": "Ayam"},
+                            {"id": 3, "text": "Sapi"},
+                            {"id": 4, "text": "Ular"}
+                        ],
+                        "correctAnswers": [1, 3]
+                    },
+                    {
+                        "type": "CATEGORY",
+                        "points": 3,
+                        "question": "Tentukan Benar atau Salah pernyataan di bawah ini:",
+                        "statements": [
+                            {"id": 1, "text": "Ibukota Jawa Tengah adalah Semarang", "category1": "Benar", "category2": "Salah", "correctCategory": "Benar"},
+                            {"id": 2, "text": "Ikan bernapas dengan paru-paru", "category1": "Benar", "category2": "Salah", "correctCategory": "Salah"}
+                        ]
+                    }
+                ];
+                const link = document.createElement("a");
+                link.setAttribute("href", URL.createObjectURL(new Blob([JSON.stringify(jsonTemplate, null, 4)], { type: 'application/json;charset=utf-8;' })));
+                link.setAttribute("download", "Template_Bank_Soal_Lengkap.json");
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            };
+
             const handleUploadSoal = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
+                setFileError('');
+                
                 const reader = new FileReader();
                 reader.onload = async (event) => {
-                    const lines = event.target.result.split('\n').filter(l => l.trim() !== '');
-                    const payloads = [];
-                    for (let i = (lines[0].toLowerCase().includes('mapel') ? 1 : 0); i < lines.length; i++) {
-                        const cols = lines[i].split(',');
-                        if (cols.length >= 7) {
-                            payloads.push({
-                                id: `q${Date.now()}_${i}`,
-                                type: 'MCQ', 
-                                folder: filterFolder,
-                                points: 1,
-                                question: cols[1].replace(/["\r]/g, '').trim(),
-                                options: [
-                                    { id: 'A', text: cols[2].replace(/["\r]/g, '').trim() },
-                                    { id: 'B', text: cols[3].replace(/["\r]/g, '').trim() },
-                                    { id: 'C', text: cols[4].replace(/["\r]/g, '').trim() },
-                                    { id: 'D', text: cols[5].replace(/["\r]/g, '').trim() }
-                                ],
-                                correctAnswer: cols[6].replace(/["\r]/g, '').trim().toUpperCase()
-                            });
-                        }
-                    }
-                    if (payloads.length === 0) { setFileError('Format salah.'); return; }
-                    setIsSaving(true);
+                    const fileContent = event.target.result;
+                    let payloads = [];
+
                     try {
+                        if (file.name.toLowerCase().endsWith('.json')) {
+                            const parsedData = JSON.parse(fileContent);
+                            if (!Array.isArray(parsedData)) throw new Error("Format salah: File JSON harus berwujud Array '[ { ... } ]'.");
+                            
+                            payloads = parsedData.map((q, i) => {
+                                if (!['MCQ', 'MCMA', 'CATEGORY'].includes(q.type)) throw new Error(`Tipe soal '${q.type}' pada item ke-${i+1} tidak valid.`);
+                                return {
+                                    id: `q${Date.now()}_${i}`,
+                                    type: q.type, 
+                                    folder: filterFolder,
+                                    points: parseInt(q.points) || (q.type === 'MCQ' ? 1 : q.type === 'MCMA' ? 2 : 3),
+                                    question: q.question || 'Tanpa Pertanyaan',
+                                    options: q.options || null,
+                                    correctAnswer: q.correctAnswer || null,
+                                    statements: q.statements || null,
+                                    correctAnswers: q.correctAnswers || null
+                                };
+                            });
+                        } else if (file.name.toLowerCase().endsWith('.csv')) {
+                            const lines = fileContent.split('\n').filter(l => l.trim() !== '');
+                            for (let i = (lines[0].toLowerCase().includes('mapel') ? 1 : 0); i < lines.length; i++) {
+                                const cols = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || lines[i].split(',');
+                                const cleanCol = (col) => col ? col.replace(/(^"|"$)/g, '').replace(/""/g, '"').trim() : '';
+                                
+                                if (cols.length >= 7) {
+                                    payloads.push({
+                                        id: `q${Date.now()}_${i}`,
+                                        type: 'MCQ', 
+                                        folder: filterFolder,
+                                        points: 1,
+                                        question: cleanCol(cols[1]),
+                                        options: [
+                                            { id: 'A', text: cleanCol(cols[2]) },
+                                            { id: 'B', text: cleanCol(cols[3]) },
+                                            { id: 'C', text: cleanCol(cols[4]) },
+                                            { id: 'D', text: cleanCol(cols[5]) }
+                                        ],
+                                        correctAnswer: cleanCol(cols[6]).toUpperCase()
+                                    });
+                                }
+                            }
+                        } else {
+                            throw new Error("Sistem hanya menerima file .csv atau .json");
+                        }
+
+                        if (payloads.length === 0) throw new Error("Data soal kosong atau format tidak sesuai template.");
+
+                        setIsSaving(true);
                         const db = await getSupabase();
                         const { error } = await db.from('questions').insert(payloads);
                         if (error) throw error;
-                        setShowImport(false); fetchSupabaseData(); alert('Soal berhasil diimpor!');
-                    } catch(err) { alert("Gagal impor ke database!\nPastikan tabel 'questions' memiliki kolom 'correctAnswer'.\nError: " + err.message); }
-                    finally { setIsSaving(false); }
+                        
+                        setShowImport(false); 
+                        fetchSupabaseData(); 
+                        alert(`Berhasil mengimpor ${payloads.length} soal!`);
+                        
+                    } catch(err) { 
+                        setFileError(err.message); 
+                    } finally { 
+                        setIsSaving(false); 
+                        e.target.value = null; 
+                    }
                 };
                 reader.readAsText(file);
             };
@@ -1927,10 +2007,16 @@
                   {showImport && (
                      <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
                         <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
-                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Impor Soal CSV (Hanya Pilihan Ganda)</h3><button onClick={()=>setShowImport(false)}><X size={18}/></button></div>
-                            <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText size={16} className="mr-2"/> Download Templat Soal</button>
-                            <input type="file" accept=".csv" onChange={handleUploadSoal} className="w-full p-4 border-2 border-dashed rounded-xl"/>
-                            {fileError && <p className="text-rose-500 text-xs mt-2">{fileError}</p>}
+                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-slate-800">Impor Soal CSV / JSON</h3><button onClick={()=>setShowImport(false)} className="text-slate-500 hover:text-slate-800"><X size={18}/></button></div>
+                            
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                <button onClick={downloadTemplateCSV} className="bg-slate-50 border text-slate-700 px-4 py-2 rounded-lg text-xs font-semibold flex items-center justify-center hover:bg-slate-100 transition-colors"><FileText size={14} className="mr-2"/> Templat CSV (Khusus Pilihan Ganda)</button>
+                                <button onClick={downloadTemplateJSON} className="bg-blue-50 border border-blue-100 text-blue-700 px-4 py-2 rounded-lg text-xs font-semibold flex items-center justify-center hover:bg-blue-100 transition-colors"><Database size={14} className="mr-2"/> Templat JSON (Semua Tipe Soal)</button>
+                            </div>
+
+                            <input type="file" accept=".csv,.json" onChange={handleUploadSoal} className="w-full p-4 border-2 border-dashed border-slate-300 rounded-xl text-sm font-medium text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"/>
+                            
+                            {fileError && <div className="mt-3 p-3 bg-rose-50 text-rose-600 text-xs font-bold border border-rose-200 rounded-lg"><i className="fas fa-exclamation-triangle mr-1"></i> {fileError}</div>}
                         </div>
                      </div>
                   )}
