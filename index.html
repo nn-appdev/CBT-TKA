@@ -984,12 +984,12 @@
              const uniqueClasses = [...new Set(actualTokens.map(t => t.participant_school).filter(Boolean))];
              const uniqueEditClasses = [...new Set(massEditTokens.map(t => t.participant_school).filter(Boolean))];
 
-             const displayedMassEditTokens = editFilter === 'Semua' 
-                 ? massEditTokens 
-                 : massEditTokens.filter(t => t.participant_school === editFilter);
+             // KUNCI PERBAIKAN: Memfilter data yang TAMPIL di layar
+             const displayedTokens = downloadFilter === 'Semua' ? actualTokens : actualTokens.filter(t => t.participant_school === downloadFilter);
+             const displayedMassEditTokens = editFilter === 'Semua' ? massEditTokens : massEditTokens.filter(t => t.participant_school === editFilter);
 
              const handleSelectAll = (e) => {
-                 if (e.target.checked) setSelectedTokens(actualTokens.map(t => t.code));
+                 if (e.target.checked) setSelectedTokens(displayedTokens.map(t => t.code));
                  else setSelectedTokens([]);
              };
 
@@ -1014,158 +1014,64 @@
                      await fetchSupabaseData(); 
                      setSelectedTokens([]); 
                      alert("Data terpilih berhasil dihapus.");
-                 } catch (err) {
-                     alert("Gagal hapus masal: " + err.message);
-                 } finally {
-                     setIsSaving(false);
-                 }
+                 } catch (err) { alert("Gagal hapus masal: " + err.message); } 
+                 finally { setIsSaving(false); }
              };
 
              const downloadPeserta = () => {
-                 let validTokens = actualTokens;
-                 if (downloadFilter !== 'Semua') {
-                     validTokens = validTokens.filter(t => t.participant_school === downloadFilter);
-                 }
-                 if (validTokens.length === 0) return alert("Tidak ada data untuk difilter.");
-                 
+                 if (displayedTokens.length === 0) return alert("Tidak ada data untuk difilter.");
                  const printWindow = window.open('', '_blank');
                  const dateStr = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
                  
                  let tableRowsHTML = '';
-                 validTokens.forEach((t, i) => {
-                     tableRowsHTML += `
-                         <tr>
-                             <td class="text-center">${i + 1}</td>
-                             <td style="text-transform: uppercase; font-weight: 600;">${t.participant_name || '-'}</td>
-                             <td>${t.participant_school || '-'}</td>
-                             <td class="text-center token-font">${t.code}</td>
-                             <td class="text-center"><span class="status ${t.status === 'AVAILABLE' ? 'status-available' : 'status-used'}">${t.status}</span></td>
-                         </tr>
-                     `;
+                 displayedTokens.forEach((t, i) => {
+                     tableRowsHTML += `<tr><td class="text-center">${i + 1}</td><td style="text-transform: uppercase; font-weight: 600;">${t.participant_name || '-'}</td><td>${t.participant_school || '-'}</td><td class="text-center token-font">${t.code}</td><td class="text-center"><span class="status ${t.status === 'AVAILABLE' ? 'status-available' : 'status-used'}">${t.status}</span></td></tr>`;
                  });
 
                  const htmlContent = `
-                     <!DOCTYPE html>
-                     <html>
-                     <head>
-                         <title>Data_Token_${downloadFilter.replace(/\s+/g, '_')}</title>
-                         <style>
-                             body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; padding: 20px; }
-                             .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e293b; padding-bottom: 15px; }
-                             .header h2 { margin: 0 0 5px 0; color: #0f172a; font-size: 22px; text-transform: uppercase; letter-spacing: 1px; }
-                             .header p { margin: 0; font-size: 14px; color: #64748b; }
-                             table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
-                             th, td { border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; }
-                             th { background-color: #f8fafc; font-weight: bold; text-transform: uppercase; font-size: 11px; color: #475569; }
-                             td { color: #1e293b; }
-                             .text-center { text-align: center; }
-                             .token-font { font-family: monospace; font-weight: bold; color: #2563eb; font-size: 14px; letter-spacing: 1px; }
-                             .status { font-weight: bold; font-size: 10px; padding: 3px 6px; border-radius: 4px; text-transform: uppercase; }
-                             .status-available { background-color: #d1fae5; color: #065f46; border: 1px solid #34d399; }
-                             .status-used { background-color: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
-                             @media print { 
-                                 @page { margin: 1.5cm; }
-                                 body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                             }
-                         </style>
-                     </head>
-                     <body>
-                         <div class="header">
-                             <h2>Daftar Token Ujian Peserta</h2>
-                             <p>Filter Kelas/Sekolah: <strong>${downloadFilter}</strong> &nbsp;|&nbsp; Tanggal Unduh: ${dateStr}</p>
-                         </div>
-                         <table>
-                             <thead>
-                                 <tr>
-                                     <th class="text-center" style="width: 5%;">No</th>
-                                     <th style="width: 30%;">Nama Peserta</th>
-                                     <th style="width: 30%;">Asal Sekolah / Kelas</th>
-                                     <th class="text-center" style="width: 20%;">Token</th>
-                                     <th class="text-center" style="width: 15%;">Status</th>
-                                 </tr>
-                             </thead>
-                             <tbody>
-                                 ${tableRowsHTML}
-                             </tbody>
-                         </table>
-                         <script>
-                             window.onload = function() { 
-                                 setTimeout(function() {
-                                     window.print();
-                                     window.close();
-                                 }, 500);
-                             }
-                         <${'/'}script>
-                     </body>
-                     </html>
-                 `;
-                 printWindow.document.open();
-                 printWindow.document.write(htmlContent);
-                 printWindow.document.close();
-             };
-
-             const downloadTemplate = () => {
-                 const csvContent = "Nama Murid,Asal Sekolah\nBudi Santoso,SDN 1\nSiti Aminah,SDN 2\n";
-                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                 const link = document.createElement("a");
-                 link.setAttribute("href", URL.createObjectURL(blob));
-                 link.setAttribute("download", "Template_Peserta.csv");
-                 document.body.appendChild(link); link.click(); document.body.removeChild(link);
-             };
-
-             const handleFileUpload = (e) => {
-                 const file = e.target.files[0];
-                 if (!file) return;
-                 const reader = new FileReader();
-                 reader.onload = async (event) => {
-                     const lines = event.target.result.split('\n').filter(l => l.trim() !== '');
-                     const payloads = [];
-                     for (let i = (lines[0].toLowerCase().includes('nama') ? 1 : 0); i < lines.length; i++) {
-                         const cols = lines[i].split(lines[i].includes(';') ? ';' : ',');
-                         if (cols[0]) payloads.push({ code: `TKA-${Math.random().toString(36).substring(2,6).toUpperCase()}`, status: 'AVAILABLE', participant_name: cols[0].replace(/["\r]/g, '').trim(), participant_school: cols[1]?.replace(/["\r]/g, '').trim() || '', generatedAt: new Date().toISOString() });
-                     }
-                     if (payloads.length === 0) { setFileUploadError('Data kosong.'); return; }
-                     setIsSaving(true);
-                     try {
-                          const db = await getSupabase();
-                          await db.from('tokens').insert(payloads);
-                          setShowImport(false); fetchSupabaseData(); alert('Berhasil mengimpor token!');
-                     } catch(err) { alert(err.message); }
-                     finally { setIsSaving(false); }
-                 };
-                 reader.readAsText(file);
+                     <!DOCTYPE html><html><head><title>Data_Token_${downloadFilter.replace(/\s+/g, '_')}</title>
+                     <style>
+                         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; padding: 20px; }
+                         .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e293b; padding-bottom: 15px; }
+                         .header h2 { margin: 0 0 5px 0; color: #0f172a; font-size: 22px; text-transform: uppercase; letter-spacing: 1px; }
+                         table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+                         th, td { border: 1px solid #cbd5e1; padding: 10px 12px; text-align: left; }
+                         th { background-color: #f8fafc; font-weight: bold; text-transform: uppercase; font-size: 11px; color: #475569; }
+                         .text-center { text-align: center; } .token-font { font-family: monospace; font-weight: bold; color: #2563eb; font-size: 14px; letter-spacing: 1px; }
+                         .status { font-weight: bold; font-size: 10px; padding: 3px 6px; border-radius: 4px; text-transform: uppercase; }
+                         .status-available { background-color: #d1fae5; color: #065f46; border: 1px solid #34d399; } .status-used { background-color: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
+                         @media print { @page { margin: 1.5cm; } body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+                     </style></head><body>
+                         <div class="header"><h2>Daftar Token Ujian Peserta</h2><p>Filter Kelas/Sekolah: <strong>${downloadFilter}</strong> &nbsp;|&nbsp; Tanggal Unduh: ${dateStr}</p></div>
+                         <table><thead><tr><th class="text-center" style="width: 5%;">No</th><th style="width: 30%;">Nama Peserta</th><th style="width: 30%;">Asal Sekolah / Kelas</th><th class="text-center" style="width: 20%;">Token</th><th class="text-center" style="width: 15%;">Status</th></tr></thead>
+                         <tbody>${tableRowsHTML}</tbody></table>
+                         <script>window.onload = function() { setTimeout(function() { window.print(); window.close(); }, 500); }<${'/'}script>
+                     </body></html>`;
+                 printWindow.document.open(); printWindow.document.write(htmlContent); printWindow.document.close();
              };
 
              const addManual = async () => {
-                 const name = prompt("Nama Peserta:");
-                 if (!name) return;
+                 const name = prompt("Nama Peserta:"); if (!name) return;
                  const school = prompt("Asal Sekolah:") || organizerName;
                  const newCode = `TKA-${Math.random().toString(36).substring(2,6).toUpperCase()}`;
                  setIsSaving(true);
-                 try {
-                     const db = await getSupabase();
-                     await db.from('tokens').insert([{ code: newCode, status: 'AVAILABLE', participant_name: name, participant_school: school, generatedAt: new Date().toISOString() }]);
-                     fetchSupabaseData();
-                 } catch(e) { alert(e.message); }
+                 try { const db = await getSupabase(); await db.from('tokens').insert([{ code: newCode, status: 'AVAILABLE', participant_name: name, participant_school: school, generatedAt: new Date().toISOString() }]); fetchSupabaseData(); } catch(e) { alert(e.message); }
                  setIsSaving(false);
              };
 
              const startMassEdit = () => {
                  setEditFilter('Semua');
                  if (selectedTokens.length > 0) {
-                     const tokensToEdit = actualTokens.filter(t => selectedTokens.includes(t.code));
+                     const tokensToEdit = displayedTokens.filter(t => selectedTokens.includes(t.code));
                      setMassEditTokens(JSON.parse(JSON.stringify(tokensToEdit)));
                  } else {
-                     setMassEditTokens(JSON.parse(JSON.stringify(actualTokens)));
+                     setMassEditTokens(JSON.parse(JSON.stringify(displayedTokens)));
                  }
-                 setSelectedTokens([]); 
-                 setIsMassEdit(true);
+                 setSelectedTokens([]); setIsMassEdit(true);
              };
 
              const handleMassEditChange = (index, field, value) => {
-                 const updated = [...massEditTokens];
-                 updated[index][field] = value;
-                 setMassEditTokens(updated);
+                 const updated = [...massEditTokens]; updated[index][field] = value; setMassEditTokens(updated);
              };
 
              const handleBulkEditStatus = (status) => {
@@ -1179,10 +1085,7 @@
                  try {
                      const db = await getSupabase();
                      await db.from('tokens').upsert(massEditTokens.map(t => ({ code: t.code, status: t.status, participant_name: t.participant_name, participant_school: t.participant_school })));
-                     fetchSupabaseData();
-                     setIsMassEdit(false);
-                     setSelectedTokens([]); 
-                     alert("Data berhasil diperbarui!");
+                     fetchSupabaseData(); setIsMassEdit(false); setSelectedTokens([]); alert("Data berhasil diperbarui!");
                  } catch(e) { alert(e.message); }
                  setIsSaving(false);
              };
@@ -1201,32 +1104,19 @@
                         <>
                             <button onClick={addManual} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors"><Plus size={16} className="mr-2"/> Tambah Manual</button>
                             <button onClick={() => setShowImport(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors"><Upload size={16} className="mr-2"/> Unggah Peserta</button>
-                            
-                            <button onClick={startMassEdit} disabled={actualTokens.length===0} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors disabled:opacity-50">
+                            <button onClick={startMassEdit} disabled={displayedTokens.length===0} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center transition-colors disabled:opacity-50">
                                 <Edit size={16} className="mr-2"/> {selectedTokens.length > 0 ? `Edit Terpilih (${selectedTokens.length})` : 'Edit'}
                             </button>
                             
                             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 ml-auto">
-                                <select 
-                                    value={downloadFilter} 
-                                    onChange={(e) => setDownloadFilter(e.target.value)}
-                                    className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 cursor-pointer"
-                                >
+                                <select value={downloadFilter} onChange={(e) => {setDownloadFilter(e.target.value); setSelectedTokens([]);}} className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 cursor-pointer">
                                     <option value="Semua">Semua Kelas/Sekolah</option>
-                                    {uniqueClasses.map((cls, idx) => (
-                                        <option key={idx} value={cls}>{cls}</option>
-                                    ))}
+                                    {uniqueClasses.map((cls, idx) => <option key={idx} value={cls}>{cls}</option>)}
                                 </select>
-                                <button onClick={downloadPeserta} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center border border-emerald-200">
-                                    <i className="fas fa-file-pdf mr-2"></i> Cetak PDF
-                                </button>
+                                <button onClick={downloadPeserta} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-4 py-2.5 rounded-lg font-bold text-sm transition-colors flex items-center border border-emerald-200"><i className="fas fa-file-pdf mr-2"></i> Cetak PDF</button>
                             </div>
                             
-                            {selectedTokens.length > 0 && (
-                                <button onClick={handleDeleteSelected} disabled={isSaving} className="bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 transition-colors flex items-center">
-                                    <i className="fas fa-trash-alt mr-2"></i> Hapus Terpilih ({selectedTokens.length})
-                                </button>
-                            )}
+                            {selectedTokens.length > 0 && <button onClick={handleDeleteSelected} disabled={isSaving} className="bg-red-50 text-red-700 hover:bg-red-100 px-4 py-2.5 rounded-xl font-bold text-sm border border-red-200 transition-colors flex items-center"><i className="fas fa-trash-alt mr-2"></i> Hapus Terpilih ({selectedTokens.length})</button>}
                         </>
                     ) : (
                         <div className="w-full flex flex-wrap gap-2 items-center justify-between">
@@ -1234,96 +1124,52 @@
                                 <button onClick={saveMassEdit} disabled={isSaving} className="bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md"><Save size={16} className="inline mr-2"/> Simpan Perubahan</button>
                                 <button onClick={() => { setIsMassEdit(false); setSelectedTokens([]); }} className="bg-slate-200 text-slate-700 hover:bg-slate-300 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors">Batal</button>
                             </div>
-                            
                             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 ml-auto">
                                 <span className="text-xs font-bold text-slate-500 pl-2">Filter Edit:</span>
                                 <select value={editFilter} onChange={e => {setEditFilter(e.target.value); setSelectedTokens([]);}} className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-3 py-1.5 outline-none focus:border-blue-500 cursor-pointer">
                                     <option value="Semua">Semua Kelas/Sekolah</option>
-                                    {uniqueEditClasses.map((cls, idx) => (
-                                        <option key={idx} value={cls}>{cls}</option>
-                                    ))}
+                                    {uniqueEditClasses.map((cls, idx) => <option key={idx} value={cls}>{cls}</option>)}
                                 </select>
                             </div>
                         </div>
                     )}
                  </div>
-
-                 {showImport && (
-                     <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
-                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Impor Peserta</h3><button onClick={()=>setShowImport(false)}><X size={18}/></button></div>
-                            <button onClick={downloadTemplate} className="mb-4 bg-blue-50 border text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText size={16} className="mr-2"/> Download Templat</button>
-                            <input type="file" accept=".csv" onChange={handleFileUpload} className="w-full p-4 border-2 border-dashed rounded-xl"/>
-                            {fileUploadError && <p className="text-rose-500 text-xs mt-2">{fileUploadError}</p>}
-                        </div>
-                     </div>
-                 )}
                  
                  <div className="bg-white rounded-xl border overflow-x-auto shadow-sm">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 border-b">
                             <tr>
-                                <th className="p-4 text-center w-12">
-                                    <input 
-                                        type="checkbox" 
-                                        className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
-                                        onChange={isMassEdit ? handleSelectAllEdit : handleSelectAll} 
-                                        checked={selectedTokens.length > 0 && selectedTokens.length === (isMassEdit ? displayedMassEditTokens.length : actualTokens.length)} 
-                                    />
-                                </th>
-                                <th className="p-4 w-12 text-center">No</th>
-                                <th className="p-4">Nama</th>
-                                <th className="p-4">Sekolah/Kelas</th>
-                                <th className="p-4">Token</th>
+                                <th className="p-4 text-center w-12"><input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" onChange={isMassEdit ? handleSelectAllEdit : handleSelectAll} checked={selectedTokens.length > 0 && selectedTokens.length === (isMassEdit ? displayedMassEditTokens.length : displayedTokens.length)} /></th>
+                                <th className="p-4 w-12 text-center">No</th><th className="p-4">Nama</th><th className="p-4">Sekolah/Kelas</th><th className="p-4">Token</th>
                                 {isMassEdit ? (
-                                    <th className="p-4 min-w-[160px]">
-                                        Status
+                                    <th className="p-4 min-w-[160px]">Status
                                         <select onChange={(e) => { if(e.target.value) handleBulkEditStatus(e.target.value); e.target.value=''; }} className="mt-1.5 w-full border border-slate-300 rounded text-xs font-bold text-blue-700 bg-blue-50 p-1.5 outline-none cursor-pointer">
-                                            <option value="">+ Set Terpilih</option>
-                                            <option value="AVAILABLE">AVAILABLE</option>
-                                            <option value="USED">USED</option>
-                                            <option value="EXPIRED">EXPIRED</option>
+                                            <option value="">+ Set Terpilih</option><option value="AVAILABLE">AVAILABLE</option><option value="USED">USED</option><option value="EXPIRED">EXPIRED</option>
                                         </select>
                                     </th>
-                                ) : (
-                                    <th className="p-4 text-center">Status</th>
-                                )}
+                                ) : (<th className="p-4 text-center">Status</th>)}
                                 {!isMassEdit && <th className="p-4 text-center">Aksi</th>}
                             </tr>
                         </thead>
                         <tbody>
                             {isMassEdit ? (
                                 displayedMassEditTokens.map((t, idx) => {
-                                    // Cari index asli dari massEditTokens untuk fungsi update
                                     const originalIndex = massEditTokens.findIndex(orig => orig.code === t.code);
                                     return (
                                         <tr key={t.code} className={`border-b ${selectedTokens.includes(t.code) ? 'bg-blue-50/60' : 'bg-white'}`}>
-                                            <td className="p-3 text-center">
-                                                <input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" checked={selectedTokens.includes(t.code)} onChange={() => handleSelectToken(t.code)} />
-                                            </td>
+                                            <td className="p-3 text-center"><input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" checked={selectedTokens.includes(t.code)} onChange={() => handleSelectToken(t.code)} /></td>
                                             <td className="p-3 text-center text-slate-500 font-semibold">{idx+1}</td>
                                             <td className="p-2"><input type="text" value={t.participant_name} onChange={e=>handleMassEditChange(originalIndex, 'participant_name', e.target.value)} className="w-full p-2 border border-blue-200 rounded text-sm outline-none focus:ring-1"/></td>
                                             <td className="p-2"><input type="text" value={t.participant_school} onChange={e=>handleMassEditChange(originalIndex, 'participant_school', e.target.value)} className="w-full p-2 border border-blue-200 rounded text-sm outline-none focus:ring-1"/></td>
                                             <td className="p-3 font-mono font-bold text-slate-500">{t.code}</td>
-                                            <td className="p-2">
-                                                <select value={t.status} onChange={e=>handleMassEditChange(originalIndex, 'status', e.target.value)} className="w-full p-2 border border-blue-200 rounded text-xs font-bold outline-none cursor-pointer bg-white">
-                                                    <option value="AVAILABLE">AVAILABLE</option><option value="USED">USED</option><option value="EXPIRED">EXPIRED</option>
-                                                </select>
-                                            </td>
+                                            <td className="p-2"><select value={t.status} onChange={e=>handleMassEditChange(originalIndex, 'status', e.target.value)} className="w-full p-2 border border-blue-200 rounded text-xs font-bold outline-none cursor-pointer bg-white"><option value="AVAILABLE">AVAILABLE</option><option value="USED">USED</option><option value="EXPIRED">EXPIRED</option></select></td>
                                         </tr>
                                     );
                                 })
                             ) : (
-                                actualTokens.map((t, i) => (
+                                displayedTokens.map((t, i) => (
                                     <tr key={t.code} className={`border-b transition-colors ${selectedTokens.includes(t.code) ? 'bg-blue-50/40' : 'hover:bg-slate-50'}`}>
-                                        <td className="p-4 text-center">
-                                            <input 
-                                                type="checkbox" 
-                                                className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
-                                                checked={selectedTokens.includes(t.code)} 
-                                                onChange={() => handleSelectToken(t.code)} 
-                                            />
-                                        </td>
+                                        <td className="p-4 text-center"><input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" checked={selectedTokens.includes(t.code)} onChange={() => handleSelectToken(t.code)} /></td>
                                         <td className="p-4 text-center text-slate-500 font-semibold">{i+1}</td>
                                         <td className="p-4 font-semibold text-slate-800 uppercase">{t.participant_name || '-'}</td>
                                         <td className="p-4 text-slate-600 font-medium">{t.participant_school || '-'}</td>
@@ -1333,7 +1179,7 @@
                                     </tr>
                                 ))
                             )}
-                            {(isMassEdit ? displayedMassEditTokens : actualTokens).length === 0 && <tr><td colSpan={isMassEdit ? 6 : 7} className="text-center py-8 text-slate-500 italic bg-slate-50">Belum ada data token peserta.</td></tr>}
+                            {(isMassEdit ? displayedMassEditTokens : displayedTokens).length === 0 && <tr><td colSpan={isMassEdit ? 6 : 7} className="text-center py-8 text-slate-500 italic bg-slate-50">Belum ada data peserta.</td></tr>}
                         </tbody>
                     </table>
                  </div>
@@ -1344,11 +1190,27 @@
           const AdminResults = () => {
              const [selectedAnalysis, setSelectedAnalysis] = useState(null);
              const [filterSchool, setFilterSchool] = useState('Semua');
+             const [filterFolder, setFilterFolder] = useState('Semua'); // STATE BARU
              const [selectedResults, setSelectedResults] = useState([]);
              const [isDeleting, setIsDeleting] = useState(false);
 
+             // Algoritma Pelacakan Balik untuk mencari Folder dari ID Soal pertama yang dijawab siswa
+             const getResultFolder = (r) => {
+                 const firstQId = r.detail?.detailedResults?.find(x => x.qId !== 'SYS_CHEATS')?.qId;
+                 if (!firstQId) return 'Utama';
+                 const q = questions.find(x => x.id === firstQId);
+                 return q ? (q.folder || 'Utama') : 'Utama';
+             };
+
              const schoolList = ['Semua', ...new Set(results.map(r => r.participant?.school).filter(Boolean))];
-             const filteredResults = filterSchool === 'Semua' ? results : results.filter(r => r.participant?.school === filterSchool);
+             const folderList = ['Semua', ...new Set(results.map(getResultFolder))];
+
+             // Menerapkan Filter Ganda (Sekolah & Folder)
+             const filteredResults = results.filter(r => {
+                 const matchSchool = filterSchool === 'Semua' || r.participant?.school === filterSchool;
+                 const matchFolder = filterFolder === 'Semua' || getResultFolder(r) === filterFolder;
+                 return matchSchool && matchFolder;
+             });
 
              const handleSelectAll = (e) => {
                  if (e.target.checked) setSelectedResults(filteredResults.map(r => r.id));
@@ -1362,11 +1224,7 @@
 
              const deleteResult = async (id) => {
                  if(!confirm("Hapus hasil ujian peserta ini?")) return;
-                 try {
-                     const db = await getSupabase();
-                     await db.from('results').delete().eq('id', id);
-                     fetchSupabaseData();
-                 } catch(e) { alert("Gagal menghapus: " + e.message); }
+                 try { const db = await getSupabase(); await db.from('results').delete().eq('id', id); fetchSupabaseData(); } catch(e) { alert("Gagal menghapus: " + e.message); }
              };
 
              const handleDeleteSelected = async () => {
@@ -1377,64 +1235,53 @@
                      const db = await getSupabase();
                      const { error } = await db.from('results').delete().in('id', selectedResults);
                      if (error) throw error;
-                     await fetchSupabaseData(); 
-                     setSelectedResults([]); 
-                     alert("Data terpilih berhasil dihapus.");
-                 } catch (err) {
-                     alert("Gagal hapus masal: " + err.message);
-                 } finally {
-                     setIsDeleting(false);
-                 }
+                     await fetchSupabaseData(); setSelectedResults([]); alert("Data terpilih berhasil dihapus.");
+                 } catch (err) { alert("Gagal hapus masal: " + err.message); } finally { setIsDeleting(false); }
              };
 
              const downloadExcel = () => {
                  if (filteredResults.length === 0) return alert("Tidak ada data untuk diunduh.");
-                 
-                 // BOM \uFEFF agar Excel membaca UTF-8 dengan sempurna
-                 let csvContent = "\uFEFFNo,Nama Peserta,Sekolah/Kelas,Skor Didapat,Total Maks Skor,Nilai Akhir (100),Waktu Mulai Ujian\n";
+                 let csvContent = "\uFEFFNo,Nama Peserta,Sekolah/Kelas,Folder Ujian,Skor Didapat,Total Maks Skor,Nilai Akhir (100),Waktu Mulai\n";
                  
                  filteredResults.forEach((r, i) => {
                      const name = r.participant?.name ? r.participant.name.replace(/"/g, '""') : '';
                      const school = r.participant?.school ? r.participant.school.replace(/"/g, '""') : '';
-                     
+                     const folderName = getResultFolder(r);
                      const details = Array.isArray(r.detail?.detailedResults) ? r.detail.detailedResults : [];
                      const earned = details.reduce((sum, d) => sum + (d.pointsEarned || 0), 0);
                      const maxP = details.reduce((sum, d) => sum + (d.questionMaxPoints || 0), 0);
-                     
-                     const dateObj = new Date(r.startTime);
-                     const timeStr = dateObj.toLocaleString('id-ID');
-                     
-                     csvContent += `${i + 1},"${name}","${school}",${earned},${maxP},${r.score},"${timeStr}"\n`;
+                     const timeStr = new Date(r.startTime).toLocaleString('id-ID');
+                     csvContent += `${i + 1},"${name}","${school}","${folderName}",${earned},${maxP},${r.score},"${timeStr}"\n`;
                  });
                  
                  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                 const link = document.createElement("a");
-                 link.href = URL.createObjectURL(blob);
-                 link.download = `Hasil_Ujian_${filterSchool}_${new Date().getTime()}.csv`;
-                 link.click();
+                 const link = document.createElement("a"); link.href = URL.createObjectURL(blob);
+                 link.download = `Hasil_Ujian_${filterSchool}_${filterFolder}_${new Date().getTime()}.csv`; link.click();
              };
 
              return (
                <AdminLayout title="Manajemen Hasil Ujian">
                  <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border shadow-sm">
                      <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                         <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="w-full sm:w-auto border rounded-lg p-2 text-sm bg-slate-50 font-semibold focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
-                             {schoolList.map(s => <option key={s} value={s}>{s}</option>)}
-                         </select>
+                         <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1 rounded-lg">
+                             <select value={filterSchool} onChange={e=>{setFilterSchool(e.target.value); setSelectedResults([]);}} className="w-full sm:w-auto border-none p-2 text-sm bg-transparent font-semibold outline-none cursor-pointer text-slate-700">
+                                 {schoolList.map(s => <option key={s} value={s}>{s === 'Semua' ? 'Semua Sekolah' : s}</option>)}
+                             </select>
+                             <div className="w-px h-5 bg-slate-300"></div>
+                             <select value={filterFolder} onChange={e=>{setFilterFolder(e.target.value); setSelectedResults([]);}} className="w-full sm:w-auto border-none p-2 text-sm bg-transparent font-semibold outline-none cursor-pointer text-blue-700">
+                                 {folderList.map(f => <option key={f} value={f}>{f === 'Semua' ? 'Semua Folder' : f}</option>)}
+                             </select>
+                         </div>
                          
                          {selectedResults.length > 0 && (
-                             <button onClick={handleDeleteSelected} disabled={isDeleting} className="bg-rose-50 text-rose-700 border border-rose-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-rose-100 transition-colors shadow-sm">
+                             <button onClick={handleDeleteSelected} disabled={isDeleting} className="bg-rose-50 text-rose-700 border border-rose-200 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center hover:bg-rose-100 transition-colors shadow-sm">
                                  <Trash2 size={16} className="mr-2"/> Hapus ({selectedResults.length})
                              </button>
                          )}
                      </div>
                      <div className="flex gap-2 w-full sm:w-auto">
-                         <button onClick={downloadExcel} className="flex-1 sm:flex-none bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center hover:bg-emerald-100 transition-colors shadow-sm">
-                             <i className="fas fa-file-excel mr-2"></i> Unduh Excel
-                         </button>
-                         <button onClick={fetchSupabaseData} className="flex-1 sm:flex-none bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm" title="Refresh">
-                             <i className="fas fa-sync-alt"></i>
-                         </button>
+                         <button onClick={downloadExcel} className="flex-1 sm:flex-none bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center hover:bg-emerald-100 transition-colors shadow-sm"><i className="fas fa-file-excel mr-2"></i> Unduh Excel</button>
+                         <button onClick={fetchSupabaseData} className="flex-1 sm:flex-none bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm" title="Refresh"><i className="fas fa-sync-alt"></i></button>
                      </div>
                  </div>
 
@@ -1445,12 +1292,7 @@
                             <div className="p-0 overflow-y-auto flex-1">
                                 <table className="w-full text-left text-sm border-collapse">
                                     <thead className="bg-slate-100 border-b sticky top-0 shadow-sm z-10">
-                                        <tr>
-                                            <th className="p-4 w-12 text-center text-slate-600">No</th>
-                                            <th className="p-4 text-slate-600">Pertanyaan & Kunci Asli</th>
-                                            <th className="p-4 w-64 text-slate-600 border-l border-r border-slate-200 bg-blue-50/30">Pilihan Siswa</th>
-                                            <th className="p-4 w-28 text-center text-slate-600">Skor</th>
-                                        </tr>
+                                        <tr><th className="p-4 w-12 text-center text-slate-600">No</th><th className="p-4 text-slate-600">Pertanyaan & Kunci Asli</th><th className="p-4 w-64 text-slate-600 border-l border-r border-slate-200 bg-blue-50/30">Pilihan Siswa</th><th className="p-4 w-28 text-center text-slate-600">Skor</th></tr>
                                     </thead>
                                     <tbody>
                                         {questions.map((q, i) => {
@@ -1465,7 +1307,6 @@
                                                 const correctOpt = q.options?.find(o => o.id === q.correctAnswer);
                                                 const tmpK = document.createElement("div"); tmpK.innerHTML = correctOpt?.text || q.correctAnswer;
                                                 keyDisplay = <div className="mt-3 p-2 bg-emerald-50 rounded border border-emerald-100 text-xs text-slate-700 font-medium"><strong className="text-emerald-700">Kunci Jawaban: {q.correctAnswer}</strong> - {tmpK.textContent}</div>;
-                                                
                                                 if (!d.isEmpty && d.userAnswer) {
                                                     const opt = q.options?.find(o => o.id === d.userAnswer);
                                                     const tmp = document.createElement("div"); tmp.innerHTML = opt?.text || d.userAnswer;
@@ -1474,31 +1315,23 @@
                                             } else if (q.type === 'MCMA') {
                                                 const correctTexts = (q.correctAnswers||[]).map(ansId => {
                                                     const stmt = q.statements?.find(s => String(s.id) === String(ansId));
-                                                    const t = document.createElement("div"); t.innerHTML = stmt?.text || ansId;
-                                                    return t.textContent;
+                                                    const t = document.createElement("div"); t.innerHTML = stmt?.text || ansId; return t.textContent;
                                                 });
                                                 keyDisplay = <div className="mt-3 p-2 bg-emerald-50 rounded border border-emerald-100 text-xs text-slate-700 font-medium"><strong className="text-emerald-700 block mb-1">Kunci (Pilih Semua):</strong> <ul className="list-disc pl-4">{correctTexts.map((txt, ii)=><li key={ii}>{txt}</li>)}</ul></div>;
-
                                                 if (!d.isEmpty && Array.isArray(d.userAnswer)) {
-                                                    ansDisplay = <ul className="list-disc pl-4 space-y-1">
-                                                        {d.userAnswer.map(ansId => {
-                                                            const stmt = q.statements?.find(s => String(s.id) === String(ansId));
-                                                            const tmp = document.createElement("div"); tmp.innerHTML = stmt?.text || ansId;
-                                                            return <li key={ansId} className="text-xs font-medium text-slate-700">{tmp.textContent}</li>;
-                                                        })}
-                                                    </ul>;
+                                                    ansDisplay = <ul className="list-disc pl-4 space-y-1">{d.userAnswer.map(ansId => {
+                                                        const stmt = q.statements?.find(s => String(s.id) === String(ansId)); const tmp = document.createElement("div"); tmp.innerHTML = stmt?.text || ansId;
+                                                        return <li key={ansId} className="text-xs font-medium text-slate-700">{tmp.textContent}</li>;
+                                                    })}</ul>;
                                                 }
                                             } else if (q.type === 'CATEGORY') {
                                                 if (!d.isEmpty && d.userAnswer) {
                                                     const keys = Object.keys(d.userAnswer);
-                                                    ansDisplay = <ul className="space-y-2">
-                                                        {keys.map(k => {
-                                                            const stmt = q.statements?.find(s => String(s.id) === String(k));
-                                                            const tmp = document.createElement("div"); tmp.innerHTML = stmt?.text || k;
-                                                            const isCorrectLine = d.userAnswer[k] === stmt?.correctCategory;
-                                                            return <li key={k} className="text-xs text-slate-600 bg-slate-50 p-2 rounded border leading-snug"><div className="mb-1 text-[10px] font-bold text-slate-400">Pernyataan: <span className="text-slate-700 font-medium">{tmp.textContent}</span></div> <span className={`font-bold px-1.5 py-0.5 rounded text-white ${isCorrectLine ? 'bg-emerald-500' : 'bg-rose-500'}`}>{d.userAnswer[k]}</span> <span className="text-slate-400 ml-1">(Kunci: {stmt?.correctCategory})</span></li>;
-                                                        })}
-                                                    </ul>;
+                                                    ansDisplay = <ul className="space-y-2">{keys.map(k => {
+                                                        const stmt = q.statements?.find(s => String(s.id) === String(k)); const tmp = document.createElement("div"); tmp.innerHTML = stmt?.text || k;
+                                                        const isCorrectLine = d.userAnswer[k] === stmt?.correctCategory;
+                                                        return <li key={k} className="text-xs text-slate-600 bg-slate-50 p-2 rounded border leading-snug"><div className="mb-1 text-[10px] font-bold text-slate-400">Pernyataan: <span className="text-slate-700 font-medium">{tmp.textContent}</span></div> <span className={`font-bold px-1.5 py-0.5 rounded text-white ${isCorrectLine ? 'bg-emerald-500' : 'bg-rose-500'}`}>{d.userAnswer[k]}</span> <span className="text-slate-400 ml-1">(Kunci: {stmt?.correctCategory})</span></li>;
+                                                    })}</ul>;
                                                 }
                                             }
 
@@ -1508,10 +1341,7 @@
                                             return (
                                                 <tr key={q.id} className="border-b border-slate-100 hover:bg-slate-50">
                                                     <td className="p-4 text-center font-bold text-slate-400 align-top">{i + 1}</td>
-                                                    <td className="p-4 align-top">
-                                                        <div className="line-clamp-4 text-slate-800 text-sm font-medium" dangerouslySetInnerHTML={{__html: q.question}} />
-                                                        {keyDisplay}
-                                                    </td>
+                                                    <td className="p-4 align-top"><div className="line-clamp-4 text-slate-800 text-sm font-medium" dangerouslySetInnerHTML={{__html: q.question}} />{keyDisplay}</td>
                                                     <td className="p-4 align-top border-l border-r border-slate-100 bg-blue-50/10">{ansDisplay}</td>
                                                     <td className="p-4 text-center align-top">
                                                         {d.isEmpty ? <span className="text-amber-500 font-bold text-xs bg-amber-50 px-2 py-1 rounded border border-amber-200">KOSONG</span> : 
@@ -1535,16 +1365,14 @@
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 border-b">
                             <tr>
-                                <th className="p-4 text-center w-12">
-                                    <input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" onChange={handleSelectAll} checked={selectedResults.length > 0 && selectedResults.length === filteredResults.length} />
-                                </th>
+                                <th className="p-4 text-center w-12"><input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" onChange={handleSelectAll} checked={selectedResults.length > 0 && selectedResults.length === filteredResults.length} /></th>
                                 <th className="p-4 w-12 text-center">No</th>
                                 <th className="p-4">Nama Peserta</th>
                                 <th className="p-4">Sekolah/Kelas</th>
+                                <th className="p-4">Tipe Soal</th>
                                 <th className="p-4 text-center" title="Skor Poin yang didapat">Skor</th>
                                 <th className="p-4 text-center" title="Nilai Skala 100">Nilai</th>
                                 <th className="p-4 text-center">Analisis</th>
-                                <th className="p-4 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1552,20 +1380,17 @@
                                 const details = Array.isArray(r.detail?.detailedResults) ? r.detail.detailedResults : [];
                                 const earned = details.reduce((sum, d) => sum + (d.pointsEarned || 0), 0);
                                 const maxP = details.reduce((sum, d) => sum + (d.questionMaxPoints || 0), 0);
+                                const folderName = getResultFolder(r);
                                 return (
                                 <tr key={r.id} className={`border-b transition-colors ${selectedResults.includes(r.id) ? 'bg-blue-50/40' : 'hover:bg-slate-50'}`}>
-                                    <td className="p-4 text-center">
-                                        <input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" checked={selectedResults.includes(r.id)} onChange={() => handleSelectResult(r.id)} />
-                                    </td>
+                                    <td className="p-4 text-center"><input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" checked={selectedResults.includes(r.id)} onChange={() => handleSelectResult(r.id)} /></td>
                                     <td className="p-4 text-center font-semibold text-slate-500">{idx + 1}</td>
                                     <td className="p-4 font-bold text-slate-800 uppercase">{r.participant?.name}</td>
                                     <td className="p-4 font-medium text-slate-600">{r.participant?.school}</td>
-                                    <td className="p-4 text-center">
-                                        <div className="font-bold text-slate-700">{earned} <span className="text-xs text-slate-400 font-normal">/ {maxP}</span></div>
-                                    </td>
+                                    <td className="p-4 font-semibold text-blue-600">{folderName}</td>
+                                    <td className="p-4 text-center"><div className="font-bold text-slate-700">{earned} <span className="text-xs text-slate-400 font-normal">/ {maxP}</span></div></td>
                                     <td className="p-4 text-center font-black text-emerald-600 text-lg">{r.score}</td>
                                     <td className="p-4 text-center"><button onClick={() => setSelectedAnalysis(r)} className="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors shadow-sm">Lihat Detail</button></td>
-                                    <td className="p-4 text-center"><button onClick={() => deleteResult(r.id)} className="text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition-colors" title="Hapus Hasil"><Trash2 size={16}/></button></td>
                                 </tr>
                             )})}
                             {filteredResults.length === 0 && <tr><td colSpan="8" className="text-center p-8 text-slate-500 font-bold bg-slate-50">Belum ada data hasil ujian yang masuk.</td></tr>}
@@ -1717,7 +1542,7 @@
                 };
                 reader.readAsText(file);
             };
-
+              
             const saveQuestion = async (e) => {
                e.preventDefault();
                setIsSaving(true);
@@ -2079,9 +1904,14 @@
           const AdminItemAnalysis = () => {
              const [isDeleting, setIsDeleting] = useState(false);
              const [filterFolder, setFilterFolder] = useState('Semua');
+             const [filterSchool, setFilterSchool] = useState('Semua');
+             const [activeTab, setActiveTab] = useState('BUTIR'); // BUTIR atau INDIVIDU
 
              const availableFolders = ['Semua', ...new Set(questions.map(q => q.folder || 'Utama'))];
+             const schoolList = ['Semua', ...new Set(results.map(r => r.participant?.school).filter(Boolean))];
+
              const filteredQuestions = filterFolder === 'Semua' ? questions : questions.filter(q => (q.folder || 'Utama') === filterFolder);
+             const filteredResults = filterSchool === 'Semua' ? results : results.filter(r => r.participant?.school === filterSchool);
 
              const deleteAllResults = async () => {
                 if(results.length === 0) return;
@@ -2099,14 +1929,14 @@
 
             const analysisData = filteredQuestions.map(q => {
                 let correct = 0, wrong = 0, empty = 0;
-                results.forEach(r => {
+                filteredResults.forEach(r => {
                     const details = Array.isArray(r.detail?.detailedResults) ? r.detail.detailedResults : [];
                     const d = details.find(x => x.qId === q.id);
                     if (!d || d.isEmpty) empty++;
                     else if (d.isCorrect) correct++;
                     else wrong++;
                 });
-                const total = results.length;
+                const total = filteredResults.length;
                 const percentage = total > 0 ? ((correct / total) * 100).toFixed(1) : 0;
                 
                 let difficulty = "N/A";
@@ -2121,97 +1951,157 @@
                 return { ...q, correct, wrong, empty, total, percentage, difficulty };
             });
 
+            // Logika untuk mencari Result yang masuk ke dalam Folder yang difilter
+            const matrixResults = filteredResults.filter(r => {
+                 if (filterFolder === 'Semua') return true;
+                 const firstQId = r.detail?.detailedResults?.find(x => x.qId !== 'SYS_CHEATS')?.qId;
+                 const q = questions.find(x => x.id === firstQId);
+                 return (q?.folder || 'Utama') === filterFolder;
+            });
+
             const downloadAnalisis = () => {
                 if (analysisData.length === 0) return alert("Tidak ada data analisis untuk diunduh.");
-                let csvContent = "data:text/csv;charset=utf-8,No,Folder/Kategori,Tipe,Pertanyaan,Benar,Salah,Kosong,Persentase Benar,Tingkat Kesulitan\n";
+                let csvContent = "\uFEFFNo,Folder/Kategori,Tipe,Pertanyaan,Benar,Salah,Kosong,Persentase Benar,Tingkat Kesulitan\n";
                 
                 analysisData.forEach((d, idx) => {
-                    const tempDiv = document.createElement("div");
-                    tempDiv.innerHTML = d.question || "";
+                    const tempDiv = document.createElement("div"); tempDiv.innerHTML = d.question || "";
                     const plainText = (tempDiv.textContent || tempDiv.innerText || "").replace(/"/g, '""').replace(/\n/g, ' ');
-                    const folderName = d.folder || 'Utama';
-                    
-                    csvContent += `${idx + 1},"${folderName}","${d.type}","${plainText}",${d.correct},${d.wrong},${d.empty},"${d.percentage}%","${d.difficulty}"\n`;
+                    csvContent += `${idx + 1},"${d.folder || 'Utama'}","${d.type}","${plainText}",${d.correct},${d.wrong},${d.empty},"${d.percentage}%","${d.difficulty}"\n`;
                 });
                 
-                const link = document.createElement("a");
-                link.href = encodeURI(csvContent);
-                link.download = `Analisis_Soal_${filterFolder}_${new Date().getTime()}.csv`;
-                link.click();
+                const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }));
+                link.download = `Analisis_Butir_Soal_${filterFolder}_${new Date().getTime()}.csv`; link.click();
             };
 
             return (
-              <AdminLayout title="Analisis Butir Soal">
+              <AdminLayout title="Analisis Data Ujian">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <div className="bg-white rounded-xl border p-4 flex-1 w-full sm:w-auto shadow-sm flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                       <div>
-                           <h3 className="font-bold text-slate-800 text-sm mb-1">Filter Folder:</h3>
-                           <select value={filterFolder} onChange={e=>setFilterFolder(e.target.value)} className="border rounded-lg p-2 text-sm bg-slate-50 font-semibold focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
-                               {availableFolders.map(f => <option key={f} value={f}>{f}</option>)}
+                    <div className="bg-white rounded-xl border p-2 flex-1 w-full sm:w-auto shadow-sm flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                       <div className="flex gap-1 p-1 bg-slate-100 rounded-lg w-full sm:w-auto">
+                           <button onClick={() => setActiveTab('BUTIR')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-bold transition-colors ${activeTab === 'BUTIR' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Analisis Butir Soal</button>
+                           <button onClick={() => setActiveTab('INDIVIDU')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-bold transition-colors ${activeTab === 'INDIVIDU' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Analisis Per Siswa</button>
+                       </div>
+                       
+                       <div className="flex items-center gap-2 border-l pl-3 ml-2">
+                           <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="border-none py-2 text-sm bg-transparent font-semibold focus:ring-0 outline-none cursor-pointer text-slate-700">
+                               {schoolList.map(s => <option key={s} value={s}>{s === 'Semua' ? 'Semua Sekolah' : s}</option>)}
+                           </select>
+                           <div className="w-px h-4 bg-slate-300"></div>
+                           <select value={filterFolder} onChange={e=>setFilterFolder(e.target.value)} className="border-none py-2 text-sm bg-transparent font-semibold focus:ring-0 outline-none cursor-pointer text-blue-700">
+                               {availableFolders.map(f => <option key={f} value={f}>{f === 'Semua' ? 'Semua Kategori' : f}</option>)}
                            </select>
                        </div>
-                       <div className="sm:ml-auto text-left sm:text-right">
-                           <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Total Responden</p>
-                           <p className="text-emerald-600 text-xl font-black">{results.length} Siswa</p>
-                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                        <button onClick={downloadAnalisis} className="flex-1 sm:flex-none bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-3 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-emerald-100 shadow-sm transition-colors">
-                           <i className="fas fa-download mr-2"></i> Unduh Laporan
-                        </button>
-                        <button onClick={fetchSupabaseData} className="flex-1 sm:flex-none bg-blue-50 text-blue-600 border border-blue-200 px-4 py-3 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-blue-100 shadow-sm transition-colors">
-                           <i className="fas fa-sync-alt"></i>
-                        </button>
-                        <button onClick={deleteAllResults} disabled={isDeleting || results.length === 0} className="w-full sm:w-auto bg-rose-600 text-white px-4 py-3 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-rose-700 disabled:opacity-50 shadow-sm transition-colors">
+
+                    <div className="flex gap-2 w-full sm:w-auto">
+                        {activeTab === 'BUTIR' && (
+                            <button onClick={downloadAnalisis} className="flex-1 sm:flex-none bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-emerald-100 shadow-sm"><i className="fas fa-download mr-2"></i> CSV</button>
+                        )}
+                        <button onClick={fetchSupabaseData} className="flex-1 sm:flex-none bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-blue-100 shadow-sm"><i className="fas fa-sync-alt"></i></button>
+                        <button onClick={deleteAllResults} disabled={isDeleting || results.length === 0} className="w-full sm:w-auto bg-rose-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-rose-700 disabled:opacity-50 shadow-sm">
                             <Trash2 size={16} className="mr-2"/> Hapus Semua
                         </button>
                     </div>
                 </div>
                 
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex flex-wrap gap-4 items-center text-xs font-medium text-slate-700 shadow-sm">
-                    <span className="font-bold text-blue-900 mr-2"><i className="fas fa-info-circle mr-1"></i> Indikator Kesulitan:</span>
-                    <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded">Sangat Mudah (&gt;85%)</span>
-                    <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">Mudah (70-85%)</span>
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">Sedang (50-69%)</span>
-                    <span className="bg-rose-50 text-rose-700 px-2 py-1 rounded border border-rose-200">Sulit (30-49%)</span>
-                    <span className="bg-rose-100 text-rose-800 px-2 py-1 rounded">Sangat Sulit (&lt;30%)</span>
-                </div>
-                
-                <div className="bg-white rounded-xl border overflow-x-auto shadow-sm">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 border-b">
-                            <tr>
-                                <th className="p-4 text-center w-12">No</th>
-                                <th className="p-4">Kategori / Tipe</th>
-                                <th className="p-4">Pertanyaan (Cuplikan)</th>
-                                <th className="p-4 text-center">Benar</th>
-                                <th className="p-4 text-center">Salah</th>
-                                <th className="p-4 text-center">Kosong</th>
-                                <th className="p-4 text-center">% Benar</th>
-                                <th className="p-4 text-center">Kesulitan</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {analysisData.map((d, idx) => {
-                                const tempDiv = document.createElement("div");
-                                tempDiv.innerHTML = d.question || "";
-                                const plainText = tempDiv.textContent || tempDiv.innerText || "";
-                                return (
-                                <tr key={d.id} className="border-b hover:bg-slate-50 transition-colors">
-                                    <td className="p-4 text-center font-bold text-slate-500">{idx + 1}</td>
-                                    <td className="p-4"><div className="font-semibold text-slate-700">{d.category || d.folder || 'Utama'}</div><div className="text-[10px] uppercase font-bold text-blue-500 bg-blue-50 inline-block px-2 py-0.5 rounded mt-1 border border-blue-100">{d.type}</div></td>
-                                    <td className="p-4 max-w-xs truncate text-slate-600" title={plainText}>{plainText}</td>
-                                    <td className="p-4 text-center font-bold text-emerald-600">{d.correct}</td>
-                                    <td className="p-4 text-center font-bold text-rose-600">{d.wrong}</td>
-                                    <td className="p-4 text-center font-bold text-slate-400">{d.empty}</td>
-                                    <td className="p-4 text-center font-black text-blue-600">{d.percentage}%</td>
-                                    <td className="p-4 text-center"><span className={`px-2 py-1 rounded text-xs font-bold border ${d.difficulty.includes('Mudah') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : d.difficulty === 'Sedang' ? 'bg-blue-50 text-blue-700 border-blue-200' : d.difficulty.includes('Sulit') ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>{d.difficulty}</span></td>
-                                </tr>
-                            )})}
-                            {analysisData.length === 0 && <tr><td colSpan="8" className="text-center p-8 text-slate-500 font-bold bg-slate-50">Belum ada data soal pada folder ini.</td></tr>}
-                        </tbody>
-                    </table>
-                </div>
+                {activeTab === 'BUTIR' ? (
+                    <>
+                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex flex-wrap gap-4 items-center text-xs font-medium text-slate-700 shadow-sm">
+                            <span className="font-bold text-blue-900 mr-2"><i className="fas fa-info-circle mr-1"></i> Indikator Kesulitan:</span>
+                            <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded">Sangat Mudah (&gt;85%)</span>
+                            <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">Mudah (70-85%)</span>
+                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">Sedang (50-69%)</span>
+                            <span className="bg-rose-50 text-rose-700 px-2 py-1 rounded border border-rose-200">Sulit (30-49%)</span>
+                            <span className="bg-rose-100 text-rose-800 px-2 py-1 rounded">Sangat Sulit (&lt;30%)</span>
+                        </div>
+                        <div className="bg-white rounded-xl border overflow-x-auto shadow-sm">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-slate-50 border-b">
+                                    <tr>
+                                        <th className="p-4 text-center w-12">No</th><th className="p-4">Kategori / Tipe</th><th className="p-4">Pertanyaan (Cuplikan)</th>
+                                        <th className="p-4 text-center">Benar</th><th className="p-4 text-center">Salah</th><th className="p-4 text-center">Kosong</th><th className="p-4 text-center">% Benar</th><th className="p-4 text-center">Kesulitan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {analysisData.map((d, idx) => {
+                                        const tempDiv = document.createElement("div"); tempDiv.innerHTML = d.question || "";
+                                        const plainText = tempDiv.textContent || tempDiv.innerText || "";
+                                        return (
+                                        <tr key={d.id} className="border-b hover:bg-slate-50 transition-colors">
+                                            <td className="p-4 text-center font-bold text-slate-500">{idx + 1}</td>
+                                            <td className="p-4"><div className="font-semibold text-slate-700">{d.category || d.folder || 'Utama'}</div><div className="text-[10px] uppercase font-bold text-blue-500 bg-blue-50 inline-block px-2 py-0.5 rounded mt-1 border border-blue-100">{d.type}</div></td>
+                                            <td className="p-4 max-w-xs truncate text-slate-600" title={plainText}>{plainText}</td>
+                                            <td className="p-4 text-center font-bold text-emerald-600">{d.correct}</td>
+                                            <td className="p-4 text-center font-bold text-rose-600">{d.wrong}</td>
+                                            <td className="p-4 text-center font-bold text-slate-400">{d.empty}</td>
+                                            <td className="p-4 text-center font-black text-blue-600">{d.percentage}%</td>
+                                            <td className="p-4 text-center"><span className={`px-2 py-1 rounded text-xs font-bold border ${d.difficulty.includes('Mudah') ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : d.difficulty === 'Sedang' ? 'bg-blue-50 text-blue-700 border-blue-200' : d.difficulty.includes('Sulit') ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>{d.difficulty}</span></td>
+                                        </tr>
+                                    )})}
+                                    {analysisData.length === 0 && <tr><td colSpan="8" className="text-center p-8 text-slate-500 font-bold bg-slate-50">Belum ada data soal pada filter ini.</td></tr>}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        {filterFolder === 'Semua' ? (
+                            <div className="bg-amber-50 border border-amber-200 p-8 rounded-xl text-center shadow-sm">
+                                <AlertCircle size={48} className="mx-auto text-amber-500 mb-4"/>
+                                <h3 className="text-lg font-bold text-amber-800 mb-2">Pilih Filter Kategori/Folder!</h3>
+                                <p className="text-amber-700 text-sm font-medium">Anda harus memilih satu Kategori (Folder Soal) yang spesifik di pojok kanan atas untuk melihat Matriks Analisis Individu.</p>
+                            </div>
+                        ) : (
+                            <div className="bg-white rounded-xl border overflow-x-auto shadow-sm pb-4">
+                                <table className="w-full text-left text-sm whitespace-nowrap">
+                                    <thead className="bg-slate-50 border-b">
+                                        <tr>
+                                            <th className="p-4 border-r w-12 text-center text-slate-600 font-bold">No</th>
+                                            <th className="p-4 border-r text-slate-600 font-bold min-w-[200px]">Nama Peserta</th>
+                                            {filteredQuestions.map((q, i) => (
+                                                <th key={q.id} className="p-4 border-r text-center text-slate-600 font-bold w-12" title={q.question?.replace(/<[^>]+>/g, '')}>{i+1}</th>
+                                            ))}
+                                            <th className="p-4 border-r text-center text-slate-600 font-bold bg-blue-50">Jml Skor</th>
+                                            <th className="p-4 text-center text-slate-600 font-bold bg-emerald-50">Nilai Akhir</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {matrixResults.map((r, i) => {
+                                            const details = Array.isArray(r.detail?.detailedResults) ? r.detail.detailedResults : [];
+                                            const earned = details.reduce((sum, d) => sum + (d.pointsEarned || 0), 0);
+                                            return (
+                                                <tr key={r.id} className="border-b hover:bg-slate-50">
+                                                    <td className="p-4 border-r text-center text-slate-500 font-medium">{i+1}</td>
+                                                    <td className="p-4 border-r font-bold text-slate-800 uppercase">{r.participant?.name}</td>
+                                                    {filteredQuestions.map((q) => {
+                                                        const d = details.find(x => x.qId === q.id);
+                                                        let status = '-'; let colorClass = 'text-slate-300';
+                                                        if (d) {
+                                                            if (d.isEmpty) { status = 'K'; colorClass = 'text-amber-500 font-bold bg-amber-50'; }
+                                                            else if (d.isCorrect) { status = 'B'; colorClass = 'text-emerald-600 font-bold bg-emerald-50'; }
+                                                            else if (d.pointsEarned > 0) { status = 'P'; colorClass = 'text-blue-600 font-bold bg-blue-50'; } // Partial
+                                                            else { status = 'S'; colorClass = 'text-rose-600 font-bold bg-rose-50'; }
+                                                        }
+                                                        return <td key={q.id} className={`p-4 border-r text-center ${colorClass}`}>{status}</td>;
+                                                    })}
+                                                    <td className="p-4 border-r text-center font-bold text-blue-700 bg-blue-50/30">{earned}</td>
+                                                    <td className="p-4 text-center font-black text-emerald-600 bg-emerald-50/30">{r.score}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {matrixResults.length === 0 && <tr><td colSpan={filteredQuestions.length + 4} className="text-center p-8 text-slate-500 font-bold">Tidak ada peserta yang mengambil ujian pada kategori ini.</td></tr>}
+                                    </tbody>
+                                </table>
+                                <div className="mt-4 px-6 flex gap-4 text-xs font-bold text-slate-500">
+                                    <span><span className="text-emerald-600">B:</span> Benar</span>
+                                    <span><span className="text-rose-600">S:</span> Salah</span>
+                                    <span><span className="text-blue-600">P:</span> Parsial (Benar Sebagian)</span>
+                                    <span><span className="text-amber-500">K:</span> Kosong</span>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
               </AdminLayout>
             );
           };
