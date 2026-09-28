@@ -979,14 +979,19 @@
              const [selectedTokens, setSelectedTokens] = useState([]);
              const [downloadFilter, setDownloadFilter] = useState('Semua');
              const [editFilter, setEditFilter] = useState('Semua');
+             const [sortOrder, setSortOrder] = useState('DEFAULT'); // Sortir A-Z
 
              const actualTokens = tokens.filter(t => !t.code.startsWith('SYS_SETTING_') && !t.code.startsWith('SYS_FOLDER_'));
              const uniqueClasses = [...new Set(actualTokens.map(t => t.participant_school).filter(Boolean))];
              const uniqueEditClasses = [...new Set(massEditTokens.map(t => t.participant_school).filter(Boolean))];
 
-             // KUNCI PERBAIKAN: Memfilter data yang TAMPIL di layar
-             const displayedTokens = downloadFilter === 'Semua' ? actualTokens : actualTokens.filter(t => t.participant_school === downloadFilter);
-             const displayedMassEditTokens = editFilter === 'Semua' ? massEditTokens : massEditTokens.filter(t => t.participant_school === editFilter);
+             let displayedTokens = downloadFilter === 'Semua' ? [...actualTokens] : actualTokens.filter(t => t.participant_school === downloadFilter);
+             if (sortOrder === 'NAME_ASC') displayedTokens.sort((a,b) => (a.participant_name || '').localeCompare(b.participant_name || ''));
+             else if (sortOrder === 'NAME_DESC') displayedTokens.sort((a,b) => (b.participant_name || '').localeCompare(a.participant_name || ''));
+
+             let displayedMassEditTokens = editFilter === 'Semua' ? [...massEditTokens] : massEditTokens.filter(t => t.participant_school === editFilter);
+             if (sortOrder === 'NAME_ASC') displayedMassEditTokens.sort((a,b) => (a.participant_name || '').localeCompare(b.participant_name || ''));
+             else if (sortOrder === 'NAME_DESC') displayedMassEditTokens.sort((a,b) => (b.participant_name || '').localeCompare(a.participant_name || ''));
 
              const handleSelectAll = (e) => {
                  if (e.target.checked) setSelectedTokens(displayedTokens.map(t => t.code));
@@ -1042,7 +1047,7 @@
                          .status-available { background-color: #d1fae5; color: #065f46; border: 1px solid #34d399; } .status-used { background-color: #fee2e2; color: #991b1b; border: 1px solid #f87171; }
                          @media print { @page { margin: 1.5cm; } body { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
                      </style></head><body>
-                         <div class="header"><h2>Daftar Token Ujian Peserta</h2><p>Filter Kelas/Sekolah: <strong>${downloadFilter}</strong> &nbsp;|&nbsp; Tanggal Unduh: ${dateStr}</p></div>
+                         <div class="header"><h2>Daftar Token Ujian Peserta</h2><p>Filter: <strong>${downloadFilter}</strong> &nbsp;|&nbsp; Unduh: ${dateStr}</p></div>
                          <table><thead><tr><th class="text-center" style="width: 5%;">No</th><th style="width: 30%;">Nama Peserta</th><th style="width: 30%;">Asal Sekolah / Kelas</th><th class="text-center" style="width: 20%;">Token</th><th class="text-center" style="width: 15%;">Status</th></tr></thead>
                          <tbody>${tableRowsHTML}</tbody></table>
                          <script>window.onload = function() { setTimeout(function() { window.print(); window.close(); }, 500); }<${'/'}script>
@@ -1108,8 +1113,11 @@
                                 <Edit size={16} className="mr-2"/> {selectedTokens.length > 0 ? `Edit Terpilih (${selectedTokens.length})` : 'Edit'}
                             </button>
                             
-                            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 ml-auto">
-                                <select value={downloadFilter} onChange={(e) => {setDownloadFilter(e.target.value); setSelectedTokens([]);}} className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-3 py-2.5 outline-none focus:border-blue-500 cursor-pointer">
+                            <div className="flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 ml-auto">
+                                <select value={sortOrder} onChange={e=>setSortOrder(e.target.value)} className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-2 py-2.5 outline-none focus:border-blue-500 cursor-pointer">
+                                    <option value="DEFAULT">Urutan Acak</option><option value="NAME_ASC">Nama A-Z</option><option value="NAME_DESC">Nama Z-A</option>
+                                </select>
+                                <select value={downloadFilter} onChange={(e) => {setDownloadFilter(e.target.value); setSelectedTokens([]);}} className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-2 py-2.5 outline-none focus:border-blue-500 cursor-pointer">
                                     <option value="Semua">Semua Kelas/Sekolah</option>
                                     {uniqueClasses.map((cls, idx) => <option key={idx} value={cls}>{cls}</option>)}
                                 </select>
@@ -1125,7 +1133,9 @@
                                 <button onClick={() => { setIsMassEdit(false); setSelectedTokens([]); }} className="bg-slate-200 text-slate-700 hover:bg-slate-300 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors">Batal</button>
                             </div>
                             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 ml-auto">
-                                <span className="text-xs font-bold text-slate-500 pl-2">Filter Edit:</span>
+                                <select value={sortOrder} onChange={e=>setSortOrder(e.target.value)} className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-2 py-1.5 outline-none focus:border-blue-500 cursor-pointer">
+                                    <option value="DEFAULT">Urutan Acak</option><option value="NAME_ASC">Nama A-Z</option><option value="NAME_DESC">Nama Z-A</option>
+                                </select>
                                 <select value={editFilter} onChange={e => {setEditFilter(e.target.value); setSelectedTokens([]);}} className="bg-white border border-slate-300 text-sm font-medium rounded-lg px-3 py-1.5 outline-none focus:border-blue-500 cursor-pointer">
                                     <option value="Semua">Semua Kelas/Sekolah</option>
                                     {uniqueEditClasses.map((cls, idx) => <option key={idx} value={cls}>{cls}</option>)}
@@ -1134,6 +1144,17 @@
                         </div>
                     )}
                  </div>
+                 
+                 {/* Modal Import (Dipersingkat tampilannya) */}
+                 {showImport && (
+                     <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-5">
+                            <div className="flex justify-between items-center mb-4"><h3 className="font-bold">Impor Peserta</h3><button onClick={()=>setShowImport(false)}><X size={18}/></button></div>
+                            <button onClick={() => {}} className="mb-4 bg-blue-50 border text-blue-700 px-4 py-2 rounded-lg text-sm font-semibold flex items-center"><FileText size={16} className="mr-2"/> Download Templat</button>
+                            <input type="file" accept=".csv" onChange={()=>{}} className="w-full p-4 border-2 border-dashed rounded-xl"/>
+                        </div>
+                     </div>
+                 )}
                  
                  <div className="bg-white rounded-xl border overflow-x-auto shadow-sm">
                     <table className="w-full text-left text-sm">
@@ -1186,15 +1207,15 @@
                </AdminLayout>
              );
           };
-
           const AdminResults = () => {
              const [selectedAnalysis, setSelectedAnalysis] = useState(null);
              const [filterSchool, setFilterSchool] = useState('Semua');
-             const [filterFolder, setFilterFolder] = useState('Semua'); // STATE BARU
+             const [filterFolder, setFilterFolder] = useState('Semua');
+             const [filterDate, setFilterDate] = useState('Semua'); // Tanggal
+             const [sortOrder, setSortOrder] = useState('DEFAULT'); // A-Z dan Rank
              const [selectedResults, setSelectedResults] = useState([]);
              const [isDeleting, setIsDeleting] = useState(false);
 
-             // Algoritma Pelacakan Balik untuk mencari Folder dari ID Soal pertama yang dijawab siswa
              const getResultFolder = (r) => {
                  const firstQId = r.detail?.detailedResults?.find(x => x.qId !== 'SYS_CHEATS')?.qId;
                  if (!firstQId) return 'Utama';
@@ -1204,16 +1225,22 @@
 
              const schoolList = ['Semua', ...new Set(results.map(r => r.participant?.school).filter(Boolean))];
              const folderList = ['Semua', ...new Set(results.map(getResultFolder))];
+             const dateList = ['Semua', ...new Set(results.map(r => new Date(r.startTime).toLocaleDateString('id-ID')))];
 
-             // Menerapkan Filter Ganda (Sekolah & Folder)
-             const filteredResults = results.filter(r => {
+             let processedResults = results.filter(r => {
                  const matchSchool = filterSchool === 'Semua' || r.participant?.school === filterSchool;
                  const matchFolder = filterFolder === 'Semua' || getResultFolder(r) === filterFolder;
-                 return matchSchool && matchFolder;
+                 const matchDate = filterDate === 'Semua' || new Date(r.startTime).toLocaleDateString('id-ID') === filterDate;
+                 return matchSchool && matchFolder && matchDate;
              });
 
+             if (sortOrder === 'NAME_ASC') processedResults.sort((a, b) => (a.participant?.name || '').localeCompare(b.participant?.name || ''));
+             else if (sortOrder === 'NAME_DESC') processedResults.sort((a, b) => (b.participant?.name || '').localeCompare(a.participant?.name || ''));
+             else if (sortOrder === 'RANK_DESC') processedResults.sort((a, b) => b.score - a.score);
+             else if (sortOrder === 'RANK_ASC') processedResults.sort((a, b) => a.score - b.score);
+
              const handleSelectAll = (e) => {
-                 if (e.target.checked) setSelectedResults(filteredResults.map(r => r.id));
+                 if (e.target.checked) setSelectedResults(processedResults.map(r => r.id));
                  else setSelectedResults([]);
              };
 
@@ -1240,10 +1267,10 @@
              };
 
              const downloadExcel = () => {
-                 if (filteredResults.length === 0) return alert("Tidak ada data untuk diunduh.");
+                 if (processedResults.length === 0) return alert("Tidak ada data untuk diunduh.");
                  let csvContent = "\uFEFFNo,Nama Peserta,Sekolah/Kelas,Folder Ujian,Skor Didapat,Total Maks Skor,Nilai Akhir (100),Waktu Mulai\n";
                  
-                 filteredResults.forEach((r, i) => {
+                 processedResults.forEach((r, i) => {
                      const name = r.participant?.name ? r.participant.name.replace(/"/g, '""') : '';
                      const school = r.participant?.school ? r.participant.school.replace(/"/g, '""') : '';
                      const folderName = getResultFolder(r);
@@ -1261,25 +1288,32 @@
 
              return (
                <AdminLayout title="Manajemen Hasil Ujian">
-                 <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border shadow-sm">
-                     <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                         <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1 rounded-lg">
-                             <select value={filterSchool} onChange={e=>{setFilterSchool(e.target.value); setSelectedResults([]);}} className="w-full sm:w-auto border-none p-2 text-sm bg-transparent font-semibold outline-none cursor-pointer text-slate-700">
-                                 {schoolList.map(s => <option key={s} value={s}>{s === 'Semua' ? 'Semua Sekolah' : s}</option>)}
+                 <div className="mb-6 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white p-4 rounded-xl border shadow-sm">
+                     <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+                         <div className="flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-lg w-full sm:w-auto">
+                             <select value={filterSchool} onChange={e=>{setFilterSchool(e.target.value); setSelectedResults([]);}} className="border-none py-1 px-2 text-sm bg-transparent font-semibold outline-none cursor-pointer text-slate-700">
+                                 {schoolList.map(s => <option key={s} value={s}>{s === 'Semua' ? 'Sekolah: Semua' : s}</option>)}
                              </select>
                              <div className="w-px h-5 bg-slate-300"></div>
-                             <select value={filterFolder} onChange={e=>{setFilterFolder(e.target.value); setSelectedResults([]);}} className="w-full sm:w-auto border-none p-2 text-sm bg-transparent font-semibold outline-none cursor-pointer text-blue-700">
-                                 {folderList.map(f => <option key={f} value={f}>{f === 'Semua' ? 'Semua Folder' : f}</option>)}
+                             <select value={filterFolder} onChange={e=>{setFilterFolder(e.target.value); setSelectedResults([]);}} className="border-none py-1 px-2 text-sm bg-transparent font-semibold outline-none cursor-pointer text-blue-700">
+                                 {folderList.map(f => <option key={f} value={f}>{f === 'Semua' ? 'Folder: Semua' : f}</option>)}
+                             </select>
+                             <div className="w-px h-5 bg-slate-300"></div>
+                             <select value={filterDate} onChange={e=>{setFilterDate(e.target.value); setSelectedResults([]);}} className="border-none py-1 px-2 text-sm bg-transparent font-semibold outline-none cursor-pointer text-emerald-700">
+                                 {dateList.map(d => <option key={d} value={d}>{d === 'Semua' ? 'Tanggal: Semua' : d}</option>)}
                              </select>
                          </div>
+                         <select value={sortOrder} onChange={e=>setSortOrder(e.target.value)} className="border border-slate-300 rounded-lg p-2 text-sm bg-white font-semibold outline-none cursor-pointer">
+                             <option value="DEFAULT">Urutan Terbaru</option><option value="NAME_ASC">Nama A-Z</option><option value="NAME_DESC">Nama Z-A</option><option value="RANK_DESC">Ranking Tertinggi</option><option value="RANK_ASC">Ranking Terendah</option>
+                         </select>
                          
                          {selectedResults.length > 0 && (
-                             <button onClick={handleDeleteSelected} disabled={isDeleting} className="bg-rose-50 text-rose-700 border border-rose-200 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center hover:bg-rose-100 transition-colors shadow-sm">
+                             <button onClick={handleDeleteSelected} disabled={isDeleting} className="bg-rose-50 text-rose-700 border border-rose-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center hover:bg-rose-100 transition-colors shadow-sm">
                                  <Trash2 size={16} className="mr-2"/> Hapus ({selectedResults.length})
                              </button>
                          )}
                      </div>
-                     <div className="flex gap-2 w-full sm:w-auto">
+                     <div className="flex gap-2 w-full xl:w-auto">
                          <button onClick={downloadExcel} className="flex-1 sm:flex-none bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center hover:bg-emerald-100 transition-colors shadow-sm"><i className="fas fa-file-excel mr-2"></i> Unduh Excel</button>
                          <button onClick={fetchSupabaseData} className="flex-1 sm:flex-none bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center hover:bg-blue-100 transition-colors shadow-sm" title="Refresh"><i className="fas fa-sync-alt"></i></button>
                      </div>
@@ -1365,7 +1399,7 @@
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 border-b">
                             <tr>
-                                <th className="p-4 text-center w-12"><input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" onChange={handleSelectAll} checked={selectedResults.length > 0 && selectedResults.length === filteredResults.length} /></th>
+                                <th className="p-4 text-center w-12"><input type="checkbox" className="w-4 h-4 cursor-pointer accent-blue-600 rounded" onChange={handleSelectAll} checked={selectedResults.length > 0 && selectedResults.length === processedResults.length} /></th>
                                 <th className="p-4 w-12 text-center">No</th>
                                 <th className="p-4">Nama Peserta</th>
                                 <th className="p-4">Sekolah/Kelas</th>
@@ -1376,7 +1410,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredResults.map((r, idx)=> {
+                            {processedResults.map((r, idx)=> {
                                 const details = Array.isArray(r.detail?.detailedResults) ? r.detail.detailedResults : [];
                                 const earned = details.reduce((sum, d) => sum + (d.pointsEarned || 0), 0);
                                 const maxP = details.reduce((sum, d) => sum + (d.questionMaxPoints || 0), 0);
@@ -1393,7 +1427,7 @@
                                     <td className="p-4 text-center"><button onClick={() => setSelectedAnalysis(r)} className="text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors shadow-sm">Lihat Detail</button></td>
                                 </tr>
                             )})}
-                            {filteredResults.length === 0 && <tr><td colSpan="8" className="text-center p-8 text-slate-500 font-bold bg-slate-50">Belum ada data hasil ujian yang masuk.</td></tr>}
+                            {processedResults.length === 0 && <tr><td colSpan="8" className="text-center p-8 text-slate-500 font-bold bg-slate-50">Belum ada data hasil ujian yang masuk.</td></tr>}
                         </tbody>
                     </table>
                  </div>
@@ -1905,13 +1939,21 @@
              const [isDeleting, setIsDeleting] = useState(false);
              const [filterFolder, setFilterFolder] = useState('Semua');
              const [filterSchool, setFilterSchool] = useState('Semua');
-             const [activeTab, setActiveTab] = useState('BUTIR'); // BUTIR atau INDIVIDU
+             const [filterDate, setFilterDate] = useState('Semua');
+             const [activeTab, setActiveTab] = useState('BUTIR'); 
+             const [sortOrder, setSortOrder] = useState('DEFAULT'); // Sortir A-Z untuk Individu
 
              const availableFolders = ['Semua', ...new Set(questions.map(q => q.folder || 'Utama'))];
              const schoolList = ['Semua', ...new Set(results.map(r => r.participant?.school).filter(Boolean))];
+             const dateList = ['Semua', ...new Set(results.map(r => new Date(r.startTime).toLocaleDateString('id-ID')))];
 
              const filteredQuestions = filterFolder === 'Semua' ? questions : questions.filter(q => (q.folder || 'Utama') === filterFolder);
-             const filteredResults = filterSchool === 'Semua' ? results : results.filter(r => r.participant?.school === filterSchool);
+             
+             const filteredResults = results.filter(r => {
+                 const matchSchool = filterSchool === 'Semua' || r.participant?.school === filterSchool;
+                 const matchDate = filterDate === 'Semua' || new Date(r.startTime).toLocaleDateString('id-ID') === filterDate;
+                 return matchSchool && matchDate;
+             });
 
              const deleteAllResults = async () => {
                 if(results.length === 0) return;
@@ -1951,13 +1993,15 @@
                 return { ...q, correct, wrong, empty, total, percentage, difficulty };
             });
 
-            // Logika untuk mencari Result yang masuk ke dalam Folder yang difilter
-            const matrixResults = filteredResults.filter(r => {
+            let matrixResults = filteredResults.filter(r => {
                  if (filterFolder === 'Semua') return true;
                  const firstQId = r.detail?.detailedResults?.find(x => x.qId !== 'SYS_CHEATS')?.qId;
                  const q = questions.find(x => x.id === firstQId);
                  return (q?.folder || 'Utama') === filterFolder;
             });
+
+            if (sortOrder === 'NAME_ASC') matrixResults.sort((a,b) => (a.participant?.name || '').localeCompare(b.participant?.name || ''));
+            else if (sortOrder === 'NAME_DESC') matrixResults.sort((a,b) => (b.participant?.name || '').localeCompare(a.participant?.name || ''));
 
             const downloadAnalisis = () => {
                 if (analysisData.length === 0) return alert("Tidak ada data analisis untuk diunduh.");
@@ -1975,25 +2019,34 @@
 
             return (
               <AdminLayout title="Analisis Data Ujian">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-                    <div className="bg-white rounded-xl border p-2 flex-1 w-full sm:w-auto shadow-sm flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                       <div className="flex gap-1 p-1 bg-slate-100 rounded-lg w-full sm:w-auto">
+                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-4">
+                    <div className="bg-white rounded-xl border p-2 flex-1 w-full xl:w-auto shadow-sm flex flex-col xl:flex-row gap-3 items-start xl:items-center">
+                       <div className="flex gap-1 p-1 bg-slate-100 rounded-lg w-full sm:w-auto shrink-0">
                            <button onClick={() => setActiveTab('BUTIR')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-bold transition-colors ${activeTab === 'BUTIR' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Analisis Butir Soal</button>
                            <button onClick={() => setActiveTab('INDIVIDU')} className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-bold transition-colors ${activeTab === 'INDIVIDU' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Analisis Per Siswa</button>
                        </div>
                        
-                       <div className="flex items-center gap-2 border-l pl-3 ml-2">
-                           <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="border-none py-2 text-sm bg-transparent font-semibold focus:ring-0 outline-none cursor-pointer text-slate-700">
-                               {schoolList.map(s => <option key={s} value={s}>{s === 'Semua' ? 'Semua Sekolah' : s}</option>)}
+                       <div className="flex flex-wrap items-center gap-2 xl:border-l xl:pl-3 w-full sm:w-auto bg-slate-50 p-1.5 rounded-lg border border-slate-200 xl:border-none xl:bg-transparent">
+                           <select value={filterSchool} onChange={e=>setFilterSchool(e.target.value)} className="border-none py-1 px-2 text-sm bg-transparent font-semibold focus:ring-0 outline-none cursor-pointer text-slate-700 w-full sm:w-auto">
+                               {schoolList.map(s => <option key={s} value={s}>{s === 'Semua' ? 'Sekolah: Semua' : s}</option>)}
                            </select>
-                           <div className="w-px h-4 bg-slate-300"></div>
-                           <select value={filterFolder} onChange={e=>setFilterFolder(e.target.value)} className="border-none py-2 text-sm bg-transparent font-semibold focus:ring-0 outline-none cursor-pointer text-blue-700">
-                               {availableFolders.map(f => <option key={f} value={f}>{f === 'Semua' ? 'Semua Kategori' : f}</option>)}
+                           <div className="w-px h-5 bg-slate-300 hidden sm:block"></div>
+                           <select value={filterDate} onChange={e=>setFilterDate(e.target.value)} className="border-none py-1 px-2 text-sm bg-transparent font-semibold focus:ring-0 outline-none cursor-pointer text-emerald-700 w-full sm:w-auto">
+                               {dateList.map(d => <option key={d} value={d}>{d === 'Semua' ? 'Tanggal: Semua' : d}</option>)}
+                           </select>
+                           <div className="w-px h-5 bg-slate-300 hidden sm:block"></div>
+                           <select value={filterFolder} onChange={e=>setFilterFolder(e.target.value)} className="border-none py-1 px-2 text-sm bg-transparent font-semibold focus:ring-0 outline-none cursor-pointer text-blue-700 w-full sm:w-auto">
+                               {availableFolders.map(f => <option key={f} value={f}>{f === 'Semua' ? 'Kategori: Semua' : f}</option>)}
                            </select>
                        </div>
                     </div>
 
-                    <div className="flex gap-2 w-full sm:w-auto">
+                    <div className="flex flex-wrap gap-2 w-full xl:w-auto">
+                        {activeTab === 'INDIVIDU' && (
+                            <select value={sortOrder} onChange={e=>setSortOrder(e.target.value)} className="flex-1 sm:flex-none border border-slate-300 rounded-xl p-2.5 text-sm bg-white font-semibold outline-none cursor-pointer">
+                                <option value="DEFAULT">Urutan Waktu</option><option value="NAME_ASC">Nama A-Z</option><option value="NAME_DESC">Nama Z-A</option>
+                            </select>
+                        )}
                         {activeTab === 'BUTIR' && (
                             <button onClick={downloadAnalisis} className="flex-1 sm:flex-none bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center hover:bg-emerald-100 shadow-sm"><i className="fas fa-download mr-2"></i> CSV</button>
                         )}
@@ -2007,7 +2060,7 @@
                 {activeTab === 'BUTIR' ? (
                     <>
                         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6 flex flex-wrap gap-4 items-center text-xs font-medium text-slate-700 shadow-sm">
-                            <span className="font-bold text-blue-900 mr-2"><i className="fas fa-info-circle mr-1"></i> Indikator Kesulitan:</span>
+                            <span className="font-bold text-blue-900 mr-2"><i className="fas fa-info-circle mr-1"></i> Indikator Kesulitan (Data Aktual Terfilter):</span>
                             <span className="bg-emerald-100 text-emerald-800 px-2 py-1 rounded">Sangat Mudah (&gt;85%)</span>
                             <span className="bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-200">Mudah (70-85%)</span>
                             <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">Sedang (50-69%)</span>
@@ -2049,7 +2102,7 @@
                             <div className="bg-amber-50 border border-amber-200 p-8 rounded-xl text-center shadow-sm">
                                 <AlertCircle size={48} className="mx-auto text-amber-500 mb-4"/>
                                 <h3 className="text-lg font-bold text-amber-800 mb-2">Pilih Filter Kategori/Folder!</h3>
-                                <p className="text-amber-700 text-sm font-medium">Anda harus memilih satu Kategori (Folder Soal) yang spesifik di pojok kanan atas untuk melihat Matriks Analisis Individu.</p>
+                                <p className="text-amber-700 text-sm font-medium">Anda harus memilih satu Kategori (Folder Soal) yang spesifik di menu atas untuk melihat Matriks Analisis Individu agar tabel tidak memanjang keluar layar.</p>
                             </div>
                         ) : (
                             <div className="bg-white rounded-xl border overflow-x-auto shadow-sm pb-4">
@@ -2089,7 +2142,7 @@
                                                 </tr>
                                             );
                                         })}
-                                        {matrixResults.length === 0 && <tr><td colSpan={filteredQuestions.length + 4} className="text-center p-8 text-slate-500 font-bold">Tidak ada peserta yang mengambil ujian pada kategori ini.</td></tr>}
+                                        {matrixResults.length === 0 && <tr><td colSpan={filteredQuestions.length + 4} className="text-center p-8 text-slate-500 font-bold">Tidak ada peserta yang mengambil ujian pada kategori dan tanggal ini.</td></tr>}
                                     </tbody>
                                 </table>
                                 <div className="mt-4 px-6 flex gap-4 text-xs font-bold text-slate-500">
