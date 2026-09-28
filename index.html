@@ -1286,18 +1286,20 @@
                  link.download = `Hasil_Ujian_${filterSchool}_${filterFolder}_${new Date().getTime()}.csv`; link.click();
              };
 
-             // FITUR BARU: Download PDF Khusus Detail Jawaban
-             // FITUR BARU: Download PDF Khusus Detail Jawaban
+             // FITUR PERBAIKAN: Download PDF (Nomor 1, 2, 3...)
              const downloadDetailPDF = () => {
                  if (!selectedAnalysis) return;
                  const printWindow = window.open('', '_blank');
                  const studentName = selectedAnalysis.participant?.name || 'Siswa';
                  
                  let rowsHTML = '';
-                 questions.forEach((q, i) => {
-                     const details = Array.isArray(selectedAnalysis.detail?.detailedResults) ? selectedAnalysis.detail.detailedResults : [];
-                     const d = details.find(x => x.qId === q.id);
-                     if (!d) return;
+                 
+                 // KUNCI: Looping dari daftar jawaban siswa, bukan dari bank soal global
+                 const studentDetails = Array.isArray(selectedAnalysis.detail?.detailedResults) ? selectedAnalysis.detail.detailedResults.filter(x => x.qId !== 'SYS_CHEATS') : [];
+                 
+                 studentDetails.forEach((d, index) => {
+                     const q = questions.find(x => x.id === d.qId);
+                     if (!q) return;
 
                      let ansDisplay = '<span style="color: #f59e0b; font-style: italic;">Tidak Menjawab</span>';
                      let keyDisplay = '';
@@ -1350,7 +1352,7 @@
 
                      rowsHTML += `
                          <tr>
-                             <td style="text-align:center; font-weight:bold; color:#94a3b8;">${i + 1}</td>
+                             <td style="text-align:center; font-weight:bold; color:#94a3b8;">${index + 1}</td>
                              <td><div style="font-size:13px; color:#1e293b; line-height:1.5;">${q.question}</div>${keyDisplay}</td>
                              <td style="font-size:13px; color:#334155;">${ansDisplay}</td>
                              <td style="text-align:center;">
@@ -1460,10 +1462,10 @@
                                         <tr><th className="p-4 w-12 text-center text-slate-600">No</th><th className="p-4 text-slate-600">Pertanyaan & Kunci Asli</th><th className="p-4 w-64 text-slate-600 border-l border-r border-slate-200 bg-blue-50/30">Pilihan Siswa</th><th className="p-4 w-28 text-center text-slate-600">Skor</th></tr>
                                     </thead>
                                     <tbody>
-                                        {questions.map((q, i) => {
-                                            const details = Array.isArray(selectedAnalysis.detail?.detailedResults) ? selectedAnalysis.detail.detailedResults : [];
-                                            const d = details.find(x => x.qId === q.id);
-                                            if (!d) return null;
+                                        {/* KUNCI: Looping dari daftar jawaban siswa (details), BUKAN bank soal global */}
+                                        {(Array.isArray(selectedAnalysis.detail?.detailedResults) ? selectedAnalysis.detail.detailedResults.filter(x => x.qId !== 'SYS_CHEATS') : []).map((d, index) => {
+                                            const q = questions.find(x => x.id === d.qId);
+                                            if (!q) return null;
 
                                             let ansDisplay = <span className="text-amber-500 italic font-semibold">Tidak Menjawab</span>;
                                             let keyDisplay = null;
@@ -1505,7 +1507,7 @@
 
                                             return (
                                                 <tr key={q.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                                    <td className="p-4 text-center font-bold text-slate-400 align-top">{i + 1}</td>
+                                                    <td className="p-4 text-center font-bold text-slate-400 align-top">{index + 1}</td>
                                                     <td className="p-4 align-top"><div className="line-clamp-4 text-slate-800 text-sm font-medium" dangerouslySetInnerHTML={{__html: q.question}} />{keyDisplay}</td>
                                                     <td className="p-4 align-top border-l border-r border-slate-100 bg-blue-50/10">{ansDisplay}</td>
                                                     <td className="p-4 text-center align-top">
