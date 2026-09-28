@@ -1287,6 +1287,7 @@
              };
 
              // FITUR BARU: Download PDF Khusus Detail Jawaban
+             // FITUR BARU: Download PDF Khusus Detail Jawaban
              const downloadDetailPDF = () => {
                  if (!selectedAnalysis) return;
                  const printWindow = window.open('', '_blank');
@@ -1399,7 +1400,7 @@
                          </table>
                          <script>
                              window.onload = function() { setTimeout(function() { window.print(); window.close(); }, 800); }
-                         </script>
+                         <${'/'}script>
                      </body>
                      </html>
                  `;
