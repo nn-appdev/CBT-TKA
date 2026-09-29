@@ -1724,14 +1724,22 @@
                     question: formData.question
                  };
 
+                 // PERBAIKAN: Bersihkan sisa data/JSON dari tipe soal sebelumnya agar database rapi
                  if (formData.type === 'MCQ') {
                      payload.options = formData.options;
                      payload.correctAnswer = formData.correctAnswer;
+                     payload.statements = null;
+                     payload.correctAnswers = null;
                  } else if (formData.type === 'MCMA') {
                      payload.statements = formData.statements;
                      payload.correctAnswers = formData.correctAnswers;
+                     payload.options = null;
+                     payload.correctAnswer = null;
                  } else if (formData.type === 'CATEGORY') {
                      payload.statements = formData.statements;
+                     payload.options = null;
+                     payload.correctAnswer = null;
+                     payload.correctAnswers = null;
                  }
 
                  if(!formData.id) { 
@@ -1772,6 +1780,7 @@
                 setIsSaving(true);
                 try {
                     const db = await getSupabase();
+                    // Menambahkan '_copy' pada ID dan memastikan timestamp Date.now() memperbarui waktunya
                     const duplicatedQ = { ...q, id: `q${Date.now()}_copy` };
                     const { error } = await db.from('questions').insert([duplicatedQ]);
                     if (error) throw error;
@@ -1886,9 +1895,11 @@
                                     <label className="block text-sm font-semibold mb-1 text-slate-700">Tipe Soal</label>
                                     <select value={formData.type} onChange={e => {
                                         const t = e.target.value;
-                                        if(t === 'MCQ') setFormData({...defaultMCQ, folder: formData.folder, points: 1, question: formData.question});
-                                        else if(t === 'MCMA') setFormData({...defaultMCMA, folder: formData.folder, points: 2, question: formData.question});
-                                        else if(t === 'CATEGORY') setFormData({...defaultCAT, folder: formData.folder, points: 3, question: formData.question});
+                                        // PERBAIKAN: Mempertahankan 'id' yang sedang diedit (id: formData.id) 
+                                        // agar tidak meresetnya menjadi soal baru saat ganti dropdown
+                                        if(t === 'MCQ') setFormData({...defaultMCQ, id: formData.id, folder: formData.folder, points: 1, question: formData.question});
+                                        else if(t === 'MCMA') setFormData({...defaultMCMA, id: formData.id, folder: formData.folder, points: 2, question: formData.question});
+                                        else if(t === 'CATEGORY') setFormData({...defaultCAT, id: formData.id, folder: formData.folder, points: 3, question: formData.question});
                                     }} className="w-full p-2.5 border rounded-lg bg-white text-sm font-medium focus:ring-2 focus:ring-blue-500">
                                         <option value="MCQ">Pilihan Ganda (A-D)</option>
                                         <option value="MCMA">Pilihan Ganda Kompleks (&gt; 1 Jawaban)</option>
@@ -1912,7 +1923,6 @@
                                 <RichTextEditor value={formData.question} onChange={val => setFormData({...formData, question: val})} />
                             </div>
 
-                            {/* EDITOR UNTUK PILIHAN GANDA (MCQ) DENGAN RICH TEXT */}
                             {formData.type === 'MCQ' && (
                                 <div className="space-y-4 pt-4 border-t">
                                     <h3 className="font-bold text-slate-800 mb-2">Opsi Jawaban (A-D)</h3>
@@ -1931,7 +1941,6 @@
                                 </div>
                             )}
 
-                            {/* EDITOR UNTUK GANDA KOMPLEKS (MCMA) */}
                             {formData.type === 'MCMA' && (
                                 <div className="space-y-4 pt-4 border-t">
                                     <div className="flex justify-between items-center"><h3 className="font-bold text-slate-800">Pernyataan (Pilih Jawaban Benar)</h3></div>
@@ -1954,7 +1963,6 @@
                                 </div>
                             )}
 
-                            {/* EDITOR UNTUK MATRIKS KATEGORI */}
                             {formData.type === 'CATEGORY' && (
                                 <div className="space-y-4 pt-4 border-t">
                                     <h3 className="font-bold text-slate-800">Matriks Kategori (Benar/Salah)</h3>
@@ -1989,7 +1997,15 @@
             }
 
             if (view === 'list') {
-              const folderQuestions = questions.filter(q => String(q.folder || 'Utama').trim().toLowerCase() === filterFolder.toLowerCase());
+              // PERBAIKAN: Mengurutkan otomatis berdasarkan timestamp waktu yang tertanam di dalam ID
+              const folderQuestions = questions
+                .filter(q => String(q.folder || 'Utama').trim().toLowerCase() === filterFolder.toLowerCase())
+                .sort((a, b) => {
+                    const timeA = parseInt((a.id.match(/\d+/) || [0])[0]);
+                    const timeB = parseInt((b.id.match(/\d+/) || [0])[0]);
+                    return timeA - timeB;
+                });
+                
               return (
                 <AdminLayout title={`Folder: ${filterFolder}`}>
                   <div className="mb-6 flex justify-between items-center gap-3 bg-white p-4 rounded-xl border shadow-sm">
@@ -2036,6 +2052,37 @@
               );
             }
 
+            return (
+              <AdminLayout title="Manajemen Bank Soal">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    <div onClick={createFolder} className="bg-emerald-50 border-2 border-dashed border-emerald-300 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer min-h-[180px] hover:bg-emerald-100 transition-colors">
+                        <div className="w-12 h-12 bg-emerald-200 text-emerald-700 rounded-full flex items-center justify-center mb-3"><Plus size={24}/></div>
+                        <span className="font-bold text-emerald-800">Buat Folder Baru</span>
+                    </div>
+                    {Object.entries(folderStats).map(([fname, count]) => {
+                        const isPublished = activeFolder.toLowerCase() === fname.toLowerCase();
+                        return (
+                        <div key={fname} className={`bg-white border-2 rounded-2xl p-6 flex flex-col justify-between shadow-sm min-h-[180px] ${isPublished ? 'border-emerald-400' : 'border-slate-200'}`}>
+                            <div>
+                                <h4 className="font-bold text-xl text-slate-800 mb-1 truncate" title={fname}>{fname}</h4>
+                                <p className="text-xs text-slate-500 font-semibold bg-slate-100 inline-block px-3 py-1 rounded-full">{count} Butir Soal</p>
+                            </div>
+                            <div className="mt-6 flex flex-col gap-2">
+                                <div className="flex gap-2">
+                                    <button onClick={() => { setFilterFolder(fname); setView('list'); }} className="flex-1 bg-slate-100 py-2 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-200 transition-colors">Buka</button>
+                                    <button onClick={() => editFolder(fname)} className="px-3 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors" title="Edit Nama Folder"><Edit size={16}/></button>
+                                    {fname !== 'Utama' && <button onClick={() => deleteFolder(fname)} className="px-3 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors" title="Hapus Folder Permanen"><Trash2 size={16}/></button>}
+                                </div>
+                                <button onClick={() => publishFolder(fname)} className={`w-full py-2.5 rounded-lg text-sm font-bold transition-colors ${isPublished ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                                    {isPublished ? 'Sedang Diterbitkan' : 'Terbitkan Folder Ini'}
+                                </button>
+                            </div>
+                        </div>
+                    )})}
+                 </div>
+              </AdminLayout>
+            );
+          };
             return (
               <AdminLayout title="Manajemen Bank Soal">
                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
