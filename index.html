@@ -792,6 +792,7 @@
 
           const ExamReview = () => {
              const [isSubmitting, setIsSubmitting] = useState(false);
+             const [submitText, setSubmitText] = useState('Ya, Kirim');
              const [showConfirm, setShowConfirm] = useState(false);
              if (!activeSession || activeSession.status !== 'ACTIVE') { navigate('/'); return null; }
 
@@ -806,6 +807,8 @@
 
              const handleFinalSubmit = async () => {
                setIsSubmitting(true);
+               setSubmitText('Merekap Data...');
+               
                const result = calculateScore(activeSession.answers, examQuestions);
                const finalDetailedResults = [...result.detailedResults, { qId: 'SYS_CHEATS', cheatCount: activeSession.cheatWarnings || 0 }];
                const payload = {
@@ -814,14 +817,29 @@
                   token: activeSession.token, score: result.finalScore, start_time: activeSession.startTime,
                   end_time: new Date().getTime(), detailed_results: JSON.stringify(finalDetailedResults)
                };
+               
                try {
+                 setSubmitText('Mengirim ke Server...');
                  const db = await getSupabase();
-                 await db.from('results').insert([payload]);
+                 
+                 // PERBAIKAN 2: Sistem Anti-DDoS / Bottleneck Supabase
+                 const uploadPromise = db.from('results').insert([payload]);
+                 // Timeout 12 detik memutus antrian jika server free tier kepenuhan request
+                 const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("SERVER_BUSY")), 12000));
+                 
+                 await Promise.race([uploadPromise, timeoutPromise]);
+                 
                  setActiveSession({ ...activeSession, status: 'SUBMITTED', score: result.finalScore });
                  navigate('/submitted');
                } catch (err) {
-                 alert("Gagal mengirim ujian: " + err.message);
-                 setIsSubmitting(false); setShowConfirm(false);
+                 if (err.message === "SERVER_BUSY") {
+                     alert("Server sedang sibuk karena banyak siswa mengumpulkan ujian bersamaan.\n\nData Anda AMAN. Silakan klik tombol 'Ya, Kirim' sekali lagi.");
+                 } else {
+                     alert("Koneksi terputus: " + err.message + "\nPastikan internet stabil dan coba lagi.");
+                 }
+                 setIsSubmitting(false); 
+                 setSubmitText('Ya, Kirim');
+                 setShowConfirm(false);
                }
              };
 
@@ -843,7 +861,9 @@
                             <p className="font-bold text-rose-600 mb-2">Kirim sekarang?</p>
                             <div className="flex gap-3">
                                <button onClick={()=>setShowConfirm(false)} className="flex-1 py-2.5 bg-white border rounded-lg font-medium">Batal</button>
-                               <button onClick={handleFinalSubmit} disabled={isSubmitting} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg font-semibold">{isSubmitting ? 'Mengirim...' : 'Ya, Kirim'}</button>
+                               <button onClick={handleFinalSubmit} disabled={isSubmitting} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg font-semibold flex justify-center items-center">
+                                   {isSubmitting ? <><i className="fas fa-spinner fa-spin mr-2"></i> {submitText}</> : submitText}
+                               </button>
                             </div>
                          </div>
                       )}
@@ -1244,6 +1264,13 @@
              const [selectedResults, setSelectedResults] = useState([]);
              const [isDeleting, setIsDeleting] = useState(false);
 
+             // PERBAIKAN 1: Memicu render KaTeX setiap kali Modal Detail terbuka
+             useEffect(() => {
+                 if (selectedAnalysis) {
+                     triggerMathRender();
+                 }
+             }, [selectedAnalysis]);
+
              const getResultFolder = (r) => {
                  const firstQId = r.detail?.detailedResults?.find(x => x.qId !== 'SYS_CHEATS')?.qId;
                  if (!firstQId) return 'Utama';
@@ -1498,22 +1525,22 @@
                                             if (q.type === 'MCQ') {
                                                 const correctOpt = q.options?.find(o => o.id === q.correctAnswer);
                                                 const tmpK = document.createElement("div"); tmpK.innerHTML = correctOpt?.text || q.correctAnswer;
-                                                keyDisplay = <div className="mt-3 p-2 bg-emerald-50 rounded border border-emerald-100 text-xs text-slate-700 font-medium"><strong className="text-emerald-700">Kunci Jawaban: {q.correctAnswer}</strong> - {tmpK.textContent}</div>;
+                                                keyDisplay = <div className="mt-3 p-2 bg-emerald-50 rounded border border-emerald-100 text-xs text-slate-700 font-medium"><strong className="text-emerald-700">Kunci Jawaban: {q.correctAnswer}</strong> - <span className="rich-text-content">{tmpK.textContent}</span></div>;
                                                 if (!d.isEmpty && d.userAnswer) {
                                                     const opt = q.options?.find(o => o.id === d.userAnswer);
                                                     const tmp = document.createElement("div"); tmp.innerHTML = opt?.text || d.userAnswer;
-                                                    ansDisplay = <div className="font-medium text-slate-800"><strong className="text-blue-600">{d.userAnswer}.</strong> {tmp.textContent}</div>;
+                                                    ansDisplay = <div className="font-medium text-slate-800"><strong className="text-blue-600">{d.userAnswer}.</strong> <span className="rich-text-content">{tmp.textContent}</span></div>;
                                                 }
                                             } else if (q.type === 'MCMA') {
                                                 const correctTexts = (q.correctAnswers||[]).map(ansId => {
                                                     const stmt = q.statements?.find(s => String(s.id) === String(ansId));
                                                     const t = document.createElement("div"); t.innerHTML = stmt?.text || ansId; return t.textContent;
                                                 });
-                                                keyDisplay = <div className="mt-3 p-2 bg-emerald-50 rounded border border-emerald-100 text-xs text-slate-700 font-medium"><strong className="text-emerald-700 block mb-1">Kunci (Pilih Semua):</strong> <ul className="list-disc pl-4">{correctTexts.map((txt, ii)=><li key={ii}>{txt}</li>)}</ul></div>;
+                                                keyDisplay = <div className="mt-3 p-2 bg-emerald-50 rounded border border-emerald-100 text-xs text-slate-700 font-medium"><strong className="text-emerald-700 block mb-1">Kunci (Pilih Semua):</strong> <ul className="list-disc pl-4">{correctTexts.map((txt, ii)=><li key={ii} className="rich-text-content">{txt}</li>)}</ul></div>;
                                                 if (!d.isEmpty && Array.isArray(d.userAnswer)) {
                                                     ansDisplay = <ul className="list-disc pl-4 space-y-1">{d.userAnswer.map(ansId => {
                                                         const stmt = q.statements?.find(s => String(s.id) === String(ansId)); const tmp = document.createElement("div"); tmp.innerHTML = stmt?.text || ansId;
-                                                        return <li key={ansId} className="text-xs font-medium text-slate-700">{tmp.textContent}</li>;
+                                                        return <li key={ansId} className="text-xs font-medium text-slate-700 rich-text-content">{tmp.textContent}</li>;
                                                     })}</ul>;
                                                 }
                                             } else if (q.type === 'CATEGORY') {
@@ -1522,7 +1549,7 @@
                                                     ansDisplay = <ul className="space-y-2">{keys.map(k => {
                                                         const stmt = q.statements?.find(s => String(s.id) === String(k)); const tmp = document.createElement("div"); tmp.innerHTML = stmt?.text || k;
                                                         const isCorrectLine = d.userAnswer[k] === stmt?.correctCategory;
-                                                        return <li key={k} className="text-xs text-slate-600 bg-slate-50 p-2 rounded border leading-snug"><div className="mb-1 text-[10px] font-bold text-slate-400">Pernyataan: <span className="text-slate-700 font-medium">{tmp.textContent}</span></div> <span className={`font-bold px-1.5 py-0.5 rounded text-white ${isCorrectLine ? 'bg-emerald-500' : 'bg-rose-500'}`}>{d.userAnswer[k]}</span> <span className="text-slate-400 ml-1">(Kunci: {stmt?.correctCategory})</span></li>;
+                                                        return <li key={k} className="text-xs text-slate-600 bg-slate-50 p-2 rounded border leading-snug"><div className="mb-1 text-[10px] font-bold text-slate-400">Pernyataan: <span className="text-slate-700 font-medium rich-text-content">{tmp.textContent}</span></div> <span className={`font-bold px-1.5 py-0.5 rounded text-white ${isCorrectLine ? 'bg-emerald-500' : 'bg-rose-500'}`}>{d.userAnswer[k]}</span> <span className="text-slate-400 ml-1">(Kunci: {stmt?.correctCategory})</span></li>;
                                                     })}</ul>;
                                                 }
                                             }
