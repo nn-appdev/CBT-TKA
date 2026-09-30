@@ -1601,6 +1601,16 @@
             const setFilterFolder = (f) => { window.savedAdminFolder = f; setFilterFolderLocal(f); };
             const [showImport, setShowImport] = useState(false);
             const [fileError, setFileError] = useState('');
+            
+            const [rawPdfText, setRawPdfText] = useState('');
+            const [jsonInput, setJsonInput] = useState('');
+
+            // PERBAIKAN 1: Memaksa mesin KaTeX untuk me-render rumus matematika di menu Preview
+            useEffect(() => {
+                if (view === 'list') {
+                    triggerMathRender();
+                }
+            }, [view, filterFolder, questions]);
 
             const defaultMCQ = { id: '', type: 'MCQ', folder: filterFolder, points: 1, question: '', options: [{id:'A', text:''}, {id:'B', text:''}, {id:'C', text:''}, {id:'D', text:''}], correctAnswer: 'A' };
             const defaultMCMA = { id: '', type: 'MCMA', folder: filterFolder, points: 2, question: '', statements: [{id:1, text:''}, {id:2, text:''}], correctAnswers: [] };
@@ -1677,6 +1687,47 @@
                 reader.readAsText(file);
             };
 
+            const handleInjectJSON = async () => {
+                if (!jsonInput.trim()) { alert("Kolom JSON masih kosong!"); return; }
+                setFileError(''); setIsSaving(true);
+                try {
+                    const parsedData = JSON.parse(jsonInput);
+                    if (!Array.isArray(parsedData)) throw new Error("Data JSON harus diawali tanda [ dan diakhiri ]");
+                    
+                    const payloads = parsedData.map((q, i) => {
+                        if (!['MCQ', 'MCMA', 'CATEGORY'].includes(q.type)) throw new Error(`Tipe soal '${q.type}' item ke-${i+1} tidak valid.`);
+                        return {
+                            id: `q${Date.now()}_${i}`, type: q.type, folder: filterFolder, order_index: Date.now() + i,
+                            points: parseInt(q.points) || (q.type === 'MCQ' ? 1 : q.type === 'MCMA' ? 2 : 3),
+                            question: q.question || 'Tanpa Pertanyaan', options: q.options || null,
+                            correctAnswer: q.correctAnswer || null, statements: q.statements || null, correctAnswers: q.correctAnswers || null
+                        };
+                    });
+
+                    if (payloads.length === 0) throw new Error("Data valid JSON kosong.");
+                    const db = await getSupabase();
+                    const { error } = await db.from('questions').insert(payloads);
+                    if (error) throw error;
+                    
+                    setJsonInput(''); setRawPdfText('');
+                    setView('list'); fetchSupabaseData();
+                    alert(`SUKSES! Berhasil menyuntikkan ${payloads.length} soal ke database Folder "${filterFolder}".`);
+                } catch (err) { setFileError("GAGAL VALIDASI JSON: " + err.message); } finally { setIsSaving(false); }
+            };
+
+            const copyPromptToClipboard = () => {
+                const prompt = `Kamu adalah mesin konverter data CBT ahli. Output HARUS berwujud array JSON murni tanpa markdown, tanpa penjelasan. Format ketat:
+1. Pilihan Ganda (1 jawaban) -> type: "MCQ", points: 1. Harus punya array "options" (A, B, C, D) dan "correctAnswer" (contoh: "A").
+2. Ganda Kompleks (>1 jawaban) -> type: "MCMA", points: 2. Punya array "statements" (id: 1, 2...) dan "correctAnswers" (contoh: [1, 3]).
+3. Benar/Salah -> type: "CATEGORY", points: 3. Punya array "statements" dg "category1": "Benar", "category2": "Salah", dan "correctCategory".
+Rapikan teks yang terputus, buang nomor soal. Jika kunci tidak ada, tebak sesuai standar SD.
+
+Berikut teksnya:
+${rawPdfText}`;
+                navigator.clipboard.writeText(prompt);
+                alert("Prompt khusus berhasil disalin! Silakan Paste di ChatGPT/Gemini.");
+            };
+              
             const saveQuestion = async (e) => {
                e.preventDefault();
                setIsSaving(true);
@@ -1783,6 +1834,32 @@
                 } catch(e) { alert("Gagal: " + e.message); }
                 setIsSaving(false);
             };
+
+            if (view === 'converter') {
+                return (
+                    <AdminLayout title={`Injektor AI - Folder: ${filterFolder}`}>
+                        <div className="mb-4 flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
+                            <button onClick={() => setView('list')} className="border px-4 py-2 rounded-lg text-sm font-semibold flex items-center hover:bg-slate-50"><ChevronLeft size={16} className="mr-1"/> Kembali</button>
+                            <span className="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-1.5 rounded-lg border border-amber-200">Pastikan ChatGPT / Gemini Sudah Terbuka</span>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="bg-white p-6 rounded-xl border shadow-sm flex flex-col">
+                                <h3 className="font-bold text-slate-800 text-lg mb-2 flex items-center"><span className="bg-blue-600 text-white w-6 h-6 flex justify-center items-center rounded-full text-xs mr-2">1</span> Siapkan Prompt PDF</h3>
+                                <p className="text-xs text-slate-500 mb-4">Copy teks mentah dari file PDF, paste ke kotak ini. Sistem akan merakit prompt rahasianya.</p>
+                                <textarea value={rawPdfText} onChange={e=>setRawPdfText(e.target.value)} placeholder="Paste teks soal mentah di sini..." className="w-full flex-1 p-3 min-h-[250px] border border-slate-300 rounded-xl text-sm focus:border-blue-500 focus:ring-1 outline-none mb-4 resize-none bg-slate-50"></textarea>
+                                <button onClick={copyPromptToClipboard} disabled={!rawPdfText} className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl font-bold flex justify-center items-center transition-colors disabled:opacity-50"><Copy size={16} className="mr-2"/> Copy Prompt ke Clipboard</button>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl border shadow-sm border-t-4 border-t-emerald-500 flex flex-col">
+                                <h3 className="font-bold text-slate-800 text-lg mb-2 flex items-center"><span className="bg-emerald-600 text-white w-6 h-6 flex justify-center items-center rounded-full text-xs mr-2">2</span> Injeksi ke Database</h3>
+                                <p className="text-xs text-slate-500 mb-4">Paste kode JSON murni yang dimuntahkan oleh AI ke dalam kotak ini, lalu klik Simpan.</p>
+                                <textarea value={jsonInput} onChange={e=>{setJsonInput(e.target.value); setFileError('');}} placeholder="Paste hasil JSON murni dari AI di sini (Dimulai dari tanda [ dan diakhiri ])..." className="w-full flex-1 p-3 min-h-[250px] border border-emerald-200 rounded-xl text-sm focus:border-emerald-500 focus:ring-1 outline-none mb-4 resize-none font-mono bg-emerald-50/30 text-emerald-900"></textarea>
+                                {fileError && <div className="mb-4 p-3 bg-rose-50 text-rose-600 text-xs font-bold border border-rose-200 rounded-lg"><i className="fas fa-exclamation-triangle mr-1"></i> {fileError}</div>}
+                                <button onClick={handleInjectJSON} disabled={isSaving || !jsonInput} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold flex justify-center items-center shadow-md transition-colors disabled:opacity-50">{isSaving ? 'Menyuntikkan...' : 'Validasi & Simpan ke Folder'}</button>
+                            </div>
+                        </div>
+                    </AdminLayout>
+                )
+            }
 
             if (view === 'create' || view === 'edit') {
                const availableFolders = [...new Set([...questions.map(q => q.folder || 'Utama'), ...tokens.filter(t => t.code && t.code.startsWith('SYS_FOLDER_')).map(t => t.status), filterFolder, 'Utama'])];
@@ -1895,7 +1972,6 @@
             }
 
             if (view === 'list') {
-              // Logika Sortir berdasarkan order_index
               const folderQuestions = questions
                 .filter(q => String(q.folder || 'Utama').trim().toLowerCase() === filterFolder.toLowerCase())
                 .sort((a, b) => {
@@ -1968,15 +2044,17 @@
                              </div>
                              <div className="mt-2 text-slate-800 font-medium rich-text-content text-sm break-words" dangerouslySetInnerHTML={{__html: q.question}}></div>
                              
+                             {/* PERBAIKAN 2: Arsitektur Flexbox items-start & shrink-0 untuk Preview Kunci Jawaban */}
                              <div className="mt-4 p-4 bg-slate-50/50 rounded-xl border border-slate-200">
                                  <div className="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-wider"><i className="fas fa-eye mr-1"></i> Preview Kunci Jawaban</div>
                                  
                                  {q.type === 'MCQ' && (
-                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                          {(q.options||[]).map(opt => (
-                                             <div key={opt.id} className={`p-2.5 rounded-lg text-xs flex gap-2 items-center border ${q.correctAnswer === opt.id ? 'bg-emerald-100 border-emerald-300 font-bold text-emerald-900' : 'bg-white border-slate-200 text-slate-600'}`}>
-                                                 <span className="font-bold w-4">{opt.id}.</span> <div className="flex-1 rich-text-content" dangerouslySetInnerHTML={{__html: opt.text}} />
-                                                 {q.correctAnswer === opt.id && <i className="fas fa-check-circle text-emerald-500 ml-1"></i>}
+                                             <div key={opt.id} className={`p-3 rounded-lg text-sm flex items-start border ${q.correctAnswer === opt.id ? 'bg-emerald-100 border-emerald-300 font-bold text-emerald-900' : 'bg-white border-slate-200 text-slate-600'}`}>
+                                                 <span className="font-bold w-6 mt-0.5">{opt.id}.</span> 
+                                                 <div className="flex-1 rich-text-content" dangerouslySetInnerHTML={{__html: opt.text}} />
+                                                 {q.correctAnswer === opt.id && <i className="fas fa-check-circle text-emerald-500 mt-1 ml-2 text-base shrink-0"></i>}
                                              </div>
                                          ))}
                                      </div>
@@ -1987,8 +2065,8 @@
                                          {(q.statements||[]).map(stmt => {
                                              const isCorrect = (q.correctAnswers||[]).includes(stmt.id);
                                              return (
-                                                 <div key={stmt.id} className={`p-2.5 rounded-lg text-xs flex gap-3 items-center border ${isCorrect ? 'bg-blue-100 border-blue-300 font-bold text-blue-900' : 'bg-white border-slate-200 text-slate-600'}`}>
-                                                     <input type="checkbox" checked={isCorrect} readOnly className="w-4 h-4 accent-blue-600"/> 
+                                                 <div key={stmt.id} className={`p-3 rounded-lg text-sm flex gap-3 items-start border ${isCorrect ? 'bg-blue-100 border-blue-300 font-bold text-blue-900' : 'bg-white border-slate-200 text-slate-600'}`}>
+                                                     <input type="checkbox" checked={isCorrect} readOnly className="w-4 h-4 accent-blue-600 mt-1 shrink-0"/> 
                                                      <div className="flex-1 rich-text-content" dangerouslySetInnerHTML={{__html: stmt.text}} />
                                                  </div>
                                              )
