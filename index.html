@@ -545,7 +545,7 @@
             );
           };
 
-          const ParticipantInstruction = () => {
+                    const ParticipantInstruction = () => {
             const [isStarting, setIsStarting] = useState(false);
             if (!activeSession || !activeSession.participant) { navigate('/login'); return null; }
             
@@ -553,15 +553,22 @@
               setIsStarting(true);
               try {
                 const db = await getSupabase();
-                await db.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
+                
+                // PERBAIKAN: Suntikan pendeteksi error mutlak (Hard-stop)
+                const { error: tokenErr } = await db.from('tokens').update({ status: 'USED' }).eq('code', activeSession.token);
+                if (tokenErr) {
+                    throw new Error("Gagal mengunci token di database. Pastikan koneksi internet stabil (" + tokenErr.message + ")");
+                }
 
                 let sessionQuestions = JSON.parse(JSON.stringify(activeQuestions));
+                
                 if (isRandomQ) {
                     for (let i = sessionQuestions.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
                         [sessionQuestions[i], sessionQuestions[j]] = [sessionQuestions[j], sessionQuestions[i]];
                     }
                 }
+                
                 if (isRandomOpt) {
                     sessionQuestions = sessionQuestions.map(q => {
                         if (q.type === 'MCQ' && q.options) {
@@ -591,7 +598,10 @@
                     durationLimit: durationLimitMs, sessionQuestions, examCurrentIndex: 0 
                 }));
                 navigate('/exam');
-              } catch (err) { alert("Gagal memulai ujian: " + err.message); setIsStarting(false); }
+              } catch (err) { 
+                 alert("GAGAL MEMULAI UJIAN:\n" + err.message); 
+                 setIsStarting(false); 
+              }
             };
 
             return (
@@ -613,7 +623,7 @@
                          Peserta: <strong className="text-lg block sm:inline">{activeSession.participant.name}</strong> <br className="sm:hidden"/>({activeSession.participant.school})
                        </div>
                        <button onClick={startExam} disabled={isStarting || activeQuestions.length === 0} className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 text-white font-bold text-lg rounded-xl shadow-md hover:bg-emerald-700 transition-transform hover:scale-105 disabled:opacity-50">
-                           {isStarting ? 'Memproses...' : 'Mulai Ujian'}
+                           {isStarting ? 'Memproses Sistem...' : 'Mulai Ujian'}
                        </button>
                     </div>
                  </div>
