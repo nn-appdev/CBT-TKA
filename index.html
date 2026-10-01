@@ -330,32 +330,41 @@
             let questionMaxPoints = 0;
             let isCorrect = false;
             
+            // MESIN SANITASI PRESISI: Membuang spasi tersembunyi & menyamakan huruf besar
+            const cleanStr = (val) => val !== null && val !== undefined ? String(val).trim().toUpperCase() : '';
+            
             if (q.type === 'MCQ') {
-                questionMaxPoints = 1;
-                if (userAnswer && userAnswer === q.correctAnswer) {
-                    pointsEarned = 1;
+                questionMaxPoints = Number(q.points) || 1;
+                // Perbandingan super ketat
+                if (userAnswer && cleanStr(userAnswer) === cleanStr(q.correctAnswer)) {
+                    pointsEarned = questionMaxPoints;
                     isCorrect = true;
                 }
             } else if (q.type === 'MCMA') {
-                questionMaxPoints = 2;
+                questionMaxPoints = Number(q.points) || 2;
                 if (userAnswer && Array.isArray(userAnswer)) {
-                    const sortedUser = [...userAnswer].sort();
-                    const sortedCorrect = [...(q.correctAnswers || [])].sort();
+                    // Sanitasi seluruh elemen array jawaban
+                    const sortedUser = [...userAnswer].map(cleanStr).sort();
+                    const sortedCorrect = [...(q.correctAnswers || [])].map(cleanStr).sort();
                     if (sortedUser.length === sortedCorrect.length && sortedUser.every((val, index) => val === sortedCorrect[index])) {
-                        pointsEarned = 2;
+                        pointsEarned = questionMaxPoints;
                         isCorrect = true;
                     }
                 }
             } else if (q.type === 'CATEGORY') {
                 const statementsCount = (q.statements || []).length;
-                questionMaxPoints = statementsCount; 
+                const bobotTotal = Number(q.points) || 3;
+                const bobotPerItem = statementsCount > 0 ? (bobotTotal / statementsCount) : 0;
+                questionMaxPoints = bobotTotal; 
                 
                 if (userAnswer) {
                     let correctCount = 0;
                     (q.statements || []).forEach(s => {
-                        if (userAnswer[s.id] === s.correctCategory) correctCount++;
+                        // Sanitasi jawaban matriks
+                        if (cleanStr(userAnswer[s.id]) === cleanStr(s.correctCategory)) correctCount++;
                     });
-                    pointsEarned = correctCount;
+                    // Kalkulasi pecahan desimal untuk nilai parsial
+                    pointsEarned = parseFloat((correctCount * bobotPerItem).toFixed(2));
                     isCorrect = correctCount === statementsCount;
                 }
             }
@@ -365,7 +374,15 @@
             
             const isEmpty = !userAnswer || (typeof userAnswer === 'object' && Object.keys(userAnswer).length === 0);
             
-            return { qId: q.id, type: q.type, isCorrect, isEmpty, pointsEarned, questionMaxPoints, userAnswer: userAnswer };
+            return { 
+                qId: q.id, 
+                type: q.type, 
+                isCorrect, 
+                isEmpty,
+                pointsEarned,
+                questionMaxPoints,
+                userAnswer: userAnswer 
+            };
           });
           
           let rawPercentage = maxPoints > 0 ? (totalPoints / maxPoints) * 100 : 0;
