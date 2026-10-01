@@ -659,10 +659,13 @@
                 window.scrollTo({ top: 0, behavior: 'smooth' }); 
             };
             
+            // PERBAIKAN BUG MATEMATIKA: 
+            // Menambahkan 'activeSession?.answers' ke dalam daftar pemicu (dependency array).
+            // Ini memaksa KaTeX untuk merender ulang rumus setiap kali siswa memilih/mengubah jawaban.
             useEffect(() => { 
                 if (!activeSession || activeSession.status !== 'ACTIVE') navigate('/'); 
                 triggerMathRender(); 
-            }, [activeSession?.status, examCurrentIndex]);
+            }, [activeSession?.status, examCurrentIndex, activeSession?.answers]);
 
             useEffect(() => {
               if (!activeSession || activeSession.status !== 'ACTIVE') return;
@@ -687,7 +690,9 @@
 
             const handleAnswerChangeMCQ = (val) => {
                 handleAnswerChange(val);
-                if (examCurrentIndex < examQuestions.length - 1) { setTimeout(() => setExamCurrentIndex(examCurrentIndex + 1), 400); }
+                if (examCurrentIndex < examQuestions.length - 1) {
+                    setTimeout(() => setExamCurrentIndex(examCurrentIndex + 1), 400); 
+                }
             };
 
             const RenderMCQ = () => (
