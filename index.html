@@ -307,6 +307,30 @@
           useEffect(() => { window.localStorage.setItem(key, JSON.stringify(value)); }, [key, value]);
           return [value, setValue];
         }
+        // KOMPONEN BARU: Pelindung Render Matematika Anti-Bug
+        const MathRenderer = ({ html, className="" }) => {
+            const divRef = useRef(null);
+            useEffect(() => {
+                if (divRef.current && window.renderMathInElement) {
+                    const timer = setTimeout(() => {
+                        if (divRef.current) {
+                            window.renderMathInElement(divRef.current, {
+                                ignoredClasses: ["editor-ignore-math"],
+                                delimiters: [
+                                    {left: '$$', right: '$$', display: true},
+                                    {left: '$', right: '$', display: false},
+                                    {left: '\\(', right: '\\)', display: false},
+                                    {left: '\\[', right: '\\]', display: true}
+                                ],
+                                throwOnError : false
+                            });
+                        }
+                    }, 50);
+                    return () => clearTimeout(timer);
+                }
+            }, [html]);
+            return <div ref={divRef} className={className} dangerouslySetInnerHTML={{ __html: html || '' }} />;
+        };
 
         const triggerMathRender = () => {
             if (window.renderMathInElement) {
@@ -659,13 +683,10 @@
                 window.scrollTo({ top: 0, behavior: 'smooth' }); 
             };
             
-            // PERBAIKAN BUG MATEMATIKA: 
-            // Menambahkan 'activeSession?.answers' ke dalam daftar pemicu (dependency array).
-            // Ini memaksa KaTeX untuk merender ulang rumus setiap kali siswa memilih/mengubah jawaban.
             useEffect(() => { 
                 if (!activeSession || activeSession.status !== 'ACTIVE') navigate('/'); 
                 triggerMathRender(); 
-            }, [activeSession?.status, examCurrentIndex, activeSession?.answers]);
+            }, [activeSession?.status, examCurrentIndex]);
 
             useEffect(() => {
               if (!activeSession || activeSession.status !== 'ACTIVE') return;
@@ -700,7 +721,10 @@
                 {(currentQuestion.options||[]).map(opt => (
                   <label key={opt.id} className={`flex items-start p-4 border rounded-xl cursor-pointer transition-all ${currentAnswer === opt.id ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 hover:bg-slate-50'}`}>
                     <div className="flex items-center h-6 mt-0.5"><input type="radio" checked={currentAnswer === opt.id} onChange={() => handleAnswerChangeMCQ(opt.id)} className="w-5 h-5 text-emerald-600" /></div>
-                    <div className="ml-4 flex-1 flex text-slate-800"><span className="font-bold text-slate-400 w-6 mt-0.5">{opt.id}.</span><div className="flex-1 rich-text-content" dangerouslySetInnerHTML={{__html: opt.text}}></div></div>
+                    <div className="ml-4 flex-1 flex text-slate-800">
+                        <span className="font-bold text-slate-400 w-6 mt-0.5">{opt.id}.</span>
+                        <MathRenderer html={opt.text} className="flex-1 rich-text-content" />
+                    </div>
                   </label>
                 ))}
               </div>
@@ -719,7 +743,10 @@
                      {(currentQuestion.statements||[]).map((stmt, idx) => (
                         <label key={stmt.id} className={`flex items-start p-4 border rounded-xl cursor-pointer transition-all ${selectedArr.includes(stmt.id) ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 hover:bg-slate-50'}`}>
                            <div className="flex items-center h-6 mt-0.5"><input type="checkbox" checked={selectedArr.includes(stmt.id)} onChange={() => handleToggle(stmt.id)} className="w-5 h-5 text-blue-600 rounded cursor-pointer" /></div>
-                           <div className="ml-4 flex-1 flex text-slate-800"><span className="font-bold text-slate-400 w-6 mt-0.5">{idx + 1}.</span><div className="flex-1 rich-text-content" dangerouslySetInnerHTML={{__html: stmt.text}}></div></div>
+                           <div className="ml-4 flex-1 flex text-slate-800">
+                               <span className="font-bold text-slate-400 w-6 mt-0.5">{idx + 1}.</span>
+                               <MathRenderer html={stmt.text} className="flex-1 rich-text-content" />
+                           </div>
                         </label>
                      ))}
                   </div>
@@ -740,7 +767,7 @@
                            <div className="p-4 flex-1 min-w-0">
                                <div className="flex items-start">
                                    <span className="font-bold text-slate-400 w-6 mt-0.5">{idx + 1}.</span>
-                                   <div className="flex-1 rich-text-content text-sm text-slate-800 break-words" dangerouslySetInnerHTML={{__html: stmt.text}}></div>
+                                   <MathRenderer html={stmt.text} className="flex-1 rich-text-content text-sm text-slate-800 break-words" />
                                </div>
                            </div>
                            <div className="flex border-t md:border-t-0 md:border-l border-slate-100 bg-slate-50 shrink-0">
@@ -780,7 +807,7 @@
                             <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-slate-100 text-slate-600">{currentQuestion.category}</span>
                          </div>
                          <div className="w-full pb-8">
-                            <div className="text-base sm:text-lg text-slate-800 leading-relaxed font-medium mb-6 rich-text-content" dangerouslySetInnerHTML={{ __html: currentQuestion.question || '' }} />
+                            <MathRenderer html={currentQuestion.question || ''} className="text-base sm:text-lg text-slate-800 leading-relaxed font-medium mb-6 rich-text-content" />
                             {currentQuestion.type === 'MCQ' && <RenderMCQ />}
                             {currentQuestion.type === 'MCMA' && <RenderMCMA />}
                             {currentQuestion.type === 'CATEGORY' && <RenderCATEGORY />}
