@@ -307,30 +307,28 @@
           useEffect(() => { window.localStorage.setItem(key, JSON.stringify(value)); }, [key, value]);
           return [value, setValue];
         }
-        // KOMPONEN BARU: Pelindung Render Matematika Anti-Bug
-        const MathRenderer = ({ html, className="" }) => {
+       // KOMPONEN BARU: Pelindung Render Matematika Anti-Kedip (Synchronous Caching)
+        const MathRenderer = React.memo(({ html, className="" }) => {
             const divRef = useRef(null);
+            
             useEffect(() => {
                 if (divRef.current && window.renderMathInElement) {
-                    const timer = setTimeout(() => {
-                        if (divRef.current) {
-                            window.renderMathInElement(divRef.current, {
-                                ignoredClasses: ["editor-ignore-math"],
-                                delimiters: [
-                                    {left: '$$', right: '$$', display: true},
-                                    {left: '$', right: '$', display: false},
-                                    {left: '\\(', right: '\\)', display: false},
-                                    {left: '\\[', right: '\\]', display: true}
-                                ],
-                                throwOnError : false
-                            });
-                        }
-                    }, 50);
-                    return () => clearTimeout(timer);
+                    // Eksekusi instan 0 milidetik (Tanpa setTimeout)
+                    window.renderMathInElement(divRef.current, {
+                        ignoredClasses: ["editor-ignore-math"],
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false},
+                            {left: '\\[', right: '\\]', display: true}
+                        ],
+                        throwOnError : false
+                    });
                 }
-            }, [html]);
+            }, [html]); // KUNCI: Rumus hanya dirender ulang JIKA teks soal benar-benar diubah, bukan saat diklik.
+
             return <div ref={divRef} className={className} dangerouslySetInnerHTML={{ __html: html || '' }} />;
-        };
+        });
 
         const triggerMathRender = () => {
             if (window.renderMathInElement) {
@@ -491,7 +489,7 @@
               else navigate('/login');
             }
             triggerMathRender();
-          }, [currentRoute, activeSession]);
+          }, [currentRoute]);
 
           const ParticipantLogin = () => {
             const [inputToken, setInputToken] = useState('');
@@ -683,10 +681,9 @@
                 window.scrollTo({ top: 0, behavior: 'smooth' }); 
             };
             
-            useEffect(() => { 
-                if (!activeSession || activeSession.status !== 'ACTIVE') navigate('/'); 
-                triggerMathRender(); 
-            }, [activeSession?.status, examCurrentIndex]);
+            useEffect(() => {
+        if (!activeSession || activeSession.status !== 'ACTIVE') navigate('/');
+    }, [activeSession?.status, examCurrentIndex]);
 
             useEffect(() => {
               if (!activeSession || activeSession.status !== 'ACTIVE') return;
